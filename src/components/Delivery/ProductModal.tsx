@@ -130,7 +130,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   const canAddToCart = () => {
-    if (!product.complementGroups) return true;
+    if (!product.complementGroups || !Array.isArray(product.complementGroups)) return true;
     
     const allGroupsValid = product.complementGroups.every(group => {
       const selectionCount = getGroupSelectionCount(group.id);
@@ -141,7 +141,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   };
   
   const validateGroups = () => {
-    if (!product.complementGroups) return true;
+    if (!product.complementGroups || !Array.isArray(product.complementGroups)) return true;
     
     const invalidGroups: string[] = [];
     
@@ -287,7 +287,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             )}
 
             {/* Grupos de Complementos */}
-            {product.complementGroups && product.complementGroups.map((group, groupIndex) => (
+            {product.complementGroups && Array.isArray(product.complementGroups) && product.complementGroups.map((group, groupIndex) => (
               <div 
                 key={group.id} 
                 id={`group-${group.id}`} 
@@ -401,10 +401,10 @@ const ProductModal: React.FC<ProductModalProps> = ({
                     {incompleteGroups.length > 0 && (
                       <ul className="mt-2 text-sm text-red-700 list-disc pl-5 space-y-1">
                         {product.complementGroups
-                          ?.filter(g => incompleteGroups.includes(g.id))
+                          ? product.complementGroups.filter(g => incompleteGroups.includes(g.id))
                           .map(g => (
                             <li key={g.id}>{g.name}</li>
-                          ))}
+                          )) : []}
                       </ul>
                     )}
                   </div>
