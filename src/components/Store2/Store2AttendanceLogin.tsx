@@ -110,16 +110,6 @@ const Store2AttendanceLogin: React.FC<Store2AttendanceLoginProps> = ({ onLogin }
         </form>
 
         <div className="mt-6 text-center">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-            <p className="text-xs font-medium text-blue-800 mb-2">Credenciais Padrão:</p>
-            <div className="space-y-1 text-xs text-blue-700">
-              <p><strong>Admin:</strong> admin_loja2 / elite2024</p>
-              <p><strong>Operador:</strong> loja2 / elite2024</p>
-            </div>
-            <p className="text-xs text-blue-600 mt-2">
-              💡 Crie novos usuários em /gerenciamento_loja2
-            </p>
-          </div>
           <a
             href="/"
             className="block mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium"

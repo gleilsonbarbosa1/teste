@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Upload, X, Save, Package, Image as ImageIcon, GripVertical } from 'lucide-react';
 import { useDeliveryProducts } from '../../hooks/useDeliveryProducts';
 import { useImageUpload } from '../../hooks/useImageUpload';
+import { useProductScheduling } from '../../hooks/useProductScheduling';
 import ImageUploadModal from './ImageUploadModal';
+import ProductScheduleModal from './ProductScheduleModal';
 
 interface ComplementOption {
   name: string;
@@ -210,6 +212,10 @@ const ProductsPanel: React.FC = () => {
   });
   const [draggedGroupIndex, setDraggedGroupIndex] = useState<number | null>(null);
   const [draggedOptionIndex, setDraggedOptionIndex] = useState<{ groupIndex: number; optionIndex: number } | null>(null);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedProductForSchedule, setSelectedProductForSchedule] = useState<any | null>(null);
+  
+  const { getProductSchedule, saveProductSchedule } = useProductScheduling();
 
   // Carregar imagens dos produtos
   useEffect(() => {
@@ -359,6 +365,38 @@ const ProductsPanel: React.FC = () => {
     setShowImageModal(false);
   };
 
+  const handleScheduleProduct = (product: any) => {
+    setSelectedProductForSchedule(product);
+    setShowScheduleModal(true);
+  };
+
+  const handleSaveSchedule = async (productId: string, scheduledDays: any) => {
+    try {
+      await saveProductSchedule(productId, scheduledDays);
+      setShowScheduleModal(false);
+      setSelectedProductForSchedule(null);
+      
+      // Show success message
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+      successMessage.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Programação do produto salva com sucesso!
+      `;
+      document.body.appendChild(successMessage);
+      
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
+        }
+      }, 3000);
+    } catch (error) {
+      console.error('Erro ao salvar programação:', error);
+      alert('Erro ao salvar programação. Tente novamente.');
+    }
+  };
   const applyDefaultComplementGroups = () => {
     setFormData(prev => ({
       ...prev,
@@ -584,6 +622,15 @@ const ProductsPanel: React.FC = () => {
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
+                    onClick={() => handleScheduleProduct(product)}
+                    className="text-orange-600 hover:text-orange-800"
+                    title="Programar disponibilidade"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                  <button
                     onClick={() => deleteProduct(product.id)}
                     className="text-red-600 hover:text-red-800"
                   >
@@ -739,6 +786,15 @@ const ProductsPanel: React.FC = () => {
                   </div>
 
                   {/* Coluna Direita - Tamanhos */}
+                    <button
+                      onClick={() => handleScheduleProduct(product)}
+                      className="text-orange-600 hover:text-orange-800"
+                      title="Programar disponibilidade"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </button>
                   <div className="space-y-4">
                     <div className="border rounded-lg p-4">
                       <h4 className="font-semibold mb-4">Tamanhos do Produto</h4>
@@ -992,6 +1048,20 @@ const ProductsPanel: React.FC = () => {
           onClose={() => setShowImageModal(false)}
           onSelectImage={handleImageSelect}
           currentImage={formData.image_url || (editingProduct?.id && productImages[editingProduct.id])}
+        />
+      )}
+
+      {/* Product Schedule Modal */}
+      {showScheduleModal && selectedProductForSchedule && (
+        <ProductScheduleModal
+          product={selectedProductForSchedule}
+          isOpen={showScheduleModal}
+          onClose={() => {
+            setShowScheduleModal(false);
+            setSelectedProductForSchedule(null);
+          }}
+          onSave={handleSaveSchedule}
+          currentSchedule={getProductSchedule(selectedProductForSchedule.id)}
         />
       )}
     </div>
