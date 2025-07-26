@@ -312,7 +312,15 @@ const ProductsPanel: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🚀 Iniciando salvamento do produto:', {
+      editingProduct: !!editingProduct,
+      formData,
+      productId: editingProduct?.id
+    });
+    
     try {
+      let savedProduct;
+      
       if (editingProduct) {
         await updateProduct(editingProduct.id!, formData);
       } else {
@@ -321,8 +329,26 @@ const ProductsPanel: React.FC = () => {
       }
       setShowModal(false);
       resetForm();
+      
+      // Forçar recarregamento dos produtos após salvar
+      console.log('✅ Produto salvo, recarregando lista...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
+      
+      // Mostrar erro detalhado
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      alert(`Erro ao salvar produto: ${errorMessage}\n\nDetalhes: ${JSON.stringify(error)}`);
+      
+      // Log completo do erro
+      console.error('Erro completo:', {
+        error,
+        formData,
+        editingProduct
+      });
       // Reset form state when error occurs to prevent further attempts
       setEditingProduct(null);
       setShowModal(false);

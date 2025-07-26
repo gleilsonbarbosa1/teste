@@ -114,62 +114,78 @@ export const useDeliveryProducts = () => {
   }, []);
 
   const updateProduct = useCallback(async (id: string, updates: Partial<DeliveryProduct>) => {
-    try {
-      console.log('✏️ Atualizando produto:', id, updates);
-      
-      // 1. Verificar se o produto existe antes de tentar atualizar
-      const { data: existingProduct, error: checkError } = await supabase
-        .from('delivery_products')
-        .select('id')
-        .eq('id', id);
+  try {
+    console.log('✏️ Atualizando produto:', id, updates);
 
-      if (checkError) {
-        console.error('❌ Erro ao verificar existência do produto:', checkError);
-        throw new Error(`Erro ao verificar produto: ${checkError.message}`);
-      }
+    // 1. Verificar se o produto existe antes de tentar atualizar
+    const { data: existingProduct, error: checkError } = await supabase
+      .from('delivery_products')
+      .select('id')
+      .eq('id', id);
 
-      // 2. Verificar se o produto foi encontrado
-      if (!existingProduct || existingProduct.length === 0) {
-        console.error('❌ Produto não encontrado no banco:', id);
-        throw new Error(`Produto com ID ${id} não existe no banco de dados`);
-      }
-
-      console.log('✅ Produto encontrado, prosseguindo com atualização');
-
-      // Remove campos que podem causar conflito ou não existem no banco
-      const { created_at, updated_at, has_complements, ...cleanUpdates } = updates as any;
-      
-      // 3. Realizar a atualização
-      const { data, error } = await supabase
-        .from('delivery_products')
-        .update({
-          ...cleanUpdates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .maybeSingle();
-
-      if (error) {
-        console.error('❌ Erro detalhado ao atualizar produto:', error);
-        throw new Error(`Erro ao atualizar produto: ${error.message || 'Erro desconhecido'}`);
-      }
-      
-      if (!data) {
-        throw new Error(`Produto com ID ${id} não foi encontrado para atualização`);
-      }
-      
-      setProducts(prev => prev.map(p => p.id === id ? data : p));
-      console.log('✅ Produto atualizado:', data);
-      return data;
-    } catch (err) {
-      console.error('❌ Erro ao atualizar produto:', err);
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('Erro desconhecido ao atualizar produto');
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('❌ Erro ao verificar existência do produto:', checkError);
+      throw new Error(`Erro ao verificar produto: ${checkError.message}`);
     }
-  }, []);
+
+    if (!existingProduct || existingProduct.length === 0) {
+      console.error('❌ Produto não encontrado no banco:', id);
+      throw new Error(`Produto com ID ${id} não foi encontrado no banco de dados`);
+    }
+
+    console.log('✅ Produto encontrado, prosseguindo com atualização');
+
+    // 2. Remover campos indesejados
+    const { created_at, updated_at, has_complements, ...cleanUpdates } = updates as any;
+
+    // 3. Remover campos com valor undefined
+    const safeUpdate = Object.fromEntries(
+      Object.entries({
+        ...cleanUpdates,
+        updated_at: new Date().toISOString()
+      }).filter(([, value]) => value !== undefined)
+    );
+
+    console.log('📝 Dados limpos para atualização:', {
+      id,
+      cleanUpdates: safeUpdate,
+      originalUpdates: updates
+    });
+
+    // 4. Realizar a atualização
+    const { data, error } = await supabase
+      .from('delivery_products')
+      .update(safeUpdate)
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.error('❌ Erro detalhado ao atualizar produto:', error);
+      throw new Error(`Erro ao atualizar produto: ${error.message || 'Erro desconhecido'}`);
+    }
+
+    if (!data) {
+      throw new Error(`Produto com ID ${id} não foi encontrado para atualização`);
+    }
+
+    console.log('✅ Produto atualizado no banco:', data);
+
+    // Atualizar estado local
+    setProducts(prev => prev.map(p => p.id === id ? data : p));
+
+    console.log('✅ Estado local atualizado');
+    return data;
+
+  } catch (err) {
+    console.error('❌ Erro ao atualizar produto:', err);
+    if (err instanceof Error) {
+      throw err;
+    }
+    throw new Error('Erro desconhecido ao atualizar produto');
+  }
+}, []);
+
 
   const deleteProduct = useCallback(async (id: string) => {
     try {
