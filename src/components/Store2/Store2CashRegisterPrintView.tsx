@@ -162,6 +162,10 @@ const Store2CashRegisterPrintView: React.FC<Store2CashRegisterPrintViewProps> = 
               <span>${formatPrice(summary.sales_total || 0)}</span>
             </div>
             <div class="flex-between">
+              <span>Vendas Delivery:</span>
+              <span>${formatPrice(0)}</span>
+            </div>
+            <div class="flex-between">
               <span>Outras Entradas:</span>
               <span>${formatPrice(summary.other_income_total || 0)}</span>
             </div>
@@ -183,15 +187,9 @@ const Store2CashRegisterPrintView: React.FC<Store2CashRegisterPrintViewProps> = 
             <div class="flex-between">
               <span>Diferença:</span>
               <span class="bold">
-                ${(() => {
-                  const difference = (register.closing_amount || 0) - (summary.expected_balance || 0);
-                  return formatPrice(difference);
-                })()}
+                ${formatPrice((register.closing_amount || 0) - (summary.expected_balance || 0))}
                 <span class="small">
-                  ${(() => {
-                    const difference = (register.closing_amount || 0) - (summary.expected_balance || 0);
-                    return difference < 0 ? '(falta)' : difference > 0 ? '(sobra)' : '(exato)';
-                  })()}
+                  ${((register.closing_amount || 0) - (summary.expected_balance || 0)) < 0 ? '(falta)' : ((register.closing_amount || 0) - (summary.expected_balance || 0)) > 0 ? '(sobra)' : '(exato)'}
                 </span>
               </span>
             </div>
@@ -231,7 +229,7 @@ const Store2CashRegisterPrintView: React.FC<Store2CashRegisterPrintViewProps> = 
         <div class="mb-3 separator">
           <div class="bold small mb-1">POR FORMA DE PAGAMENTO - LOJA 2:</div>
           <div class="small">
-            ${['dinheiro', 'pix', 'cartao_credito', 'cartao_debito'].map(method => {
+            ${entries.length > 0 ? ['dinheiro', 'pix', 'cartao_credito', 'cartao_debito'].map(method => {
               const methodEntries = entries.filter(e => e.payment_method === method);
               const income = methodEntries.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
               const expense = methodEntries.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
@@ -246,7 +244,7 @@ const Store2CashRegisterPrintView: React.FC<Store2CashRegisterPrintViewProps> = 
                 `;
               }
               return '';
-            }).join('')}
+            }).join('') : '<div class="small center">Nenhuma movimentação por forma de pagamento</div>'}
           </div>
         </div>
 
@@ -552,20 +550,24 @@ const Store2CashRegisterPrintView: React.FC<Store2CashRegisterPrintViewProps> = 
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', margin: '2px 0' }}>
                 <span>Vendas Loja 2:</span>
-                <span>{formatPrice(summary.sales_total || 0)}</span>
+                <span>{formatPrice(summary?.sales_total || 0)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', margin: '2px 0' }}>
+                <span>Vendas Delivery:</span>
+                <span>{formatPrice(summary?.delivery_total || 0)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', margin: '2px 0' }}>
                 <span>Outras Entradas:</span>
-                <span>{formatPrice(summary.other_income_total || 0)}</span>
+                <span>{formatPrice(summary?.other_income_total || 0)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', margin: '2px 0' }}>
                 <span>Saídas:</span>
-                <span>{formatPrice(summary.total_expense || 0)}</span>
+                <span>{formatPrice(summary?.total_expense || 0)}</span>
               </div>
               <div style={{ borderTop: '1px solid black', paddingTop: '5px', marginTop: '5px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                   <span>SALDO ESPERADO:</span>
-                  <span>{formatPrice(summary.expected_balance || 0)}</span>
+                  <span>{formatPrice(summary?.expected_balance || 0)}</span>
                 </div>
               </div>
               {register.closing_amount !== null && (
@@ -578,12 +580,12 @@ const Store2CashRegisterPrintView: React.FC<Store2CashRegisterPrintViewProps> = 
                     <span>Diferença:</span>
                     <span style={{ fontWeight: 'bold' }}>
                       {(() => {
-                        const difference = (register.closing_amount || 0) - (summary.expected_balance || 0);
+                        const difference = (register.closing_amount || 0) - (summary?.expected_balance || 0);
                         return formatPrice(difference);
                       })()}
                       <span style={{ fontSize: '8px', marginLeft: '4px' }}>
                         {(() => {
-                          const difference = (register.closing_amount || 0) - (summary.expected_balance || 0);
+                          const difference = (register.closing_amount || 0) - (summary?.expected_balance || 0);
                           return difference < 0 ? '(falta)' : difference > 0 ? '(sobra)' : '(exato)';
                         })()}
                       </span>
@@ -628,7 +630,7 @@ const Store2CashRegisterPrintView: React.FC<Store2CashRegisterPrintViewProps> = 
           <div style={{ borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px', color: 'black', background: 'white' }}>
             <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '5px' }}>POR FORMA DE PAGAMENTO - LOJA 2:</p>
             <div style={{ fontSize: '10px' }}>
-              {['dinheiro', 'pix', 'cartao_credito', 'cartao_debito'].map(method => {
+              {entries.length > 0 ? ['dinheiro', 'pix', 'cartao_credito', 'cartao_debito'].map(method => {
                 const methodEntries = entries.filter(e => e.payment_method === method);
                 const income = methodEntries.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
                 const expense = methodEntries.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
@@ -643,7 +645,11 @@ const Store2CashRegisterPrintView: React.FC<Store2CashRegisterPrintViewProps> = 
                   );
                 }
                 return null;
-              })}
+              }) : (
+                <div style={{ fontSize: '10px', textAlign: 'center' }}>
+                  Nenhuma movimentação por forma de pagamento
+                </div>
+              )}
             </div>
           </div>
 

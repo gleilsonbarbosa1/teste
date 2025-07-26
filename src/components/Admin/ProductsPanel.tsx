@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Upload, X, Save, Package, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Upload, X, Save, Package, Image as ImageIcon, GripVertical } from 'lucide-react';
 import { useDeliveryProducts } from '../../hooks/useDeliveryProducts';
 import { useImageUpload } from '../../hooks/useImageUpload';
+import ImageUploadModal from './ImageUploadModal';
 
 interface ComplementOption {
   name: string;
@@ -192,9 +193,11 @@ const DEFAULT_COMPLEMENT_GROUPS: ComplementGroup[] = [
 
 const ProductsPanel: React.FC = () => {
   const { products, loading, createProduct, updateProduct, deleteProduct } = useDeliveryProducts();
-  const { uploadImage, uploading } = useImageUpload();
+  const { uploadImage, uploading, getProductImage } = useImageUpload();
   const [showModal, setShowModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductFormData | null>(null);
+  const [productImages, setProductImages] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     category: 'acai',
@@ -205,6 +208,53 @@ const ProductsPanel: React.FC = () => {
     has_complements: false,
     complement_groups: []
   });
+  const [draggedGroupIndex, setDraggedGroupIndex] = useState<number | null>(null);
+  const [draggedOptionIndex, setDraggedOptionIndex] = useState<{ groupIndex: number; optionIndex: number } | null>(null);
+
+  // Carregar imagens dos produtos
+  useEffect(() => {
+    const loadProductImages = async () => {
+      // Check if Supabase is configured before attempting to load images
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl === 'your_supabase_url_here' || 
+          supabaseKey === 'your_supabase_anon_key_here' ||
+          supabaseUrl.includes('placeholder')) {
+        console.warn('⚠️ Supabase não configurado - pulando carregamento de imagens');
+        return;
+      }
+      
+      console.log('🔄 Carregando imagens dos produtos...');
+      const images: Record<string, string> = {};
+      
+      for (const product of products) {
+        try {
+          const savedImage = await getProductImage(product.id);
+          if (savedImage) {
+            images[product.id] = savedImage;
+            console.log(`✅ Imagem carregada para produto ${product.name}:`, savedImage.substring(0, 50) + '...');
+          }
+        } catch (error) {
+          // Don't log individual product errors if it's a network issue
+          if (error instanceof Error && error.message.includes('Failed to fetch')) {
+            console.warn(`🌐 Erro de rede ao carregar imagem do produto ${product.name} - continuando...`);
+          } else {
+            console.warn(`⚠️ Erro ao carregar imagem do produto ${product.name}:`, error);
+          }
+        }
+      }
+      
+      setProductImages(images);
+      console.log(`📊 Total de imagens carregadas: ${Object.keys(images).length}`);
+    };
+
+    // Only load images if we have products and Supabase is configured
+    if (products.length > 0) {
+      loadProductImages();
+    }
+  }, [products, getProductImage]);
 
   const resetForm = () => {
     setFormData({
@@ -231,14 +281,19 @@ const ProductsPanel: React.FC = () => {
       name: product.name,
       category: product.category,
       price: product.price,
+      image_url: productImages[product.id] || product.image_url,
       original_price: product.original_price,
       description: product.description,
-      image_url: product.image_url,
       is_active: product.is_active,
       is_weighable: product.is_weighable,
       price_per_gram: product.price_per_gram,
       has_complements: product.has_complements,
-      complement_groups: Array.isArray(product.complement_groups) ? product.complement_groups : []
+      complement_groups: Array.isArray(product.complement_groups) 
+        ? product.complement_groups.map(group => ({
+            ...group,
+            options: Array.isArray(group.options) ? group.options : []
+          }))
+        : []
     };
     
     setFormData(productData);
@@ -264,11 +319,37 @@ const ProductsPanel: React.FC = () => {
 
   const handleImageUpload = async (file: File) => {
     try {
-      const imageUrl = await uploadImage(file, 'products');
-      setFormData(prev => ({ ...prev, image_url: imageUrl }));
+      console.log('🚀 Iniciando upload de imagem...');
+      const uploadedImage = await uploadImage(file);
+      console.log('✅ Upload concluído:', uploadedImage.url);
+      setFormData(prev => ({ ...prev, image_url: uploadedImage.url }));
+      
+      // Atualizar cache local de imagens
+      if (editingProduct?.id) {
+        setProductImages(prev => ({
+          ...prev,
+          [editingProduct.id!]: uploadedImage.url
+        }));
+      }
     } catch (error) {
       console.error('Erro ao fazer upload da imagem:', error);
+      alert('Erro ao fazer upload da imagem. Tente novamente.');
     }
+  };
+
+  const handleImageSelect = (imageUrl: string) => {
+    console.log('🖼️ Imagem selecionada:', imageUrl.substring(0, 50) + '...');
+    setFormData(prev => ({ ...prev, image_url: imageUrl }));
+    
+    // Atualizar cache local de imagens
+    if (editingProduct?.id) {
+      setProductImages(prev => ({
+        ...prev,
+        [editingProduct.id!]: imageUrl
+      }));
+    }
+    
+    setShowImageModal(false);
   };
 
   const applyDefaultComplementGroups = () => {
@@ -277,6 +358,90 @@ const ProductsPanel: React.FC = () => {
       has_complements: true,
       complement_groups: [...DEFAULT_COMPLEMENT_GROUPS]
     }));
+  };
+
+  const handleGroupDragStart = (e: React.DragEvent, groupIndex: number) => {
+    setDraggedGroupIndex(groupIndex);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleGroupDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleGroupDrop = (e: React.DragEvent, targetGroupIndex: number) => {
+    e.preventDefault();
+    
+    if (draggedGroupIndex === null || draggedGroupIndex === targetGroupIndex) {
+      setDraggedGroupIndex(null);
+      return;
+    }
+
+    const newGroups = [...(formData.complement_groups || [])];
+    const draggedGroup = newGroups[draggedGroupIndex];
+    
+    // Remove o grupo da posição original
+    newGroups.splice(draggedGroupIndex, 1);
+    
+    // Insere na nova posição
+    const insertIndex = draggedGroupIndex < targetGroupIndex ? targetGroupIndex - 1 : targetGroupIndex;
+    newGroups.splice(insertIndex, 0, draggedGroup);
+    
+    setFormData(prev => ({
+      ...prev,
+      complement_groups: newGroups
+    }));
+    
+    setDraggedGroupIndex(null);
+  };
+
+  const handleOptionDragStart = (e: React.DragEvent, groupIndex: number, optionIndex: number) => {
+    setDraggedOptionIndex({ groupIndex, optionIndex });
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+  };
+
+  const handleOptionDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    e.stopPropagation();
+  };
+
+  const handleOptionDrop = (e: React.DragEvent, targetGroupIndex: number, targetOptionIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!draggedOptionIndex || 
+        (draggedOptionIndex.groupIndex === targetGroupIndex && draggedOptionIndex.optionIndex === targetOptionIndex)) {
+      setDraggedOptionIndex(null);
+      return;
+    }
+
+    const newGroups = [...(formData.complement_groups || [])];
+    const sourceGroup = newGroups[draggedOptionIndex.groupIndex];
+    const targetGroup = newGroups[targetGroupIndex];
+    
+    // Se for o mesmo grupo, reordenar dentro do grupo
+    if (draggedOptionIndex.groupIndex === targetGroupIndex) {
+      const draggedOption = sourceGroup.options[draggedOptionIndex.optionIndex];
+      sourceGroup.options.splice(draggedOptionIndex.optionIndex, 1);
+      
+      const insertIndex = draggedOptionIndex.optionIndex < targetOptionIndex ? targetOptionIndex - 1 : targetOptionIndex;
+      sourceGroup.options.splice(insertIndex, 0, draggedOption);
+    } else {
+      // Mover entre grupos diferentes
+      const draggedOption = sourceGroup.options[draggedOptionIndex.optionIndex];
+      sourceGroup.options.splice(draggedOptionIndex.optionIndex, 1);
+      targetGroup.options.splice(targetOptionIndex, 0, draggedOption);
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      complement_groups: newGroups
+    }));
+    
+    setDraggedOptionIndex(null);
   };
 
   const addComplementGroup = () => {
@@ -456,14 +621,14 @@ const ProductsPanel: React.FC = () => {
                           Imagem do Produto
                         </label>
                         <div className="text-xs text-gray-500 mb-2">
-                          💡 Dica: Clique em "Alterar Imagem" para fazer upload de uma nova imagem<br/>
+                          💡 Dica: Clique em "Gerenciar Imagens" para fazer upload ou selecionar uma imagem<br/>
                           🔄 A imagem será salva automaticamente no banco de dados<br/>
                           📱 Imagens ficam sincronizadas em todos os dispositivos
                         </div>
                         <div className="flex items-center gap-4">
-                          {formData.image_url ? (
+                          {(formData.image_url || (editingProduct?.id && productImages[editingProduct.id])) ? (
                             <img
-                              src={formData.image_url}
+                              src={formData.image_url || (editingProduct?.id && productImages[editingProduct.id]) || ''}
                               alt="Preview"
                               className="w-20 h-20 object-cover rounded-lg border"
                             />
@@ -472,17 +637,14 @@ const ProductsPanel: React.FC = () => {
                               <ImageIcon className="w-8 h-8 text-gray-400" />
                             </div>
                           )}
-                          <label className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowImageModal(true)}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                          >
                             <Upload className="w-4 h-4" />
-                            {uploading ? 'Enviando...' : 'Alterar Imagem'}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
-                              className="hidden"
-                              disabled={uploading}
-                            />
-                          </label>
+                            Gerenciar Imagens
+                          </button>
                         </div>
                       </div>
 
@@ -625,8 +787,25 @@ const ProductsPanel: React.FC = () => {
                   {formData.complement_groups && formData.complement_groups.length > 0 ? (
                     <div className="space-y-6">
                       {formData.complement_groups.map((group, groupIndex) => (
-                        <div key={groupIndex} className="border rounded-lg p-4 bg-gray-50">
+                        <div 
+                          key={groupIndex} 
+                          className={`border rounded-lg p-4 bg-gray-50 transition-all ${
+                            draggedGroupIndex === groupIndex ? 'opacity-50 scale-95' : ''
+                          }`}
+                          draggable
+                          onDragStart={(e) => handleGroupDragStart(e, groupIndex)}
+                          onDragOver={handleGroupDragOver}
+                          onDrop={(e) => handleGroupDrop(e, groupIndex)}
+                        >
                           <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-2">
+                              <div className="cursor-move text-gray-400 hover:text-gray-600">
+                                <GripVertical size={16} />
+                              </div>
+                              <span className="text-sm font-medium text-gray-600">
+                                Grupo {groupIndex + 1}
+                              </span>
+                            </div>
                             <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -705,17 +884,31 @@ const ProductsPanel: React.FC = () => {
                             </div>
 
                             {group.options.length > 0 && (
-                              <div className="grid grid-cols-5 gap-2 text-xs font-medium text-gray-700 bg-gray-100 p-2 rounded">
+                              <div className="grid grid-cols-6 gap-2 text-xs font-medium text-gray-700 bg-gray-100 p-2 rounded">
+                                <div>Ordem</div>
                                 <div>Nome</div>
                                 <div>Preço (R$)</div>
-                                <div className="col-span-2">Descrição</div>
+                                <div>Descrição</div>
                                 <div>Ações</div>
                               </div>
                             )}
 
                             <div className="max-h-60 overflow-y-auto space-y-2">
                               {group.options.map((option, optionIndex) => (
-                                <div key={optionIndex} className="grid grid-cols-5 gap-2 items-center bg-white p-2 rounded border">
+                                <div 
+                                  key={optionIndex} 
+                                  className={`grid grid-cols-6 gap-2 items-center bg-white p-2 rounded border transition-all ${
+                                    draggedOptionIndex?.groupIndex === groupIndex && draggedOptionIndex?.optionIndex === optionIndex 
+                                      ? 'opacity-50 scale-95' : ''
+                                  }`}
+                                  draggable
+                                  onDragStart={(e) => handleOptionDragStart(e, groupIndex, optionIndex)}
+                                  onDragOver={handleOptionDragOver}
+                                  onDrop={(e) => handleOptionDrop(e, groupIndex, optionIndex)}
+                                >
+                                  <div className="cursor-move text-gray-400 hover:text-gray-600 flex items-center justify-center">
+                                    <GripVertical size={14} />
+                                  </div>
                                   <input
                                     type="text"
                                     value={option.name}
@@ -734,7 +927,7 @@ const ProductsPanel: React.FC = () => {
                                     type="text"
                                     value={option.description}
                                     onChange={(e) => updateComplementOption(groupIndex, optionIndex, { description: e.target.value })}
-                                    className="col-span-2 border border-gray-300 rounded px-2 py-1 text-sm"
+                                    className="border border-gray-300 rounded px-2 py-1 text-sm"
                                     placeholder="Descrição"
                                   />
                                   <button
@@ -756,6 +949,9 @@ const ProductsPanel: React.FC = () => {
                       <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                       <p>Nenhum grupo de complementos configurado</p>
                       <p className="text-sm">Clique em "Aplicar Grupos Padrão" para começar</p>
+                      <p className="text-xs mt-2 text-blue-600">
+                        💡 Dica: Após criar grupos, você pode arrastá-los para reordenar
+                      </p>
                     </div>
                   )}
                 </div>
@@ -780,6 +976,16 @@ const ProductsPanel: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Upload Modal */}
+      {showImageModal && (
+        <ImageUploadModal
+          isOpen={showImageModal}
+          onClose={() => setShowImageModal(false)}
+          onSelectImage={handleImageSelect}
+          currentImage={formData.image_url || (editingProduct?.id && productImages[editingProduct.id])}
+        />
       )}
     </div>
   );

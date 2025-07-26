@@ -78,7 +78,26 @@ const DeliveryPage: React.FC = () => {
       image: dbProduct.image_url || 'https://images.pexels.com/photos/1092730/pexels-photo-1092730.jpeg?auto=compress&cs=tinysrgb&w=400',
       isActive: dbProduct.is_active,
       is_weighable: dbProduct.is_weighable,
-      complementGroups: dbProduct.complement_groups,
+      complementGroups: Array.isArray(dbProduct.complement_groups) 
+        ? dbProduct.complement_groups.map(group => ({
+            id: group.id || `group-${Math.random()}`,
+            name: group.name || 'Grupo sem nome',
+            required: group.required || false,
+            minItems: group.min_items || 0,
+            maxItems: group.max_items || 1,
+            complements: Array.isArray(group.complements) ? group.complements.map(comp => ({
+              id: comp.id || `comp-${Math.random()}`,
+              name: comp.name || 'Complemento',
+              price: comp.price || 0,
+              description: comp.description || ''
+            })) : (Array.isArray(group.options) ? group.options.map(opt => ({
+              id: opt.id || `opt-${Math.random()}`,
+              name: opt.name || 'Opção',
+              price: opt.price || 0,
+              description: opt.description || ''
+            })) : [])
+          }))
+        : [],
       sizes: dbProduct.sizes,
       scheduledDays: dbProduct.scheduled_days,
       availability: dbProduct.availability_type ? {

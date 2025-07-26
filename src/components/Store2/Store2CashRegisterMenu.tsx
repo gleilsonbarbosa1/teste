@@ -186,6 +186,7 @@ const Store2CashRegisterMenu: React.FC = () => {
     try {
       console.log('🔒 Fechando caixa da Loja 2 com valor:', parseFloat(closingAmount));
       console.log('📊 Summary antes do fechamento da Loja 2:', summary);
+      console.log('📋 Entries antes do fechamento da Loja 2:', entries);
       
       const { data, error } = await supabase
         .from('pdv2_cash_registers')
