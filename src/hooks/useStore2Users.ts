@@ -115,24 +115,14 @@ export const useStore2Users = () => {
       console.log('🔐 Verificando credenciais da Loja 2:', username);
       
       const { data, error } = await supabase
-        .from('store2_users')
-        .select('*')
-        .eq('username', username)
-        .eq('password_hash', password)
-        .eq('is_active', true);
+        .rpc('verify_store2_user_password', {
+          p_username: username,
+          p_password_to_check: password
+        });
 
       if (error) throw error;
       
       const user = data && data.length > 0 ? data[0] : null;
-      
-      if (user) {
-        // Atualizar último login
-        await supabase
-          .from('store2_users')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', user.id);
-      }
-      
       console.log('✅ Credenciais verificadas:', !!user);
       return user;
     } catch (err) {

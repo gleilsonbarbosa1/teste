@@ -185,13 +185,14 @@ const Store2CashRegisterMenu: React.FC = () => {
     
     try {
       console.log('🔒 Fechando caixa da Loja 2 com valor:', parseFloat(closingAmount));
+      console.log('📊 Summary antes do fechamento da Loja 2:', summary);
       
       const { data, error } = await supabase
         .from('pdv2_cash_registers')
         .update({
           closing_amount: parseFloat(closingAmount),
           closed_at: new Date().toISOString(),
-          difference: parseFloat(closingAmount) - (summary?.expected_balance || 0)
+          difference: parseFloat(closingAmount) - (summary.expected_balance || 0)
         })
         .eq('id', currentRegister.id)
         .select()
@@ -210,7 +211,7 @@ const Store2CashRegisterMenu: React.FC = () => {
         ...currentRegister,
         closing_amount: parseFloat(closingAmount),
         closed_at: new Date().toISOString(),
-        difference: parseFloat(closingAmount) - (summary?.expected_balance || 0)
+        difference: parseFloat(closingAmount) - (summary.expected_balance || 0)
       });
       
       showSuccessNotification();

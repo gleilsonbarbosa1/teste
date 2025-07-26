@@ -94,27 +94,39 @@ export const useStore2PDVCashRegister = () => {
         
         console.log(`✅ Carregadas ${entriesData?.length || 0} movimentações de caixa da Loja 2`);
         
-        // Debug das entradas
-        console.log('🔍 Entradas do caixa da Loja 2:', entriesData?.map(e => ({
-          type: e.type,
-          amount: e.amount,
-          description: e.description,
-          payment_method: e.payment_method
-        })));
+        // Calcular resumo manualmente para Loja 2 - INCLUIR TODAS AS FORMAS DE PAGAMENTO
+        const salesEntries = entriesData?.filter(e => 
+          e.type === 'income' && 
+          e.description.includes('Venda')
+        ) || [];
         
-        // Calcular resumo manualmente para Loja 2
-        const salesEntries = entriesData?.filter(e => e.type === 'income' && e.description.includes('Venda')) || [];
         const salesTotal = salesEntries.reduce((sum, e) => sum + e.amount, 0);
         
-        const otherIncomeTotal = entriesData?.filter(e => e.type === 'income' && !e.description.includes('Venda')).reduce((sum, e) => sum + e.amount, 0) || 0;
+        const otherIncomeTotal = entriesData?.filter(e => 
+          e.type === 'income' && 
+          !e.description.includes('Venda')
+        ).reduce((sum, e) => sum + e.amount, 0) || 0;
+        
         const expenseTotal = entriesData?.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0) || 0;
-        const expectedBalance = openRegister.opening_amount + salesTotal + otherIncomeTotal - expenseTotal;
+        
+        // Para o saldo esperado, considerar apenas dinheiro (como no sistema principal)
+        const cashSalesTotal = salesEntries.filter(e => e.payment_method === 'dinheiro').reduce((sum, e) => sum + e.amount, 0);
+        const cashOtherIncomeTotal = entriesData?.filter(e => 
+          e.type === 'income' && 
+          !e.description.includes('Venda') && 
+          e.payment_method === 'dinheiro'
+        ).reduce((sum, e) => sum + e.amount, 0) || 0;
+        
+        // CORREÇÃO: Calcular saldo esperado corretamente
+        const expectedBalance = (openRegister.opening_amount || 0) + cashSalesTotal + cashOtherIncomeTotal - expenseTotal;
         
         console.log('📊 Resumo calculado da Loja 2:', {
           opening_amount: openRegister.opening_amount,
           salesTotal,
+          cashSalesTotal,
           salesCount: salesEntries.length,
           otherIncomeTotal,
+          cashOtherIncomeTotal,
           expenseTotal,
           expectedBalance
         });

@@ -281,15 +281,15 @@ export const useImageUpload = () => {
           supabaseUrl === 'your_supabase_url_here' || 
           supabaseKey === 'your_supabase_anon_key_here' ||
           supabaseUrl.includes('placeholder')) {
-        console.warn('Supabase not configured, using fallback image')
+        console.warn('Supabase not configured, using fallback image');
         return null
       }
 
       const cleanProductId = productId;
             
       // Query with improved error handling and shorter timeout
-      const timeoutPromise = new Promise<{ data: null, error: { message: string } }>((_, reject) => {
-        setTimeout(() => reject(new Error('Database query timeout')), 3000);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Database query timeout')), 2000);
       });
 
       const queryPromise = supabase

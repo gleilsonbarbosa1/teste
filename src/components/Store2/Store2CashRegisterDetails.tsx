@@ -153,7 +153,7 @@ const Store2CashRegisterDetails: React.FC<Store2CashRegisterDetailsProps> = ({ r
               <p className="text-sm text-gray-600 flex items-center gap-1">
                 <ArrowDownCircle size={14} className="text-green-500 flex-shrink-0" title="Vendas realizadas pelo PDV da Loja 2" />
                 <span>Vendas Loja 2 ({summary.sales_count || 0})</span>
-                <span className="text-xs text-gray-500 ml-1 hidden sm:inline">(Todas formas de pagamento)</span>
+                <span className="text-xs text-gray-500 ml-1 hidden sm:inline">(Todos os pagamentos)</span>
               </p>
               <p className="font-medium text-green-600">
                 {formatPrice(summary.sales_total)}
@@ -207,7 +207,7 @@ const Store2CashRegisterDetails: React.FC<Store2CashRegisterDetailsProps> = ({ r
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pl-6">
             <div className="flex justify-between">
               <p className="text-sm text-gray-600">Vendas Loja 2:</p>
-              <p className="font-medium text-green-600" title="Total de vendas na Loja 2 (todas formas de pagamento)">
+              <p className="font-medium text-green-600" title="Total de vendas na Loja 2 (todos os tipos de pagamento)">
                 {formatPrice(summary.sales_total || 0)}
               </p>
             </div>
@@ -227,61 +227,19 @@ const Store2CashRegisterDetails: React.FC<Store2CashRegisterDetailsProps> = ({ r
           
           <h4 className="font-medium text-gray-700 flex items-center gap-2 mt-4 mb-2">
             <DollarSign size={18} className="text-green-600" />
-            Formas de Pagamento - Loja 2
+            Resumo por Forma de Pagamento - Loja 2
           </h4>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pl-6">
-            {['dinheiro', 'pix', 'cartao_credito', 'cartao_debito', 'voucher', 'misto'].map(method => {
-              // Para a Loja 2, vamos mostrar uma distribuição estimada baseada no total de vendas
-              const getMethodTotal = (method: string) => {
-                const salesTotal = summary.sales_total || 0;
-                if (salesTotal === 0) return 0;
-                
-                // Distribuição estimada para Loja 2
-                switch (method) {
-                  case 'dinheiro': return salesTotal * 0.5; // 50% dinheiro
-                  case 'pix': return salesTotal * 0.25; // 25% PIX
-                  case 'cartao_credito': return salesTotal * 0.15; // 15% cartão crédito
-                  case 'cartao_debito': return salesTotal * 0.08; // 8% cartão débito
-                  case 'voucher': return salesTotal * 0.02; // 2% voucher
-                  case 'misto': return 0; // Não estimamos misto
-                  default: return 0;
-                }
-              };
-              
-              const total = getMethodTotal(method);
-              
-              if (total > 0) {
-                return (
-                  <div key={method} className="flex justify-between">
-                    <p className="text-sm text-gray-600">{getPaymentMethodName(method)}</p>
-                    <p className="font-medium text-green-600">
-                      {formatPrice(total)}
-                    </p>
-                  </div>
-                );
-              }
-              return null;
-            })}
-          </div>
-          
-          <div className="flex justify-between pt-2 border-t border-gray-200 pl-6">
-            <p className="text-sm font-medium text-gray-700">Total de Vendas</p>
-            <p className="font-bold text-green-600">
-              {formatPrice(summary.sales_total || 0)}
-            </p>
-          </div>
-          
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 pl-6">
             <div className="flex items-start gap-2">
               <Info size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-blue-700">
-                <p className="font-medium mb-1">Informações da Loja 2:</p>
+                <p className="font-medium mb-1">Resumo de Vendas por Pagamento:</p>
                 <ul className="space-y-1">
-                  <li>• A Loja 2 opera apenas com vendas presenciais</li>
-                  <li>• Não possui sistema de delivery</li>
-                  <li>• Relatórios independentes da Loja 1</li>
-                  <li>• Formas de pagamento: Dinheiro, PIX, Cartões, Voucher</li>
+                  <li>• <strong>Dinheiro:</strong> Registrado automaticamente no caixa</li>
+                  <li>• <strong>PIX/Cartões:</strong> Registrados como vendas (não afetam saldo físico)</li>
+                  <li>• <strong>Total de Vendas:</strong> {formatPrice(summary.sales_total || 0)}</li>
+                  <li>• <strong>Quantidade:</strong> {summary.sales_count || 0} vendas realizadas</li>
                 </ul>
               </div>
             </div>

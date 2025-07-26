@@ -56,6 +56,25 @@ export const useStore2Sales = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to get payment method display name
+  const getPaymentMethodName = (method: string): string => {
+    const methodNames: Record<string, string> = {
+      'dinheiro': 'Dinheiro',
+      'pix': 'PIX',
+      'cartao_credito': 'Cartão de Crédito',
+      'cartao_debito': 'Cartão de Débito',
+      'voucher': 'Voucher',
+      'misto': 'Pagamento Misto'
+    };
+    return methodNames[method] || method;
+  };
+
+  // Helper function to validate UUID format
+  const isValidUUID = (uuid: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  };
+
   const createSale = useCallback(async (
     saleData: Omit<Store2Sale, 'id' | 'sale_number' | 'created_at' | 'updated_at'>,
     items: Omit<Store2SaleItem, 'id' | 'sale_id' | 'created_at'>[],
@@ -65,17 +84,18 @@ export const useStore2Sales = () => {
       setLoading(true);
       console.log('🚀 Criando venda na Loja 2:', saleData);
 
-      // Associar com caixa se fornecido
-      const saleWithCashRegister = cashRegisterId ? {
+      // Validar e limpar IDs inválidos
+      const cleanedSaleData = {
         ...saleData,
-        cash_register_id: cashRegisterId
-      } : saleData;
+        operator_id: saleData.operator_id && isValidUUID(saleData.operator_id) ? saleData.operator_id : undefined,
+        cash_register_id: cashRegisterId && isValidUUID(cashRegisterId) ? cashRegisterId : undefined
+      };
 
       // Criar venda
       const { data: sale, error: saleError } = await supabase
         .from('store2_sales')
         .insert([{
-          ...saleWithCashRegister,
+          ...cleanedSaleData,
           channel: 'loja2'
         }])
         .select()
@@ -109,7 +129,7 @@ export const useStore2Sales = () => {
       }
 
       // Adicionar entrada no caixa se houver caixa aberto
-      if (cashRegisterId && saleData.payment_type === 'dinheiro') {
+      if (cashRegisterId && isValidUUID(cashRegisterId)) {
         try {
           console.log('💰 Adicionando venda ao caixa da Loja 2:', sale.id);
           await supabase
@@ -118,7 +138,7 @@ export const useStore2Sales = () => {
               register_id: cashRegisterId,
               type: 'income',
               amount: sale.total_amount,
-              description: `Venda #${sale.sale_number} - Loja 2`,
+              description: `Venda #${sale.sale_number} - Loja 2 (${getPaymentMethodName(sale.payment_type)})`,
               payment_method: sale.payment_type
             }]);
           console.log('✅ Entrada de caixa criada para venda da Loja 2');
@@ -126,6 +146,7 @@ export const useStore2Sales = () => {
           console.error('⚠️ Erro ao adicionar entrada no caixa (venda salva):', cashError);
         }
       }
+
       console.log('✅ Itens da venda da Loja 2 criados');
       setSales(prev => [sale, ...prev]);
       return sale;
@@ -137,7 +158,7 @@ export const useStore2Sales = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isValidUUID]);
 
   const fetchSales = useCallback(async (limit = 50) => {
     try {

@@ -84,6 +84,18 @@ const Store2PDVSalesScreen: React.FC<Store2PDVSalesScreenProps> = ({ operator, s
   // Carregar imagens dos produtos
   React.useEffect(() => {
     const loadProductImages = async () => {
+      // Check if Supabase is properly configured before attempting to load images
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl === 'your_supabase_url_here' || 
+          supabaseKey === 'your_supabase_anon_key_here' ||
+          supabaseUrl.includes('placeholder')) {
+        console.warn('⚠️ Supabase não configurado - usando imagens padrão para Loja 2');
+        return;
+      }
+      
       const images: Record<string, string> = {};
       
       for (const product of filteredProducts) {
@@ -93,7 +105,7 @@ const Store2PDVSalesScreen: React.FC<Store2PDVSalesScreenProps> = ({ operator, s
             images[product.id] = savedImage;
           }
         } catch (error) {
-          console.warn(`Erro ao carregar imagem do produto ${product.name}:`, error);
+          console.warn(`⚠️ Erro ao carregar imagem do produto ${product.name} - usando imagem padrão`);
         }
       }
       
@@ -193,9 +205,9 @@ const Store2PDVSalesScreen: React.FC<Store2PDVSalesScreenProps> = ({ operator, s
       setCardValue(0);
       setVoucherValue(0);
       setSplitCount(2);
-      setSplitAmounts([]);
-      setCustomerInfo({ name: '', phone: '' });
-      setSaleNotes('');
+      // Perguntar se deseja imprimir
+        // Imprimir comprovante da venda da Loja 2
+        handlePrintStore2SaleReceipt(sale, saleItems);
       
       // Auto print for Store 2
       setTimeout(() => {
@@ -213,6 +225,10 @@ const Store2PDVSalesScreen: React.FC<Store2PDVSalesScreenProps> = ({ operator, s
   const handleOpenDiscountModal = () => {
     setTempDiscount(discount);
     setShowDiscountModal(true);
+  };
+
+  const handlePrintStore2SaleReceipt = (sale: any, saleItems: any[]) => {
+    // Implementation for printing Store 2 sale receipt
   };
 
   const handleApplyDiscount = () => {
@@ -257,6 +273,18 @@ const Store2PDVSalesScreen: React.FC<Store2PDVSalesScreenProps> = ({ operator, s
   };
 
   const getPaymentMethodLabel = (method: string) => {
+    const labels: Record<string, string> = {
+      'dinheiro': 'Dinheiro',
+      'pix': 'PIX',
+      'cartao_credito': 'Cartão de Crédito',
+      'cartao_debito': 'Cartão de Débito',
+      'voucher': 'Voucher',
+      'misto': 'Pagamento Misto'
+    };
+    return labels[method] || method;
+  };
+
+  const getPaymentMethodName = (method: string) => {
     const labels: Record<string, string> = {
       'dinheiro': 'Dinheiro',
       'pix': 'PIX',
@@ -396,7 +424,7 @@ const Store2PDVSalesScreen: React.FC<Store2PDVSalesScreenProps> = ({ operator, s
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Pedido Loja 2</title>
+        <title>Comprovante Venda Loja 2 #${lastSale?.sale_number || 'N/A'}</title>
         <style>
           @page { size: 80mm auto; margin: 0; }
           * { margin: 0; padding: 0; box-sizing: border-box; color: black !important; background: white !important; }
@@ -411,11 +439,12 @@ const Store2PDVSalesScreen: React.FC<Store2PDVSalesScreenProps> = ({ operator, s
         <div class="center separator">
           <div class="bold" style="font-size: 16px;">ELITE AÇAÍ - LOJA 2</div>
           <div>Rua Dois, 2130-A – Residencial 1 – Cágado</div>
+          <div>Rua Dois, 2130‑A – Residencial 1 – Cágado</div>
           <div>Tel: (85) 98904-1010</div>
         </div>
         
         <div class="center separator">
-          <div class="bold">=== PEDIDO LOJA 2 ===</div>
+          <div class="bold center">VENDA LOJA 2 #${lastSale?.sale_number || 'N/A'}</div>
           <div>Data: ${new Date().toLocaleDateString('pt-BR')}</div>
           <div>Hora: ${new Date().toLocaleTimeString('pt-BR')}</div>
           <div>Operador: ${operator?.name || 'Sistema'}</div>

@@ -12,7 +12,7 @@ import {
   LogOut
 } from 'lucide-react';
 import AttendantPanel from './Orders/AttendantPanel'; 
-import Store2PDVSalesScreen from './Store2/Store2PDVSalesScreen';
+import PDVSalesScreen from './PDV/PDVSalesScreen';
 import CashRegisterMenu from './PDV/CashRegisterMenu';
 import { usePermissions } from '../hooks/usePermissions';
 import { useScale } from '../hooks/useScale';
@@ -192,7 +192,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
 
         {/* Content */}
         <div className="transition-all duration-300 print:hidden">
-          {activeTab === 'sales' && (isAdmin || hasPermission('can_view_sales')) && <Store2PDVSalesScreen operator={operator} scaleHook={scaleHook || scale} />}
+          {activeTab === 'sales' && (isAdmin || hasPermission('can_view_sales')) && <PDVSalesScreen operator={operator} scaleHook={scaleHook || scale} storeSettings={settings} />}
           {activeTab === 'orders' && (isAdmin || hasPermission('can_view_orders')) && <AttendantPanel storeSettings={settings} />}
           {activeTab === 'cash' && (isAdmin || hasPermission('can_view_cash_register')) && <CashRegisterMenu />}
         </div>
