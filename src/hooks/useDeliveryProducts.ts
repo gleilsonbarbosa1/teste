@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface DeliveryProduct {
   id: string;
@@ -116,9 +117,29 @@ export const useDeliveryProducts = () => {
     try {
       console.log('✏️ Atualizando produto:', id, updates);
       
-      // Remove campos que podem causar conflito
-      const { created_at, updated_at, ...cleanUpdates } = updates as any;
+      // 1. Verificar se o produto existe antes de tentar atualizar
+      const { data: existingProduct, error: checkError } = await supabase
+        .from('delivery_products')
+        .select('id')
+        .eq('id', id);
+
+      if (checkError) {
+        console.error('❌ Erro ao verificar existência do produto:', checkError);
+        throw new Error(`Erro ao verificar produto: ${checkError.message}`);
+      }
+
+      // 2. Verificar se o produto foi encontrado
+      if (!existingProduct || existingProduct.length === 0) {
+        console.error('❌ Produto não encontrado no banco:', id);
+        throw new Error(`Produto com ID ${id} não existe no banco de dados`);
+      }
+
+      console.log('✅ Produto encontrado, prosseguindo com atualização');
+
+      // Remove campos que podem causar conflito ou não existem no banco
+      const { created_at, updated_at, has_complements, ...cleanUpdates } = updates as any;
       
+      // 3. Realizar a atualização
       const { data, error } = await supabase
         .from('delivery_products')
         .update({
@@ -127,11 +148,15 @@ export const useDeliveryProducts = () => {
         })
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('❌ Erro detalhado ao atualizar produto:', error);
         throw new Error(`Erro ao atualizar produto: ${error.message || 'Erro desconhecido'}`);
+      }
+      
+      if (!data) {
+        throw new Error(`Produto com ID ${id} não foi encontrado para atualização`);
       }
       
       setProducts(prev => prev.map(p => p.id === id ? data : p));
@@ -163,6 +188,86 @@ export const useDeliveryProducts = () => {
       console.error('❌ Erro ao excluir produto:', err);
       throw new Error(err instanceof Error ? err.message : 'Erro ao excluir produto');
     }
+  }, []);
+
+  // Configurar subscription em tempo real
+  useEffect(() => {
+    let channel: RealtimeChannel | null = null;
+
+    // Verificar se Supabase está configurado
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseKey || 
+        supabaseUrl === 'your_supabase_url_here' || 
+        supabaseKey === 'your_supabase_anon_key_here' ||
+        supabaseUrl.includes('placeholder')) {
+      console.log('⚠️ Supabase não configurado - subscription em tempo real desabilitada');
+    } else {
+      console.log('🔄 Configurando subscription em tempo real para produtos...');
+      
+      channel = supabase
+        .channel('delivery_products_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'delivery_products'
+          },
+          (payload) => {
+            console.log('📡 Mudança detectada na tabela delivery_products:', payload);
+            
+            switch (payload.eventType) {
+              case 'INSERT':
+                if (payload.new) {
+                  console.log('➕ Produto adicionado:', payload.new);
+                  setProducts(prev => {
+                    // Verificar se o produto já existe para evitar duplicatas
+                    const exists = prev.some(p => p.id === payload.new.id);
+                    if (exists) return prev;
+                    return [...prev, payload.new as DeliveryProduct];
+                  });
+                }
+                break;
+                
+              case 'UPDATE':
+                if (payload.new) {
+                  console.log('✏️ Produto atualizado:', payload.new);
+                  setProducts(prev => 
+                    prev.map(p => 
+                      p.id === payload.new.id ? payload.new as DeliveryProduct : p
+                    )
+                  );
+                }
+                break;
+                
+              case 'DELETE':
+                if (payload.old) {
+                  console.log('🗑️ Produto removido:', payload.old);
+                  setProducts(prev => 
+                    prev.filter(p => p.id !== payload.old.id)
+                  );
+                }
+                break;
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('📡 Status da subscription:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Subscription em tempo real ativa para produtos');
+          }
+        });
+    }
+
+    // Cleanup function
+    return () => {
+      if (channel) {
+        console.log('🔌 Desconectando subscription em tempo real...');
+        supabase.removeChannel(channel);
+      }
+    };
   }, []);
 
   useEffect(() => {

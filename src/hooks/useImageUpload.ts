@@ -287,39 +287,60 @@ export const useImageUpload = () => {
 
       const cleanProductId = productId;
             
-      // Add timeout and better error handling
+      // Add timeout and better error handling with retry logic
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       
       try {
-        const { data, error } = await supabase
-        .from('product_image_associations')
-        .select(`
-          image:product_images(public_url)
-        `)
-        .eq('product_id', cleanProductId)
-        .maybeSingle()
-        .abortSignal(controller.signal);
+        // Retry logic for network issues
+        let retryCount = 0;
+        const maxRetries = 2;
         
-        clearTimeout(timeoutId);
-        
-        if (error) {
-          // Handle specific error types
-          if (error.message.includes('Failed to fetch') || 
-              error.message.includes('fetch') ||
-              error.message.includes('NetworkError')) {
-            console.warn(`🌐 Network error loading image for product ${cleanProductId} - using fallback`);
-          } else {
-            console.warn(`⚠️ Database error loading image for product ${cleanProductId}:`, error.message);
-          }
-          return null;
-        }
+        while (retryCount <= maxRetries) {
+          try {
+            const { data, error } = await supabase
+              .from('product_image_associations')
+              .select(`
+                image:product_images(public_url)
+              `)
+              .eq('product_id', cleanProductId)
+              .maybeSingle()
+              .abortSignal(controller.signal);
+            
+            clearTimeout(timeoutId);
+            
+            if (error) {
+              // Handle specific error types
+              if (error.message.includes('Failed to fetch') || 
+                  error.message.includes('fetch') ||
+                  error.message.includes('NetworkError')) {
+                console.warn(`🌐 Network error loading image for product ${cleanProductId} - using fallback`);
+              } else {
+                console.warn(`⚠️ Database error loading image for product ${cleanProductId}:`, error.message);
+              }
+              return null;
+            }
 
-        if (!data) {
-          return null;
+            if (!data) {
+              return null;
+            }
+            
+            return data.image?.public_url || null;
+          } catch (fetchError) {
+            retryCount++;
+            
+            if (retryCount > maxRetries) {
+              throw fetchError;
+            }
+            
+            // Wait before retry (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+            console.log(`🔄 Retry ${retryCount}/${maxRetries} for product ${cleanProductId}`);
+          }
         }
         
-        return data.image?.public_url || null;
+
+        return null;
       } catch (fetchError) {
         clearTimeout(timeoutId);
         throw fetchError;

@@ -228,15 +228,19 @@ const ProductsPanel: React.FC = () => {
       
       console.log('🔄 Carregando imagens dos produtos...');
       const images: Record<string, string> = {};
+      let successCount = 0;
+      let errorCount = 0;
       
       for (const product of products) {
         try {
           const savedImage = await getProductImage(product.id);
           if (savedImage) {
             images[product.id] = savedImage;
+            successCount++;
             console.log(`✅ Imagem carregada para produto ${product.name}:`, savedImage.substring(0, 50) + '...');
           }
         } catch (error) {
+          errorCount++;
           // Don't log individual product errors if it's a network issue
           if (error instanceof Error && error.message.includes('Failed to fetch')) {
             console.warn(`🌐 Erro de rede ao carregar imagem do produto ${product.name} - continuando...`);
@@ -247,7 +251,7 @@ const ProductsPanel: React.FC = () => {
       }
       
       setProductImages(images);
-      console.log(`📊 Total de imagens carregadas: ${Object.keys(images).length}`);
+      console.log(`📊 Carregamento de imagens concluído: ${successCount} sucessos, ${errorCount} erros`);
     };
 
     // Only load images if we have products and Supabase is configured
@@ -308,12 +312,17 @@ const ProductsPanel: React.FC = () => {
       if (editingProduct) {
         await updateProduct(editingProduct.id!, formData);
       } else {
-        await createProduct(formData);
+        const newProduct = await createProduct(formData);
+        setEditingProduct(newProduct);
       }
       setShowModal(false);
       resetForm();
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
+      // Reset form state when error occurs to prevent further attempts
+      setEditingProduct(null);
+      setShowModal(false);
+      resetForm();
     }
   };
 
