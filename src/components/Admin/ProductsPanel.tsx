@@ -241,17 +241,15 @@ const ProductsPanel: React.FC = () => {
           }
         } catch (error) {
           errorCount++;
-          // Don't log individual product errors if it's a network issue
-          if (error instanceof Error && error.message.includes('Failed to fetch')) {
-            console.warn(`🌐 Erro de rede ao carregar imagem do produto ${product.name} - continuando...`);
-          } else {
-            console.warn(`⚠️ Erro ao carregar imagem do produto ${product.name}:`, error);
-          }
+          // Silently handle errors since getProductImage already logs them
+          console.warn(`⚠️ Erro ao carregar imagem do produto ${product.name} - continuando sem imagem`);
         }
       }
       
       setProductImages(images);
-      console.log(`📊 Carregamento de imagens concluído: ${successCount} sucessos, ${errorCount} erros`);
+      if (successCount > 0 || errorCount > 0) {
+        console.log(`📊 Carregamento de imagens concluído: ${successCount} sucessos, ${errorCount} erros`);
+      }
     };
 
     // Only load images if we have products and Supabase is configured
