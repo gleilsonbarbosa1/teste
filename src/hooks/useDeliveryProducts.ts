@@ -116,24 +116,33 @@ export const useDeliveryProducts = () => {
     try {
       console.log('✏️ Atualizando produto:', id, updates);
       
+      // Remove campos que podem causar conflito
+      const { created_at, updated_at, ...cleanUpdates } = updates as any;
+      
       const { data, error } = await supabase
         .from('delivery_products')
         .update({
-          ...updates,
+          ...cleanUpdates,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro detalhado ao atualizar produto:', error);
+        throw new Error(`Erro ao atualizar produto: ${error.message || 'Erro desconhecido'}`);
+      }
       
       setProducts(prev => prev.map(p => p.id === id ? data : p));
       console.log('✅ Produto atualizado:', data);
       return data;
     } catch (err) {
       console.error('❌ Erro ao atualizar produto:', err);
-      throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar produto');
+      if (err instanceof Error) {
+        throw err;
+      }
+      throw new Error('Erro desconhecido ao atualizar produto');
     }
   }, []);
 
