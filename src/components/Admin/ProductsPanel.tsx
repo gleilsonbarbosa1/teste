@@ -309,6 +309,16 @@ const ProductsPanel: React.FC = () => {
     setShowModal(true);
   };
 
+  const handleRefreshProducts = async () => {
+    try {
+      console.log('🔄 Recarregando produtos...');
+      // Force refresh from database
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao recarregar produtos:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -317,6 +327,13 @@ const ProductsPanel: React.FC = () => {
       formData,
       productId: editingProduct?.id
     });
+
+    // Validate that we have a valid product ID for updates
+    if (editingProduct && (!editingProduct.id || editingProduct.id.startsWith('temp-'))) {
+      alert('Erro: ID do produto inválido. Tente recarregar a página e criar o produto novamente.');
+      setShowModal(false);
+      return;
+    }
     
     try {
       let savedProduct;
@@ -330,6 +347,11 @@ const ProductsPanel: React.FC = () => {
       setShowModal(false);
       resetForm();
       
+      // Show success message
+      alert(`Produto ${editingProduct ? 'atualizado' : 'criado'} com sucesso!`);
+      
+      // Refresh products list
+      
       // Forçar recarregamento dos produtos após salvar
       console.log('✅ Produto salvo, recarregando lista...');
       setTimeout(() => {
@@ -338,7 +360,7 @@ const ProductsPanel: React.FC = () => {
       
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
-      
+
       // Mostrar erro detalhado
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       alert(`Erro ao salvar produto: ${errorMessage}\n\nDetalhes: ${JSON.stringify(error)}`);
@@ -349,10 +371,6 @@ const ProductsPanel: React.FC = () => {
         formData,
         editingProduct
       });
-      // Reset form state when error occurs to prevent further attempts
-      setEditingProduct(null);
-      setShowModal(false);
-      resetForm();
     }
   };
 
@@ -610,6 +628,15 @@ const ProductsPanel: React.FC = () => {
           Novo Produto
         </button>
       </div>
+      
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={handleRefreshProducts}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+        >
+          🔄 Recarregar Produtos
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
@@ -812,15 +839,6 @@ const ProductsPanel: React.FC = () => {
                   </div>
 
                   {/* Coluna Direita - Tamanhos */}
-                    <button
-                      onClick={() => handleScheduleProduct(product)}
-                      className="text-orange-600 hover:text-orange-800"
-                      title="Programar disponibilidade"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </button>
                   <div className="space-y-4">
                     <div className="border rounded-lg p-4">
                       <h4 className="font-semibold mb-4">Tamanhos do Produto</h4>

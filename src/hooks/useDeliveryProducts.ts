@@ -114,78 +114,106 @@ export const useDeliveryProducts = () => {
   }, []);
 
   const updateProduct = useCallback(async (id: string, updates: Partial<DeliveryProduct>) => {
-  try {
-    console.log('✏️ Atualizando produto:', id, updates);
+    try {
+      console.log('✏️ Atualizando produto:', id, updates);
 
-    // 1. Verificar se o produto existe antes de tentar atualizar
-    const { data: existingProduct, error: checkError } = await supabase
-      .from('delivery_products')
-      .select('id')
-      .eq('id', id);
+      // Check if Supabase is configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
+        throw new Error('Supabase não configurado. Configure as variáveis de ambiente para usar esta funcionalidade.');
+      }
 
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('❌ Erro ao verificar existência do produto:', checkError);
-      throw new Error(`Erro ao verificar produto: ${checkError.message}`);
-    }
+      // 1. First check if the product exists in the database
+      const { data: existingProduct, error: checkError } = await supabase
+        .from('delivery_products')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
 
-    if (!existingProduct || existingProduct.length === 0) {
-      console.error('❌ Produto não encontrado no banco:', id);
-      throw new Error(`Produto com ID ${id} não foi encontrado no banco de dados`);
-    }
+      if (checkError) {
+        console.error('❌ Erro ao verificar produto existente:', checkError);
+        throw new Error(`Erro ao verificar produto: ${checkError.message}`);
+      }
 
-    console.log('✅ Produto encontrado, prosseguindo com atualização');
+      if (!existingProduct) {
+        console.error('❌ Produto não encontrado no banco:', id);
+        console.log('🔍 Produtos disponíveis no estado local:', products.map(p => ({ id: p.id, name: p.name })));
+        
+        // Try to refresh products from database
+        console.log('🔄 Tentando recarregar produtos do banco...');
+        await fetchProducts();
+        
+        throw new Error(`Produto com ID ${id} não foi encontrado no banco de dados. O produto pode ter sido excluído ou criado apenas localmente. Tente recarregar a página.`);
+      }
 
-    // 2. Remover campos indesejados
-    const { created_at, updated_at, has_complements, ...cleanUpdates } = updates as any;
+      console.log('✅ Produto encontrado no banco:', existingProduct);
 
-    // 3. Remover campos com valor undefined
-    const safeUpdate = Object.fromEntries(
-      Object.entries({
-        ...cleanUpdates,
-        updated_at: new Date().toISOString()
-      }).filter(([, value]) => value !== undefined)
-    );
+      // 2. Prepare clean update data
+      const { created_at, updated_at, has_complements, ...cleanUpdates } = updates as any;
 
-    console.log('📝 Dados limpos para atualização:', {
-      id,
-      cleanUpdates: safeUpdate,
-      originalUpdates: updates
-    });
+      // 3. Remove undefined values and add updated_at
+      const safeUpdate = Object.fromEntries(
+        Object.entries({
+          ...cleanUpdates,
+          updated_at: new Date().toISOString()
+        }).filter(([, value]) => value !== undefined)
+      );
 
-    // 4. Realizar a atualização
-    const { data, error } = await supabase
-      .from('delivery_products')
-      .update(safeUpdate)
-      .eq('id', id)
-      .select()
-      .maybeSingle();
+      console.log('📝 Dados para atualização:', {
+        id,
+        safeUpdate,
+        originalUpdates: updates
+      });
 
-    if (error) {
-      console.error('❌ Erro detalhado ao atualizar produto:', error);
-      throw new Error(`Erro ao atualizar produto: ${error.message || 'Erro desconhecido'}`);
-    }
+      // 4. Perform the update
+      const { data, error } = await supabase
+        .from('delivery_products')
+        .update(safeUpdate)
+        .eq('id', id)
+        .select('*');
 
-    if (!data) {
-      throw new Error(`Produto com ID ${id} não foi encontrado para atualização`);
-    }
+      if (error) {
+        console.error('❌ Erro ao atualizar produto:', error);
+        throw new Error(`Erro ao atualizar produto: ${error.message || 'Erro desconhecido'}`);
+      }
 
-    console.log('✅ Produto atualizado no banco:', data);
+      if (!data || data.length === 0) {
+        // No rows were updated - values were already the same
+        console.log('ℹ️ Nenhuma linha foi atualizada - valores já eram os mesmos');
+        
+        // Return the existing product with updates applied
+        const updatedProduct = {
+          ...existingProduct,
+          ...cleanUpdates,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Update local state
+        setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
+        
+        console.log('✅ Produto atualizado localmente (sem mudanças no banco)');
+        return updatedProduct;
+      }
 
-    // Atualizar estado local
-    setProducts(prev => prev.map(p => p.id === id ? data : p));
+      const updatedProduct = data[0];
+      console.log('✅ Produto atualizado no banco:', updatedProduct);
 
-    console.log('✅ Estado local atualizado');
-    return data;
+      // Update local state
+      setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
+      
+      console.log('✅ Estado local atualizado');
+      return updatedProduct;
 
-  } catch (err) {
-    console.error('❌ Erro ao atualizar produto:', err);
-    if (err instanceof Error) {
+    } catch (err) {
+      console.error('❌ Erro ao atualizar produto:', err);
       throw err;
     }
-    throw new Error('Erro desconhecido ao atualizar produto');
-  }
-}, []);
+  }, [fetchProducts, products]);
 
+  const syncWithDatabase = useCallback(async () => {
+    console.log('🔄 Sincronizando produtos com banco de dados...');
+    await fetchProducts();
+  }, [fetchProducts]);
 
   const deleteProduct = useCallback(async (id: string) => {
     try {
@@ -281,7 +309,7 @@ export const useDeliveryProducts = () => {
     return () => {
       if (channel) {
         console.log('🔌 Desconectando subscription em tempo real...');
-        supabase.removeChannel(channel);
+        channel.unsubscribe();
       }
     };
   }, []);
