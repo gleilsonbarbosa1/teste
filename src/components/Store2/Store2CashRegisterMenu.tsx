@@ -272,12 +272,6 @@ const Store2CashRegisterMenu: React.FC = () => {
             </div>
             <div class="flex gap-2">
               <button 
-                onclick="window.location.href='/relatorios_loja2'" 
-                class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
-              >
-                📊 Ver Relatórios
-              </button>
-              <button 
                 onclick="document.querySelector('[data-print-cash]').click()" 
                 class="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
               >

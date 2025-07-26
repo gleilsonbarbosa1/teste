@@ -164,7 +164,7 @@ const Store2CashRegisterPrintView: React.FC<Store2CashRegisterPrintViewProps> = 
             <div style="border-top: 1px solid black; padding-top: 3px; margin-top: 3px;">
               <div class="flex-between bold">
                 <span>SALDO ESPERADO:</span>
-                <span>{formatPrice((register.opening_amount || 0) + (summary?.sales_total || 0) + (summary?.other_income_total || 0) - (summary?.total_expense || 0))}</span>
+                <span>${formatPrice((register.opening_amount || 0) + (summary?.sales_total || 0) + (summary?.other_income_total || 0) - (summary?.total_expense || 0))}</span>
               </div>
             </div>
             ${register.closing_amount !== null ? `

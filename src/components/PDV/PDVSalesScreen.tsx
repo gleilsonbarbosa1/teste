@@ -461,10 +461,8 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
         <div class="separator">
           <div class="bold">PAGAMENTO</div>
           <div>Forma: ${getPaymentMethodLabel(paymentInfo.method)}</div>
-          ${paymentInfo.changeFor ? `
-          <div>Valor Pago: ${formatPrice(paymentInfo.changeFor)}</div>
-          <div>Troco: ${formatPrice(calculateChange(paymentInfo.changeFor))}</div>
-          ` : ''}
+          ${sale.change_amount && sale.change_amount > 0 ? `<div>Troco para: ${formatPrice(sale.change_for || 0)}</div>` : ''}
+          ${sale.change_amount && sale.change_amount > 0 ? `<div>Troco dado: ${formatPrice(sale.change_amount)}</div>` : ''}
         </div>
         
         <div class="center">

@@ -469,6 +469,13 @@ const Store2PDVSalesScreen: React.FC<Store2PDVSalesScreenProps> = ({ operator, s
           </div>
         </div>` : ''}
         
+        <div class="mb-3 separator">
+          <div class="bold mb-1">PAGAMENTO:</div>
+          <div class="small">Forma: ${getPaymentMethodLabel(lastSale?.payment_type || paymentMethod)}</div>
+          ${lastSale?.change_amount && lastSale?.change_amount > 0 ? `<div class="small">Troco para: ${formatPrice(lastSale?.change_for || 0)}</div>` : ''}
+          ${lastSale?.change_amount && lastSale?.change_amount > 0 ? `<div class="small">Troco dado: ${formatPrice(lastSale?.change_amount)}</div>` : ''}
+        </div>
+        
         <div class="center">
           <div class="bold">Obrigado pela preferência!</div>
           <div>Elite Açaí - Loja 2</div>

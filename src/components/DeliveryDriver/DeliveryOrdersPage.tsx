@@ -23,6 +23,12 @@ const DeliveryOrdersPage: React.FC = () => {
   const [overdueCount, setOverdueCount] = useState(0);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [deliveryStats, setDeliveryStats] = useState({
+    totalDeliveries: 0,
+    totalFees: 0,
+    averageFee: 0,
+    completedDeliveries: 0
+  });
 
   // Update current time every minute
   useEffect(() => {
@@ -62,6 +68,31 @@ const DeliveryOrdersPage: React.FC = () => {
     
     setOverdueCount(overdue);
   }, [orders, currentTime]);
+
+  // Calculate delivery statistics
+  useEffect(() => {
+    // Usar apenas pedidos não cancelados da semana atual
+    const weekOrders = orders.filter(order => order.status !== 'cancelled');
+    
+    const completedOrders = weekOrders.filter(order => 
+      order.status === 'delivered'
+    );
+    
+    const totalFees = weekOrders.reduce((sum, order) => 
+      sum + (order.delivery_fee || 0), 0
+    );
+    
+    const completedFees = completedOrders.reduce((sum, order) => 
+      sum + (order.delivery_fee || 0), 0
+    );
+    
+    setDeliveryStats({
+      totalDeliveries: weekOrders.length,
+      totalFees: completedFees,
+      averageFee: completedOrders.length > 0 ? completedFees / completedOrders.length : 0,
+      completedDeliveries: completedOrders.length
+    });
+  }, [orders]);
 
   const toggleAutoRefresh = () => {
     setAutoRefresh(prev => !prev);
@@ -252,6 +283,35 @@ const DeliveryOrdersPage: React.FC = () => {
     window.open(`https://wa.me/${phoneWithCountryCode}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
+  // Função para obter informações da semana atual
+  const getWeekInfo = () => {
+    const now = new Date();
+    const currentDay = now.getDay();
+    const currentHour = now.getHours();
+    
+    // Calcular início da semana (segunda às 10h)
+    let daysToSubtract = currentDay === 0 ? 6 : currentDay - 1;
+    if (currentDay === 1 && currentHour < 10) {
+      daysToSubtract = 7;
+    }
+    
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - daysToSubtract);
+    weekStart.setHours(10, 0, 0, 0);
+    
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    return {
+      start: weekStart,
+      end: weekEnd,
+      isNewWeekSoon: currentDay === 1 && currentHour >= 9 && currentHour < 10
+    };
+  };
+
+  const weekInfo = getWeekInfo();
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -327,6 +387,101 @@ const DeliveryOrdersPage: React.FC = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        {/* Delivery Earnings Summary */}
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl shadow-sm p-4 sm:p-6 mb-4 sm:mb-6 text-white">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+                Ganhos da Semana
+              </h2>
+              <p className="text-green-100 text-sm">
+                {weekInfo.start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a {weekInfo.end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                {weekInfo.isNewWeekSoon && (
+                  <span className="ml-2 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold">
+                    ⏰ Nova semana em breve!
+                  </span>
+                )}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl sm:text-3xl font-bold">
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL'
+                }).format(deliveryStats.totalFees)}
+              </p>
+              <p className="text-green-100 text-sm">Total em Taxas</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold">{deliveryStats.totalDeliveries}</p>
+              <p className="text-green-100 text-sm">Pedidos Semana</p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold">{deliveryStats.completedDeliveries}</p>
+              <p className="text-green-100 text-sm">Entregues</p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+              <p className="text-lg font-bold">
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL'
+                }).format(deliveryStats.averageFee)}
+              </p>
+              <p className="text-green-100 text-sm">Taxa Média</p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+              <p className="text-lg font-bold">
+                {deliveryStats.totalDeliveries > 0 
+                  ? Math.round((deliveryStats.completedDeliveries / deliveryStats.totalDeliveries) * 100)
+                  : 0}%
+              </p>
+              <p className="text-green-100 text-sm">Taxa Entrega</p>
+            </div>
+          </div>
+          
+          {deliveryStats.totalDeliveries > 0 && (
+            <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-lg p-3">
+              <div className="flex items-center justify-between text-sm">
+                <span>Progresso da Semana:</span>
+                <span>{deliveryStats.completedDeliveries} de {deliveryStats.totalDeliveries} pedidos</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-2 mt-2">
+                <div 
+                  className="bg-white rounded-full h-2 transition-all duration-500"
+                  style={{ 
+                    width: `${deliveryStats.totalDeliveries > 0 
+                      ? (deliveryStats.completedDeliveries / deliveryStats.totalDeliveries) * 100 
+                      : 0}%` 
+                  }}
+                ></div>
+              </div>
+            </div>
+          )}
+          
+          {/* Informação sobre o ciclo semanal */}
+          <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-lg p-3">
+            <div className="flex items-center justify-between text-sm">
+              <span>📅 Ciclo Semanal:</span>
+              <span>Segunda 10h → Segunda 10h</span>
+            </div>
+            <div className="text-xs text-green-100 mt-1">
+              {weekInfo.isNewWeekSoon 
+                ? '⏰ Nova semana começa em breve (Segunda 10h)'
+                : 'Semana atual em andamento'
+              }
+            </div>
+          </div>
+        </div>
+
         {/* Stats */}
         <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
@@ -334,10 +489,13 @@ const DeliveryOrdersPage: React.FC = () => {
               <Package size={24} className="text-green-600" />
               <div>
                 <h2 className="text-base sm:text-lg font-semibold text-gray-800">
-                  Pedidos de Hoje
+                  Pedidos da Semana
                 </h2>
                 <p className="text-sm sm:text-base text-gray-600">
-                  {orders.length} pedido(s) confirmados hoje ({new Date().toLocaleDateString('pt-BR')})
+                  {orders.length} pedido(s) confirmados nesta semana
+                </p>
+                <p className="text-xs text-gray-500">
+                  📅 {weekInfo.start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} 10h → {weekInfo.end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} 10h
                 </p>
                 <div className="flex items-center gap-2 mt-1">
                   <Clock size={14} className="text-gray-500" />
@@ -414,10 +572,13 @@ const DeliveryOrdersPage: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm p-6 sm:p-12 text-center">
               <Package size={48} className="mx-auto text-gray-300 mb-4" />
               <h3 className="text-base sm:text-lg font-medium text-gray-600 mb-2">
-                Todos os Pedidos de Hoje
+                Pedidos da Semana Atual
               </h3>
               <p className="text-sm sm:text-base text-gray-500">
-                {orders.length} pedido(s) de hoje ({new Date().toLocaleDateString('pt-BR')})
+                {orders.length} pedido(s) desta semana
+              </p>
+              <p className="text-xs text-gray-400 mt-2">
+                📅 Semana: {weekInfo.start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a {weekInfo.end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
               </p>
               {autoRefresh && (
                 <div className="mt-4 flex items-center justify-center gap-2 text-sm text-green-600">
