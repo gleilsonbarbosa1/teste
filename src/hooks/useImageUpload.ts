@@ -290,7 +290,7 @@ export const useImageUpload = () => {
       try {
         // Add timeout to prevent hanging requests
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
         
         const { data, error } = await supabase
           .from('product_image_associations')
@@ -316,7 +316,7 @@ export const useImageUpload = () => {
       } catch (fetchError: any) {
         // Handle network errors gracefully
         if (fetchError.name === 'AbortError') {
-          console.warn(`⏱️ Timeout (15s) ao carregar imagem para produto ${cleanProductId} - usando fallback`);
+          console.warn(`⏱️ Timeout ao carregar imagem para produto ${cleanProductId} - usando fallback`);
         } else if (fetchError instanceof TypeError && 
                    (fetchError.message.includes('Failed to fetch') || 
                     fetchError.message.includes('fetch') || 
