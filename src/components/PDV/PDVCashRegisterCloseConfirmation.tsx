@@ -23,7 +23,8 @@
 +  isProcessing,
 +  operator
  }) => {
--  const { hasPermission } = usePermissions();
+-  const { hasPermission }
+} = usePermissions();
 -  const canViewExpectedBalance = hasPermission('can_view_expected_balance');
 +  const canViewExpectedBalance = operator?.permissions?.can_view_expected_balance === true;
 

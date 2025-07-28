@@ -18,7 +18,8 @@
        {/* Close Confirmation Modal */}
        <CashRegisterCloseConfirmation
          isOpen={showCloseConfirmation}
-         onClose={() => setShowCloseConfirmation(false)}
+         onClose={() => setShowCl  }
+oseConfirmation(false)}
          onConfirm={handleConfirmClose}
          register={currentRegister}
          summary={summary}
