@@ -52,8 +52,35 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
   };
 
   const handleAddItem = async (item: any) => {
-    if (onAddItem) {
-      await onAddItem(sale.id, item);
+    try {
+      console.log('🔄 Iniciando adição de item:', item);
+      
+      if (onAddItem) {
+        await onAddItem(sale.id, item);
+        
+        console.log('✅ Item adicionado com sucesso, fechando modal');
+        setShowAddItem(false);
+        
+        // Mostrar feedback de sucesso
+        const successMessage = document.createElement('div');
+        successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+        successMessage.innerHTML = `
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          Item adicionado com sucesso!
+        `;
+        document.body.appendChild(successMessage);
+        
+        setTimeout(() => {
+          if (document.body.contains(successMessage)) {
+            document.body.removeChild(successMessage);
+          }
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar item:', error);
+      alert(`Erro ao adicionar item: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 
@@ -230,6 +257,18 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
                         />
                         <CreditCard size={20} className="text-purple-600" />
                         <span>Cartão de Crédito</span>
+                      </label>
+                      <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="cartao_debito"
+                          checked={paymentType === 'cartao_debito'}
+                          onChange={(e) => setPaymentType(e.target.value as any)}
+                          className="text-indigo-600"
+                        />
+                        <CreditCard size={20} className="text-indigo-600" />
+                        <span>Cartão de Débito</span>
                       </label>
                     </div>
                   </div>

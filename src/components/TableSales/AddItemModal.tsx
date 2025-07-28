@@ -59,6 +59,30 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
       weight,
       subtotal: calculateSubtotal()
     });
+    
+    // Validar se o subtotal é válido
+    const subtotal = calculateSubtotal();
+    if (subtotal <= 0) {
+      alert('Erro: Valor do item deve ser maior que zero.');
+      return;
+    }
+    
+    // Validar dados obrigatórios
+    if (!selectedProduct.code || !selectedProduct.name) {
+      alert('Erro: Produto inválido selecionado.');
+      return;
+    }
+    
+    if (selectedProduct.is_weighable && (!weight || weight <= 0)) {
+      alert('Erro: Peso deve ser maior que zero para produtos pesáveis.');
+      return;
+    }
+    
+    if (!selectedProduct.is_weighable && quantity <= 0) {
+      alert('Erro: Quantidade deve ser maior que zero.');
+      return;
+    }
+    
     const item: TableCartItem = {
       product_code: selectedProduct.code,
       product_name: selectedProduct.name,
@@ -66,23 +90,20 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
       weight: selectedProduct.is_weighable ? weight : undefined,
       unit_price: selectedProduct.unit_price,
       price_per_gram: selectedProduct.price_per_gram,
-      subtotal: calculateSubtotal(),
+      subtotal: subtotal,
       notes: notes || undefined
     };
+
+    console.log('📦 Item preparado para envio:', item);
 
     try {
       await onAddItem(item);
       
-      // Reset form only after successful addition
-      setSelectedProduct(null);
-      setQuantity(1);
-      setWeight(undefined);
-      setNotes('');
-      setSearchTerm('');
-      onClose();
+      console.log('✅ Item enviado com sucesso');
+      // O modal será fechado pelo componente pai após sucesso
     } catch (error) {
       console.error('❌ Erro ao adicionar item:', error);
-      alert('Erro ao adicionar item. Tente novamente.');
+      alert(`Erro ao adicionar item: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 

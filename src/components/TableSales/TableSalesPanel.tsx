@@ -21,7 +21,7 @@ interface TableSalesPanelProps {
 }
 
 const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
-  const { tables, loading, error, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch } = useTableSales(storeId);
+  const { tables, loading, error, createTableSale, addItemToSale, closeSale, getSaleDetails, updateTableStatus, refetch } = useTableSales(storeId);
   
   // Verificar status do caixa
   const store1CashRegister = usePDVCashRegister();
@@ -83,6 +83,32 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     }
   };
 
+  const handleAddItemToSale = async (saleId: string, item: any) => {
+    try {
+      console.log('🔄 Adicionando item à venda:', { saleId, item });
+      
+      // Usar a função do hook
+      await addItemToSale(saleId, item);
+      
+      console.log('✅ Item adicionado com sucesso');
+      
+      // Recarregar detalhes da venda
+      if (saleDetails) {
+        const updatedDetails = await getSaleDetails(saleDetails.id);
+        if (updatedDetails) {
+          setSaleDetails(updatedDetails);
+        }
+        
+        // Recarregar lista de mesas
+        await refetch();
+      }
+      
+      return Promise.resolve();
+    } catch (error) {
+      console.error('❌ Erro ao adicionar item:', error);
+      throw error;
+    }
+  };
   const handleCreateSale = async (customerName?: string, customerCount: number = 1) => {
     if (!selectedTable) return;
 
@@ -90,6 +116,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       await createTableSale(selectedTable.id, operatorName, customerName, customerCount);
       setShowSaleModal(false);
       setSelectedTable(null);
+      // Recarregar dados após criar venda
+      await refetch();
     } catch (error) {
       console.error('Erro ao criar venda:', error);
       alert('Erro ao criar venda. Tente novamente.');
@@ -108,6 +136,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       setShowDetailsModal(false);
       setSaleDetails(null);
       setSelectedTable(null);
+      // Recarregar dados após fechar venda
+      await refetch();
     } catch (error) {
       console.error('Erro ao fechar venda:', error);
       alert('Erro ao fechar venda. Tente novamente.');
@@ -261,6 +291,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
           }}
           onCloseSale={handleCloseSale}
           onUpdateStatus={updateTableStatus}
+          onAddItem={handleAddItemToSale}
         />
       )}
     </div>
