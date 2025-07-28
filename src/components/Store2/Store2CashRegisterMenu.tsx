@@ -1,35 +1,209 @@
-import React, { useState } from 'react';
-import { X, AlertTriangle, DollarSign, CheckCircle, Printer } from 'lucide-react';
-import { PDVCashRegister, PDVCashRegisterSummary, PDVCashRegisterEntry } from '../../types/pdv';
-import { usePermissions } from '../../hooks/usePermissions';
+import React, { useState, useEffect } from 'react';
+import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
+import { 
+  DollarSign, 
+  ArrowDownCircle, 
+  ArrowUpCircle, 
+  Plus, 
+  Clock, 
+  RefreshCw,
+  AlertCircle,
+  X,
+  Minus
+} from 'lucide-react';
+import Store2CashRegisterDetails from './Store2CashRegisterDetails';
+import Store2CashRegisterCloseConfirmation from './Store2CashRegisterCloseConfirmation';
+import Store2CashRegisterPrintView from './Store2CashRegisterPrintView';
 
-interface CashRegisterCloseConfirmationProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (closingAmount: number) => void;
-  register: PDVCashRegister | null;
-  summary: PDVCashRegisterSummary | null;
-  isProcessing: boolean;
-}
+const Store2CashRegisterMenu: React.FC = () => {
+  const {
+    isOpen,
+    currentRegister,
+    summary,
+    entries,
+    loading,
+    error,
+    openCashRegister,
+    closeCashRegister,
+    addCashEntry,
+    refreshData
+  } = useStore2PDVCashRegister();
 
-const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps> = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  register,
-  summary,
-  isProcessing
-}) => {
-  const { hasPermission } = usePermissions();
-  const canViewExpectedBalance = hasPermission('can_view_expected_balance');
+  const [supabaseConfigured, setSupabaseConfigured] = useState(true);
+  const [showOpenRegister, setShowOpenRegister] = useState(false);
+  const [showCloseRegister, setShowCloseRegister] = useState(false);
+  const [showCashEntry, setShowCashEntry] = useState(false);
+  const [showBillCounting, setShowBillCounting] = useState(false);
+  const [openingAmount, setOpeningAmount] = useState('');
+  const [entryType, setEntryType] = useState<'income' | 'expense'>('income');
+  const [entryAmount, setEntryAmount] = useState('');
+  const [entryDescription, setEntryDescription] = useState('');
+  const [entryPaymentMethod, setEntryPaymentMethod] = useState('dinheiro');
+  const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
+  const [showPrintView, setShowPrintView] = useState(false);
+  const [closedRegister, setClosedRegister] = useState<any>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  
+  // Check Supabase configuration on mount
+  React.useEffect(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    const isConfigured = supabaseUrl && supabaseKey && 
+                        supabaseUrl !== 'your_supabase_url_here' && 
+                        supabaseKey !== 'your_supabase_anon_key_here' &&
+                        !supabaseUrl.includes('placeholder');
+    
+    setSupabaseConfigured(isConfigured);
+  }, []);
 
-  if (!isOpen) return null;
+  const [billCounts, setBillCounts] = useState({
+    '200': 0,
+    '100': 0,
+    '50': 0,
+    '20': 0,
+    '10': 0,
+    '5': 0,
+    '2': 0,
+    '1': 0,
+    '0.50': 0,
+    '0.25': 0,
+    '0.10': 0,
+    '0.05': 0,
+    '0.01': 0
+  });
 
-  // State for closing amount
-  const [closingAmount, setClosingAmount] = useState(
-    canViewExpectedBalance ? (summary?.expected_balance || 0) : 0
-  );
-  const [printMovements, setPrintMovements] = useState(true);
+  const billValues = [
+    { value: '200', label: 'R$ 200,00', color: 'bg-purple-100' },
+    { value: '100', label: 'R$ 100,00', color: 'bg-blue-100' },
+    { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
+    { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
+    { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
+    { value: '5', label: 'R$ 5,00', color: 'bg-green-100' },
+    { value: '2', label: 'R$ 2,00', color: 'bg-gray-100' },
+    { value: '1', label: 'R$ 1,00', color: 'bg-yellow-50' },
+    { value: '0.50', label: 'R$ 0,50', color: 'bg-gray-50' },
+    { value: '0.25', label: 'R$ 0,25', color: 'bg-gray-50' },
+    { value: '0.10', label: 'R$ 0,10', color: 'bg-gray-50' },
+    { value: '0.05', label: 'R$ 0,05', color: 'bg-gray-50' },
+    { value: '0.01', label: 'R$ 0,01', color: 'bg-gray-50' }
+  ];
+
+  const calculateBillTotal = () => {
+    return Object.entries(billCounts).reduce((total, [value, count]) => {
+      return total + (parseFloat(value) * count);
+    }, 0);
+  };
+
+  const handleOpenRegister = async () => {
+    if (!openingAmount) return;
+    
+    console.log('🚀 Abrindo caixa da Loja 2 com valor:', parseFloat(openingAmount));
+    try {
+      await openCashRegister(parseFloat(openingAmount));
+      setShowOpenRegister(false);
+      setOpeningAmount('');
+    } catch (err) {
+      console.error('Erro ao abrir caixa da Loja 2:', err);
+    }
+  };
+
+  const handleCloseRegister = async () => {
+    setShowCloseConfirmation(true);
+  };
+
+  const handleConfirmClose = async (closingAmount: number, shouldPrint: boolean = false) => {
+    setIsClosing(true);
+    setShowCloseConfirmation(false);
+    
+    try {
+      console.log('🔒 Fechando caixa da Loja 2 com valor:', closingAmount);
+      const result = await closeCashRegister(closingAmount);
+      
+      if (result.success) {
+        setClosedRegister({
+          ...currentRegister,
+          closing_amount: closingAmount,
+          closed_at: new Date().toISOString(),
+          difference: closingAmount - (summary?.expected_balance || 0)
+        });
+        
+        if (shouldPrint) {
+          setShowPrintView(true);
+        }
+      } else {
+        alert(`Erro ao fechar caixa: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Erro ao fechar caixa da Loja 2:', err);
+      alert('Erro ao fechar caixa. Tente novamente.');
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
+  const handleCashEntry = async () => {
+    if (!entryAmount || !entryDescription) return;
+    
+    console.log('💰 Adicionando entrada ao caixa da Loja 2:', {
+      type: entryType,
+      amount: parseFloat(entryAmount),
+      description: entryDescription,
+      payment_method: entryPaymentMethod
+    });
+    
+    try {
+      await addCashEntry({
+        type: entryType,
+        amount: parseFloat(entryAmount),
+        description: entryDescription,
+        payment_method: entryPaymentMethod
+      });
+      setShowCashEntry(false);
+      setEntryAmount('');
+      setEntryDescription('');
+      setEntryType('income');
+      setEntryPaymentMethod('dinheiro');
+    } catch (err) {
+      console.error('Erro ao adicionar entrada da Loja 2:', err);
+    }
+  };
+
+  const updateBillCount = (value: string, increment: boolean) => {
+    setBillCounts(prev => ({
+      ...prev,
+      [value]: Math.max(0, prev[value] + (increment ? 1 : -1))
+    }));
+  };
+
+  const resetBillCounts = () => {
+    setBillCounts({
+      '200': 0,
+      '100': 0,
+      '50': 0,
+      '20': 0,
+      '10': 0,
+      '5': 0,
+      '2': 0,
+      '1': 0,
+      '0.50': 0,
+      '0.25': 0,
+      '0.10': 0,
+      '0.05': 0,
+      '0.01': 0
+    });
+  };
+
+  const applyBillTotal = () => {
+    const total = calculateBillTotal();
+    if (showCloseRegister) {
+      // Para fechamento, aplicar no valor de fechamento
+    } else if (showOpenRegister) {
+      setOpeningAmount(total.toFixed(2));
+    }
+    setShowBillCounting(false);
+    resetBillCounts();
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -38,214 +212,484 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
     }).format(price);
   };
 
+  const getPaymentMethodName = (method: string) => {
+    const methodNames: Record<string, string> = {
+      'dinheiro': 'Dinheiro',
+      'pix': 'PIX',
+      'cartao_credito': 'Cartão de Crédito',
+      'cartao_debito': 'Cartão de Débito',
+      'voucher': 'Voucher',
+      'misto': 'Pagamento Misto'
+    };
+    return methodNames[method] || method;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
-              <div className="bg-yellow-100 rounded-full p-2">
-                <AlertTriangle size={24} className="text-yellow-600" />
-              </div>
-              Confirmar Fechamento de Caixa
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <X size={20} />
-            </button>
+    <div className="space-y-6">
+      {/* Supabase Configuration Warning */}
+      {!supabaseConfigured && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-red-100 rounded-full p-2">
+              <AlertCircle size={20} className="text-red-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-red-800">Funcionalidade de Caixa Indisponível - Loja 2</h3>
+              <p className="text-red-700 text-sm">
+                O sistema de caixa requer configuração do Supabase. Configure as variáveis de ambiente 
+                VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para usar esta funcionalidade.
+              </p>
+            </div>
           </div>
-          <p className="text-gray-600">
-            Você está prestes a fechar o caixa atual. Esta ação não pode ser desfeita.
+        </div>
+      )}
+      
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <DollarSign size={24} />
+            Controle de Caixa - Loja 2
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            {isOpen ? 'Caixa aberto' : 'Caixa fechado'}
           </p>
         </div>
-
-        <div className="p-6 overflow-y-auto">
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-              <div>
-                <h3 className="text-lg font-bold text-blue-800 mb-2">Resumo do Caixa</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                  <span className="font-medium text-blue-800">{formatPrice(summary.opening_amount || register?.opening_amount || 0)}</span>
-                    <span className="font-medium text-blue-800">{formatPrice(register?.opening_amount || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-blue-700">Vendas PDV:</span>
-                    <span className="font-medium text-blue-800">{formatPrice(summary?.sales_total || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-blue-700">Vendas Delivery:</span>
-                    <span className="font-medium text-blue-800">{formatPrice(summary?.delivery_total || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-blue-700">Outras entradas:</span>
-                    <span className="font-medium text-blue-800">{formatPrice(summary?.other_income_total || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-blue-700">Saídas:</span>
-                    <span className="font-medium text-blue-800">{formatPrice(summary?.total_expense || 0)}</span>
-                  </div>
-                  {canViewExpectedBalance && (
-                    <div className="pt-2 border-t border-blue-200">
-                      <div className="flex justify-between">
-                        <span className="font-medium text-blue-800">Saldo esperado:</span>
-                        <span className="font-bold text-blue-800">{formatPrice(summary?.expected_balance || 0)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {canViewExpectedBalance && (
-                  <div className="flex justify-between pt-1 text-xs text-gray-500">
-                    <p className="text-xs">Apenas transações em dinheiro</p>
-                    <p>
-                      {formatPrice(summary?.opening_amount || 0)} + entradas - saídas
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <p className="text-gray-700">
-              Após o fechamento, você poderá:
-            </p>
-            <ul className="space-y-2 text-gray-600 pl-6 list-disc">
-              <li>Imprimir as movimentações do caixa</li>
-              <li>Visualizar o relatório diário completo</li>
-              <li>Enviar o resumo por WhatsApp</li>
-            </ul>
-            
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
-              <div className="flex items-start gap-2">
-                <AlertTriangle size={16} className="text-yellow-600 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-yellow-700">
-                  Certifique-se de que o valor em caixa confere com o saldo esperado antes de fechar.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-3">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <Printer size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                <div className="flex-1">
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={printMovements}
-                      onChange={(e) => setPrintMovements(e.target.checked)}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <div>
-                      <span className="font-medium text-blue-800">
-                        Imprimir movimentações do caixa após fechamento
-                      </span>
-                      <p className="text-blue-700 text-sm mt-1">
-                        Gera um relatório térmico com todas as movimentações do caixa
-                      </p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Valor de fechamento
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={closingAmount}
-                onChange={(e) => setClosingAmount(parseFloat(e.target.value) || 0)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0.00"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Informe o valor real em caixa no momento do fechamento
-              </p>
-              
-              {/* Aviso de diferença */}
-              {canViewExpectedBalance && closingAmount !== (summary?.expected_balance || 0) && closingAmount > 0 && (
-                <div className={`mt-2 p-3 rounded-lg border ${
-                  closingAmount > (summary?.expected_balance || 0)
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-red-50 border-red-200'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle size={16} className={
-                      closingAmount > (summary?.expected_balance || 0)
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    } />
-                    <div>
-                      <p className={`text-sm font-medium ${
-                        closingAmount > (summary?.expected_balance || 0)
-                          ? 'text-green-800'
-                          : 'text-red-800'
-                      }`}>
-                        {closingAmount > (summary?.expected_balance || 0) ? '💰 Sobra no Caixa' : '⚠️ Falta no Caixa'}
-                      </p>
-                      <p className={`text-sm ${
-                        closingAmount > (summary?.expected_balance || 0)
-                          ? 'text-green-700'
-                          : 'text-red-700'
-                      }`}>
-                        Diferença: {formatPrice(Math.abs(closingAmount - (summary?.expected_balance || 0)))}
-                        {closingAmount > (summary?.expected_balance || 0) ? ' a mais' : ' a menos'}
-                      </p>
-                      <p className={`text-xs mt-1 ${
-                        closingAmount > (summary?.expected_balance || 0)
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}>
-                        Saldo esperado: {formatPrice(summary?.expected_balance || 0)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-6 flex gap-3">
+        <div className="flex gap-2">
+          <button
+            onClick={refreshData}
+            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+          >
+            <RefreshCw size={16} />
+            Atualizar
+          </button>
+          
+          {isOpen && (
             <button
-              onClick={onClose}
-              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
+              onClick={handleCloseRegister}
+              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors text-sm"
             >
-              Cancelar
+              <Clock size={16} />
+              Fechar Caixa
             </button>
-            <button
-              onClick={() => {
-                // Call the onConfirm function passed from the parent
-                onConfirm(closingAmount, printMovements);
-              }}
-              disabled={isProcessing}
-              className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-            >
-              {isProcessing ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <CheckCircle size={20} />
-                  Confirmar Fechamento
-                </>
-              )}
-            </button>
-          </div>
+          )}
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`p-4 rounded-lg border-2 ${isOpen ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Status do Caixa</p>
+              <p className={`text-lg font-semibold ${isOpen ? 'text-green-600' : 'text-gray-600'}`}>
+                {isOpen ? 'Aberto' : 'Fechado'}
+              </p>
+            </div>
+            <div className={`p-2 rounded-full ${isOpen ? 'bg-green-100' : 'bg-gray-100'}`}>
+              <DollarSign className={`h-6 w-6 ${isOpen ? 'text-green-600' : 'text-gray-600'}`} />
+            </div>
+          </div>
+        </div>
+
+        {currentRegister && (
+          <>
+            <div className="p-4 rounded-lg border-2 bg-blue-50 border-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Valor de Abertura</p>
+                  <p className="text-lg font-semibold text-blue-600">
+                    {formatPrice(currentRegister.opening_amount || 0)}
+                  </p>
+                </div>
+                <div className="p-2 rounded-full bg-blue-100">
+                  <ArrowUpCircle className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg border-2 bg-purple-50 border-purple-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Saldo Atual</p>
+                  <p className="text-lg font-semibold text-purple-600" title="Saldo esperado em dinheiro">
+                    {formatPrice(summary.expected_balance)}
+                  </p>
+                </div>
+                <div className="p-2 rounded-full bg-purple-100">
+                  <DollarSign className="h-6 w-6 text-purple-600" />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-3">
+        {!isOpen && (
+          <button
+            onClick={() => setShowOpenRegister(true)}
+            disabled={!supabaseConfigured}
+            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            <Plus size={18} />
+            Abrir Caixa
+          </button>
+        )}
+
+        {isOpen && supabaseConfigured && (
+          <>
+            <button
+              onClick={() => setShowCashEntry(true)}
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <ArrowDownCircle size={18} />
+              Adicionar Entrada
+            </button>
+
+            <button
+              onClick={() => {
+                setEntryType('expense');
+                setShowCashEntry(true);
+              }}
+              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <ArrowUpCircle size={18} />
+              Adicionar Saída
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Close Confirmation Modal */}
+      <Store2CashRegisterCloseConfirmation
+        isOpen={showCloseConfirmation}
+        onClose={() => setShowCloseConfirmation(false)}
+        onConfirm={handleConfirmClose}
+        register={currentRegister}
+        summary={summary}
+        isProcessing={isClosing}
+      />
+
+      {/* Print View Modal */}
+      {showPrintView && closedRegister && (
+        <Store2CashRegisterPrintView
+          register={closedRegister}
+          summary={summary}
+          entries={entries}
+          onClose={() => setShowPrintView(false)}
+        />
+      )}
+
+      {/* Cash Register Details */}
+      {currentRegister && (
+        <>
+          <Store2CashRegisterDetails register={currentRegister} summary={summary} onRefresh={refreshData} />
+          
+          {/* Histórico de Movimentações */}
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800">Histórico de Movimentações - Loja 2</h3>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Data/Hora</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Tipo</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Descrição</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Forma</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Valor</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {entries.map((entry) => (
+                    <tr key={entry.id} className="hover:bg-gray-50">
+                      <td className="py-4 px-4">
+                        <span className="text-sm text-gray-600">{new Date(entry.created_at).toLocaleString('pt-BR')}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          {entry.type === 'income' ? (
+                            <ArrowDownCircle size={16} className="text-green-600" />
+                          ) : (
+                            <ArrowUpCircle size={16} className="text-red-600" />
+                          )}
+                          <span className={`text-sm font-medium ${
+                            entry.type === 'income' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {entry.type === 'income' ? 'Entrada' : 'Saída'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-sm text-gray-800">{entry.description}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-sm text-gray-600">{getPaymentMethodName(entry.payment_method)}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className={`font-semibold ${
+                          entry.type === 'income' ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {entry.type === 'income' ? '+' : '-'}
+                          {formatPrice(entry.amount)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {entries.length === 0 && (
+              <div className="text-center py-12">
+                <DollarSign size={48} className="mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-500">Nenhuma movimentação registrada</p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Open Register Modal */}
+      {showOpenRegister && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Abrir Caixa - Loja 2</h3>
+              <button
+                onClick={() => setShowOpenRegister(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Valor de Abertura
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={openingAmount}
+                  onChange={(e) => setOpeningAmount(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0,00"
+                />
+              </div>
+
+              <button
+                onClick={() => setShowBillCounting(true)}
+                className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
+              >
+                <DollarSign size={16} />
+                Contar Dinheiro
+              </button>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowOpenRegister(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleOpenRegister}
+                  disabled={!openingAmount}
+                  className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Abrir Caixa
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cash Entry Modal */}
+      {showCashEntry && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">
+                {entryType === 'income' ? 'Adicionar Entrada' : 'Adicionar Saída'} - Loja 2
+              </h3>
+              <button
+                onClick={() => setShowCashEntry(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tipo
+                </label>
+                <select
+                  value={entryType}
+                  onChange={(e) => setEntryType(e.target.value as 'income' | 'expense')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="income">Entrada</option>
+                  <option value="expense">Saída</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Valor
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={entryAmount}
+                  onChange={(e) => setEntryAmount(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0,00"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição
+                </label>
+                <input
+                  type="text"
+                  value={entryDescription}
+                  onChange={(e) => setEntryDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Descrição da movimentação"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Forma de Pagamento
+                </label>
+                <select
+                  value={entryPaymentMethod}
+                  onChange={(e) => setEntryPaymentMethod(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="cartao_credito">Cartão de Crédito</option>
+                  <option value="cartao_debito">Cartão de Débito</option>
+                  <option value="pix">PIX</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowCashEntry(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCashEntry}
+                  disabled={!entryAmount || !entryDescription}
+                  className={`flex-1 ${entryType === 'income' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors`}
+                >
+                  Adicionar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bill Counting Modal */}
+      {showBillCounting && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Contar Dinheiro - Loja 2</h3>
+              <button
+                onClick={() => setShowBillCounting(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {billValues.map((bill) => (
+                <div key={bill.value} className={`flex items-center justify-between p-3 rounded-lg ${bill.color}`}>
+                  <span className="font-medium">{bill.label}</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => updateBillCount(bill.value, false)}
+                      className="p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
+                    >
+                      <Minus size={16} />
+                    </button>
+                    <span className="w-12 text-center font-semibold">
+                      {billCounts[bill.value]}
+                    </span>
+                    <button
+                      onClick={() => updateBillCount(bill.value, true)}
+                      className="p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <div className="border-t pt-4 mt-4">
+                <div className="flex justify-between items-center text-lg font-semibold">
+                  <span>Total:</span>
+                  <span>R$ {calculateBillTotal().toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={resetBillCounts}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Limpar
+                </button>
+                <button
+                  onClick={() => setShowBillCounting(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={applyBillTotal}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Aplicar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default CashRegisterCloseConfirmation;
+export default Store2CashRegisterMenu;
