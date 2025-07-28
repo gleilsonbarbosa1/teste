@@ -58,11 +58,28 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       setShowSaleModal(true);
     } else if (table.status === 'ocupada' && table.current_sale_id) {
       // Mesa ocupada - mostrar detalhes da venda
+      console.log('🔍 Buscando detalhes da venda:', table.current_sale_id);
+      const details = await getSaleDetails(table.current_sale_id);
+      if (details) {
+        console.log('✅ Detalhes da venda carregados:', details);
+        setSaleDetails(details);
+        setShowDetailsModal(true);
+      } else {
+        console.error('❌ Não foi possível carregar detalhes da venda');
+        alert('Erro ao carregar detalhes da venda. Tente novamente.');
+      }
+    } else if (table.status === 'aguardando_conta' && table.current_sale_id) {
+      // Mesa aguardando conta - mostrar detalhes para finalizar
+      console.log('💰 Mesa aguardando conta, carregando detalhes:', table.current_sale_id);
       const details = await getSaleDetails(table.current_sale_id);
       if (details) {
         setSaleDetails(details);
         setShowDetailsModal(true);
+      } else {
+        alert('Erro ao carregar detalhes da venda. Tente novamente.');
       }
+    } else {
+      console.log('ℹ️ Mesa com status:', table.status, 'sem ação específica');
     }
   };
 

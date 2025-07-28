@@ -32,13 +32,14 @@ export const useTableSales = (storeId: 1 | 2) => {
         .from(tablesTable)
         .select(`
           *,
-          current_sale:${salesTable}(*)
+          current_sale:${salesTable}!current_sale_id(*)
         `)
         .eq('is_active', true)
         .order('number');
 
       if (error) throw error;
 
+      console.log(`📊 Dados das mesas carregados:`, data);
       setTables(data || []);
       console.log(`✅ ${data?.length || 0} mesas carregadas da Loja ${storeId}`);
     } catch (err) {
@@ -240,6 +241,8 @@ export const useTableSales = (storeId: 1 | 2) => {
 
   const getSaleDetails = useCallback(async (saleId: string): Promise<TableSale | null> => {
     try {
+      console.log(`🔍 Buscando detalhes da venda ${saleId} na Loja ${storeId}...`);
+      
       const { data, error } = await supabase
         .from(salesTable)
         .select(`
@@ -249,7 +252,12 @@ export const useTableSales = (storeId: 1 | 2) => {
         .eq('id', saleId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error(`❌ Erro ao buscar venda ${saleId}:`, error);
+        throw error;
+      }
+      
+      console.log(`✅ Detalhes da venda carregados:`, data);
       return data;
     } catch (err) {
       console.error(`❌ Erro ao buscar detalhes da venda na Loja ${storeId}:`, err);

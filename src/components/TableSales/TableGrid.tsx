@@ -125,6 +125,9 @@ const TableGrid: React.FC<TableGridProps> = ({ tables, onTableClick, storeId }) 
                       {table.current_sale.customer_name}
                     </div>
                   )}
+                  <div className="text-xs font-medium text-green-600">
+                    R$ {(table.current_sale.total_amount || 0).toFixed(2)}
+                  </div>
                 </div>
               )}
             </div>
