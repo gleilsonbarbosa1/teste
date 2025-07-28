@@ -100,6 +100,9 @@ export const useTableSales = (storeId: 1 | 2) => {
 
       // Atualizar total da venda
       await updateSaleTotal(saleId);
+      
+      // Recarregar dados das mesas para atualizar a interface
+      await fetchTables();
 
       console.log(`✅ Item adicionado à venda da Loja ${storeId}`);
       return data;

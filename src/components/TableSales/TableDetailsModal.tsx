@@ -62,8 +62,25 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
   const handleAddItem = async (item: any) => {
     try {
       await addItemToSale(sale.id, item);
-      // Recarregar dados da venda
-      window.location.reload(); // Temporário - idealmente deveria atualizar o estado
+      // Fechar modal e aguardar atualização via realtime
+      setShowAddItem(false);
+      
+      // Mostrar feedback de sucesso
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+      successMessage.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Item adicionado com sucesso!
+      `;
+      document.body.appendChild(successMessage);
+      
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
+        }
+      }, 3000);
     } catch (error) {
       console.error('Erro ao adicionar item:', error);
       alert('Erro ao adicionar item. Tente novamente.');

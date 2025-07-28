@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { X, Search, Plus, Scale } from 'lucide-react';
 import { TableCartItem } from '../../types/table-sales';
+import { usePDVProducts } from '../../hooks/usePDV';
+import { useStore2Products } from '../../hooks/useStore2Products';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -20,41 +22,21 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [weight, setWeight] = useState<number | undefined>(undefined);
   const [notes, setNotes] = useState('');
+  
+  // Carregar produtos do banco de dados baseado na loja
+  const { products: store1Products, loading: store1Loading } = usePDVProducts();
+  const { products: store2Products, loading: store2Loading } = useStore2Products();
+  
+  const products = storeId === 1 ? store1Products : store2Products;
+  const loading = storeId === 1 ? store1Loading : store2Loading;
 
-  // Produtos de demonstração
-  const demoProducts = [
-    {
-      code: 'ACAI300',
-      name: 'Açaí 300ml',
-      unit_price: 15.90,
-      is_weighable: false
-    },
-    {
-      code: 'ACAI500',
-      name: 'Açaí 500ml',
-      unit_price: 22.90,
-      is_weighable: false
-    },
-    {
-      code: 'ACAI1KG',
-      name: 'Açaí 1kg (Pesável)',
-      price_per_gram: 0.04499,
-      is_weighable: true
-    },
-    {
-      code: 'MILK400',
-      name: 'Milkshake 400ml',
-      unit_price: 11.99,
-      is_weighable: false
-    }
-  ];
 
   const filteredProducts = searchTerm
-    ? demoProducts.filter(p => 
+    ? products.filter(p => 
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.code.toLowerCase().includes(searchTerm.toLowerCase())
       )
-    : demoProducts;
+    : products;
 
   const calculateSubtotal = () => {
     if (!selectedProduct) return 0;
@@ -135,36 +117,60 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
           {/* Lista de Produtos */}
           {searchTerm && (
             <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
-              {filteredProducts.map((product) => (
-                <button
-                  key={product.code}
-                  onClick={() => setSelectedProduct(product)}
-                  className={`w-full p-4 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
-                    selectedProduct?.code === product.code ? 'bg-blue-50 border-blue-200' : ''
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-800">{product.name}</h4>
-                      <p className="text-sm text-gray-600">Código: {product.code}</p>
-                    </div>
-                    <div className="text-right">
-                      {product.is_weighable ? (
-                        <div className="flex items-center gap-1 text-green-600">
-                          <Scale size={16} />
-                          <span className="font-medium">
-                            R$ {(product.price_per_gram * 1000).toFixed(2)}/kg
-                          </span>
+              {loading ? (
+                <div className="p-8 text-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-gray-600">Carregando produtos...</p>
+                </div>
+              ) : filteredProducts.length > 0 ? (
+                filteredProducts.map((product) => (
+                  <button
+                    key={product.id}
+                    onClick={() => setSelectedProduct(product)}
+                    className={`w-full p-4 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
+                      selectedProduct?.id === product.id ? 'bg-blue-50 border-blue-200' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {product.image_url && (
+                          <img 
+                            src={product.image_url} 
+                            alt={product.name}
+                            className="w-12 h-12 object-cover rounded-lg"
+                          />
+                        )}
+                        <div>
+                          <h4 className="font-medium text-gray-800">{product.name}</h4>
+                          <p className="text-sm text-gray-600">Código: {product.code}</p>
+                          {product.description && (
+                            <p className="text-xs text-gray-500">{product.description}</p>
+                          )}
                         </div>
-                      ) : (
-                        <span className="font-medium text-green-600">
-                          R$ {product.unit_price.toFixed(2)}
-                        </span>
-                      )}
+                      </div>
+                      <div className="text-right">
+                        {product.is_weighable ? (
+                          <div className="flex items-center gap-1 text-green-600">
+                            <Scale size={16} />
+                            <span className="font-medium">
+                              R$ {((product.price_per_gram || 0) * 1000).toFixed(2)}/kg
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="font-medium text-green-600">
+                            R$ {(product.unit_price || 0).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))
+              ) : (
+                <div className="p-8 text-center text-gray-500">
+                  <p>Nenhum produto encontrado</p>
+                  <p className="text-sm">Tente buscar por outro termo</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -177,6 +183,9 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
                   <div>
                     <h4 className="font-medium text-gray-800">{selectedProduct.name}</h4>
                     <p className="text-sm text-gray-600">Código: {selectedProduct.code}</p>
+                    {selectedProduct.description && (
+                      <p className="text-xs text-gray-500">{selectedProduct.description}</p>
+                    )}
                   </div>
                   {selectedProduct.is_weighable && (
                     <div className="flex items-center gap-1 text-green-600">

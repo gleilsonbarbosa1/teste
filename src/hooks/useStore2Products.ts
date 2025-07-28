@@ -195,6 +195,9 @@ export const useStore2Products = () => {
     );
   }, [products]);
 
+  const getActiveProducts = useCallback(() => {
+    return products.filter(product => product.is_active);
+  }, [products]);
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
@@ -207,6 +210,7 @@ export const useStore2Products = () => {
     updateProduct,
     deleteProduct,
     searchProducts,
+    getActiveProducts,
     refetch: fetchProducts
   };
 };

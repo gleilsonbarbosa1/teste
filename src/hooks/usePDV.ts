@@ -176,6 +176,9 @@ export const usePDVProducts = () => {
     );
   }, [products]);
 
+  const getActiveProducts = useCallback(() => {
+    return products.filter(product => product.is_active);
+  }, [products]);
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
@@ -188,6 +191,7 @@ export const usePDVProducts = () => {
     updateProduct,
     deleteProduct,
     searchProducts,
+    getActiveProducts,
     refetch: fetchProducts
   };
 };
