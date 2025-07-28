@@ -17,6 +17,8 @@ const Store2AttendanceLogin: React.FC<Store2AttendanceLoginProps> = ({ onLogin }
     e.preventDefault();
     setError('');
     setLoading(true);
+    
+    console.log('🔐 Tentando fazer login com:', { username, password: password ? '***' : 'vazio' });
 
     // Simular delay de autenticação
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -24,7 +26,10 @@ const Store2AttendanceLogin: React.FC<Store2AttendanceLoginProps> = ({ onLogin }
     const success = onLogin(username, password);
     
     if (!success) {
+      console.log('❌ Login falhou para usuário:', username);
       setError('Credenciais inválidas');
+    } else {
+      console.log('✅ Login bem-sucedido para usuário:', username);
     }
     
     setLoading(false);

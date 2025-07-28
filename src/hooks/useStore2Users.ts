@@ -86,6 +86,14 @@ export const useStore2Users = () => {
     const updatedUsers = [...users, newUser];
     setUsers(updatedUsers);
     localStorage.setItem('store2_users', JSON.stringify(updatedUsers));
+    
+    console.log('👤 Novo usuário criado:', {
+      username: newUser.username,
+      name: newUser.name,
+      isActive: newUser.isActive,
+      hasPassword: !!newUser.password
+    });
+    
     return newUser;
   }, [users]);
 

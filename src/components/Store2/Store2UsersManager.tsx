@@ -79,6 +79,14 @@ const Store2UsersManager: React.FC = () => {
   const saveUsers = (updatedUsers: Store2User[]) => {
     setUsers(updatedUsers);
     localStorage.setItem('store2_users', JSON.stringify(updatedUsers));
+    
+    // Log para debug
+    console.log('💾 Usuários salvos no localStorage:', updatedUsers.map(u => ({
+      username: u.username,
+      name: u.name,
+      isActive: u.isActive,
+      hasPassword: !!u.password
+    })));
   };
 
   const filteredUsers = searchTerm
@@ -145,6 +153,7 @@ const Store2UsersManager: React.FC = () => {
       setSaving(false);
       
       // Show success message
+      console.log('✅ Usuário salvo com sucesso:', editingUser.username);
       const successMessage = document.createElement('div');
       successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
       successMessage.innerHTML = `
