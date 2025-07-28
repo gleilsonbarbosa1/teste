@@ -22,14 +22,12 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
 }) => {
   const { hasPermission } = usePermissions();
   const canViewExpectedBalance = hasPermission('can_view_expected_balance');
-
-  if (!isOpen) return null;
-
-  // State for closing amount
   const [closingAmount, setClosingAmount] = useState(0);
   const [hasInformedAmount, setHasInformedAmount] = useState(false);
   const [justification, setJustification] = useState('');
   const [printMovements, setPrintMovements] = useState(true);
+
+  if (!isOpen) return null;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
