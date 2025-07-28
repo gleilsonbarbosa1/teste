@@ -8,10 +8,12 @@ import {
   AlertCircle,
   User,
   LogOut,
-  Store
+  Store,
+  Users
 } from 'lucide-react';
 import Store2PDVSalesScreen from './Store2PDVSalesScreen';
 import Store2CashRegisterMenu from './Store2CashRegisterMenu';
+import TableSalesPanel from '../TableSales/TableSalesPanel';
 import { useScale } from '../../hooks/useScale';
 import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
 import { PDVOperator } from '../../types/pdv';
@@ -22,7 +24,7 @@ interface Store2UnifiedAttendancePageProps {
 }
 
 const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = ({ operator, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'sales' | 'cash'>('sales');
+  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'tables'>('sales');
   const { isOpen: isCashRegisterOpen } = useStore2PDVCashRegister();
   const scale = useScale();
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
@@ -145,6 +147,18 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
               <DollarSign size={20} />
               Caixas
             </button>
+            
+            <button
+              onClick={() => setActiveTab('tables')}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                activeTab === 'tables'
+                  ? 'bg-indigo-500 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Users size={20} />
+              Vendas Mesas
+            </button>
           </div>
         </div>
 
@@ -152,6 +166,7 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
         <div className="transition-all duration-300 print:hidden">
           {activeTab === 'sales' && <Store2PDVSalesScreen operator={operator} scaleHook={scale} />}
           {activeTab === 'cash' && <Store2CashRegisterMenu />}
+          {activeTab === 'tables' && <TableSalesPanel storeId={2} operatorName={operator?.name} />}
         </div>
       </div>
     </div>

@@ -9,11 +9,13 @@ import {
   ShoppingBag,
   AlertCircle,
   User,
-  LogOut
+  LogOut,
+  Users
 } from 'lucide-react';
 import AttendantPanel from './Orders/AttendantPanel'; 
 import PDVSalesScreen from './PDV/PDVSalesScreen';
 import CashRegisterMenu from './PDV/CashRegisterMenu';
+import TableSalesPanel from './TableSales/TableSalesPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import { useScale } from '../hooks/useScale';
 import { useOrders } from '../hooks/useOrders';
@@ -29,7 +31,7 @@ interface UnifiedAttendancePanelProps {
 }
 
 const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator, storeSettings, scaleHook, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'sales' | 'orders' | 'cash'>('sales');
+  const [activeTab, setActiveTab] = useState<'sales' | 'orders' | 'cash' | 'tables'>('sales');
   const { hasPermission } = usePermissions(operator);
   const { storeSettings: localStoreSettings } = useStoreHours();
   const { isOpen: isCashRegisterOpen, currentRegister } = usePDVCashRegister();
@@ -187,6 +189,20 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                 Caixas
               </button>
             )}
+            
+            {(isAdmin || hasPermission('can_view_sales')) && (
+              <button
+                onClick={() => setActiveTab('tables')}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                  activeTab === 'tables'
+                    ? 'bg-indigo-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Users size={20} />
+                Vendas Mesas
+              </button>
+            )}
           </div>
         </div>
 
@@ -195,6 +211,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
           {activeTab === 'sales' && (isAdmin || hasPermission('can_view_sales')) && <PDVSalesScreen operator={operator} scaleHook={scaleHook || scale} storeSettings={settings} />}
           {activeTab === 'orders' && (isAdmin || hasPermission('can_view_orders')) && <AttendantPanel storeSettings={settings} />}
           {activeTab === 'cash' && (isAdmin || hasPermission('can_view_cash_register')) && <CashRegisterMenu />}
+          {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && <TableSalesPanel storeId={1} operatorName={operator?.name} />}
         </div>
       </div>
     </div>
