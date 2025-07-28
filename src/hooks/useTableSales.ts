@@ -25,27 +25,83 @@ export const useTableSales = (storeId: 1 | 2) => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Check if Supabase is properly configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl === 'your_supabase_url_here' || 
+          supabaseKey === 'your_supabase_anon_key_here' ||
+          supabaseUrl.includes('placeholder')) {
+        console.warn('⚠️ Supabase não configurado - usando dados de demonstração para mesas');
+        
+        // Dados de demonstração para mesas
+        const demoTables: RestaurantTable[] = [
+          {
+            id: 'demo-table-1',
+            number: 1,
+            name: 'Mesa 1',
+            capacity: 4,
+            status: 'livre',
+            location: 'Área Principal',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: 'demo-table-2',
+            number: 2,
+            name: 'Mesa 2',
+            capacity: 2,
+            status: 'livre',
+            location: 'Área Principal',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ];
+        
+        setTables(demoTables);
+        setLoading(false);
+        return;
+      }
 
       console.log(`🔄 Carregando mesas da Loja ${storeId}...`);
 
-      const { data, error } = await supabase
-        .from(tablesTable)
-        .select(`
-          *,
-          current_sale:${salesTable}!current_sale_id(*)
-        `)
-        .eq('is_active', true)
-        .order('number');
+      try {
+        const { data, error } = await supabase
+          .from(tablesTable)
+          .select(`
+            *,
+            current_sale:${salesTable}!current_sale_id(*)
+          `)
+          .eq('is_active', true)
+          .order('number');
 
-      if (error) throw error;
+        if (error) throw error;
 
-      console.log(`📊 Dados das mesas carregados:`, data);
-      setTables(data || []);
-      console.log(`✅ ${data?.length || 0} mesas carregadas da Loja ${storeId}`);
+        console.log(`📊 Dados das mesas carregados:`, data);
+        setTables(data || []);
+        console.log(`✅ ${data?.length || 0} mesas carregadas da Loja ${storeId}`);
+      } catch (fetchError: any) {
+        // Handle specific network errors
+        if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+          console.warn(`🌐 Erro de conectividade ao carregar mesas da Loja ${storeId} - usando modo offline`);
+          setError('Erro de conectividade. Verifique sua conexão com a internet.');
+        } else {
+          console.error(`❌ Erro ao carregar mesas da Loja ${storeId}:`, fetchError);
+          setError(fetchError.message || 'Erro ao carregar mesas');
+        }
+        
+        // Set empty tables on error
+        setTables([]);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar mesas';
       console.error(`❌ Erro ao carregar mesas da Loja ${storeId}:`, errorMessage);
       setError(errorMessage);
+      setTables([]);
     } finally {
       setLoading(false);
     }
