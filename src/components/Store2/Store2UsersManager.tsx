@@ -139,35 +139,40 @@ const Store2UsersManager: React.FC = () => {
 
     setSaving(true);
     
-    setTimeout(() => {
-      if (isCreating) {
-        const newUsers = [...users, editingUser];
-        saveUsers(newUsers);
-      } else {
-        const updatedUsers = users.map(u => u.id === editingUser.id ? editingUser : u);
-        saveUsers(updatedUsers);
+    const saveUserAsync = async () => {
+      try {
+        if (isCreating) {
+          await createUser(editingUser);
+        } else {
+          await saveUser(editingUser);
+        }
+        
+        setEditingUser(null);
+        setIsCreating(false);
+        
+        // Show success message
+        const successMessage = document.createElement('div');
+        successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+        successMessage.innerHTML = `
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          Usuário ${isCreating ? 'criado' : 'atualizado'} com sucesso!
+        `;
+        document.body.appendChild(successMessage);
+        
+        setTimeout(() => {
+          document.body.removeChild(successMessage);
+        }, 3000);
+      } catch (error) {
+        console.error('❌ Erro ao salvar usuário:', error);
+        alert(`Erro ao salvar usuário: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      } finally {
+        setSaving(false);
       }
-      
-      setEditingUser(null);
-      setIsCreating(false);
-      setSaving(false);
-      
-      // Show success message
-      console.log('✅ Usuário salvo com sucesso:', editingUser.username);
-      const successMessage = document.createElement('div');
-      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
-      successMessage.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-        </svg>
-        Usuário ${isCreating ? 'criado' : 'atualizado'} com sucesso!
-      `;
-      document.body.appendChild(successMessage);
-      
-      setTimeout(() => {
-        document.body.removeChild(successMessage);
-      }, 3000);
-    }, 500);
+    };
+    
+    saveUserAsync();
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -177,8 +182,15 @@ const Store2UsersManager: React.FC = () => {
     }
 
     if (confirm(`Tem certeza que deseja excluir o usuário "${name}"?`)) {
-      const updatedUsers = users.filter(u => u.id !== id);
-      saveUsers(updatedUsers);
+      const deleteUserAsync = async () => {
+        try {
+          await deleteUser(id);
+        } catch (error) {
+          console.error('❌ Erro ao excluir usuário:', error);
+          alert(`Erro ao excluir usuário: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+        }
+      };
+      deleteUserAsync();
     }
   };
 
@@ -188,10 +200,18 @@ const Store2UsersManager: React.FC = () => {
       return;
     }
 
-    const updatedUsers = users.map(u => 
-      u.id === user.id ? { ...u, isActive: !u.isActive } : u
-    );
-    saveUsers(updatedUsers);
+    const toggleUserAsync = async () => {
+      try {
+        await saveUser({
+          ...user,
+          is_active: !user.is_active
+        });
+      } catch (error) {
+        console.error('❌ Erro ao alterar status:', error);
+        alert(`Erro ao alterar status: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      }
+    };
+    toggleUserAsync();
   };
 
   return (

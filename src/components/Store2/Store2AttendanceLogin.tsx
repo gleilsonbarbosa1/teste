@@ -23,7 +23,7 @@ const Store2AttendanceLogin: React.FC<Store2AttendanceLoginProps> = ({ onLogin }
     // Simular delay de autenticação
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const success = onLogin(username, password);
+    const success = await onLogin(username, password);
     
     if (!success) {
       console.log('❌ Login falhou para usuário:', username);
