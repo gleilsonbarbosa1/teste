@@ -18,8 +18,17 @@ interface AttendanceSession {
 }
 
 export const useAttendance = () => {
-  const [session, setSession] = useState<AttendanceSession>({
-    isAuthenticated: false
+  const [session, setSession] = useState<AttendanceSession>(() => {
+    // Tentar recuperar sessão do localStorage
+    try {
+      const savedSession = localStorage.getItem('attendance_session');
+      if (savedSession) {
+        return JSON.parse(savedSession);
+      }
+    } catch (error) {
+      console.error('Erro ao recuperar sessão:', error);
+    }
+    return { isAuthenticated: false };
   });
 
   const login = useCallback((username: string, password: string): boolean => {
@@ -51,6 +60,7 @@ export const useAttendance = () => {
           can_print_orders: true
         }
       }];
+      localStorage.setItem('attendance_users', JSON.stringify(users));
     }
     
     // Find user with matching credentials
@@ -64,6 +74,18 @@ export const useAttendance = () => {
         u.id === user.id ? { ...u, last_login: new Date().toISOString() } : u
       );
       localStorage.setItem('attendance_users', JSON.stringify(updatedUsers));
+      
+      // Salvar sessão no localStorage para persistir login
+      localStorage.setItem('attendance_session', JSON.stringify({
+        isAuthenticated: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          permissions: user.permissions
+        }
+      }));
       
       setSession({
         isAuthenticated: true,
@@ -84,6 +106,7 @@ export const useAttendance = () => {
 
   const logout = useCallback(() => {
     console.log('Attendance logout');
+    localStorage.removeItem('attendance_session');
     setSession({
       isAuthenticated: false
     });

@@ -276,15 +276,25 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
           <button
             onClick={handleAddItem}
             disabled={
+              loading ||
               !selectedProduct || 
               (selectedProduct.is_weighable && (!weight || weight <= 0)) || 
               (!selectedProduct.is_weighable && quantity <= 0) ||
               calculateSubtotal() <= 0
             }
-            className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
-            <Plus size={16} />
-            Adicionar Item
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Adicionando...
+              </>
+            ) : (
+              <>
+                <Plus size={16} />
+                Adicionar Item
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -156,8 +156,8 @@ export const useTableSales = (storeId: 1 | 2) => {
 
       console.log(`✅ Total da venda atualizado na Loja ${storeId}: R$ ${subtotal.toFixed(2)}`);
       
-      // Recarregar dados das mesas para atualizar a interface
-      await fetchTables();
+      // Não recarregar todas as mesas, apenas retornar sucesso
+      console.log(`✅ Total atualizado sem recarregar mesas`);
     } catch (err) {
       console.error(`❌ Erro ao atualizar total da venda na Loja ${storeId}:`, err);
       throw err;

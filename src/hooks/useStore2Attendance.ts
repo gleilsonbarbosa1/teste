@@ -20,8 +20,17 @@ interface Store2AttendanceSession {
 }
 
 export const useStore2Attendance = () => {
-  const [session, setSession] = useState<Store2AttendanceSession>({
-    isAuthenticated: false
+  const [session, setSession] = useState<Store2AttendanceSession>(() => {
+    // Tentar recuperar sessão do localStorage
+    try {
+      const savedSession = localStorage.getItem('store2_attendance_session');
+      if (savedSession) {
+        return JSON.parse(savedSession);
+      }
+    } catch (error) {
+      console.error('Erro ao recuperar sessão da Loja 2:', error);
+    }
+    return { isAuthenticated: false };
   });
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
@@ -69,6 +78,27 @@ export const useStore2Attendance = () => {
         .update({ last_login: new Date().toISOString() })
         .eq('id', user.id);
 
+      // Salvar sessão no localStorage
+      const sessionData = {
+        isAuthenticated: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          permissions: user.permissions || {
+            can_view_orders: false,
+            can_update_status: false,
+            can_chat: false,
+            can_create_manual_orders: false,
+            can_print_orders: true,
+            can_view_expected_balance: false
+          }
+        }
+      };
+      
+      localStorage.setItem('store2_attendance_session', JSON.stringify(sessionData));
+      
       setSession({
         isAuthenticated: true,
         user: {
@@ -144,6 +174,27 @@ export const useStore2Attendance = () => {
         );
         localStorage.setItem('store2_users', JSON.stringify(updatedUsers));
         
+        // Salvar sessão no localStorage
+        const sessionData = {
+          isAuthenticated: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            name: user.name,
+            role: user.role,
+            permissions: user.permissions || {
+              can_view_orders: false,
+              can_update_status: false,
+              can_chat: false,
+              can_create_manual_orders: false,
+              can_print_orders: true,
+              can_view_expected_balance: false
+            }
+          }
+        };
+        
+        localStorage.setItem('store2_attendance_session', JSON.stringify(sessionData));
+        
         setSession({
           isAuthenticated: true,
           user: {
@@ -174,6 +225,7 @@ export const useStore2Attendance = () => {
 
   const logout = useCallback(() => {
     console.log('🚪 Logout da Loja 2');
+    localStorage.removeItem('store2_attendance_session');
     setSession({
       isAuthenticated: false
     });

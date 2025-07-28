@@ -1,44 +1,37 @@
 import React, { useState } from 'react';
-import { RestaurantTable, TableSale } from '../../types/table-sales';
-import { X, DollarSign, Users, Clock, CreditCard, Banknote, QrCode, Plus } from 'lucide-react';
-import AddItemModal from './AddItemModal';
 import { useTableSales } from '../../hooks/useTableSales';
 import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
 import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
+import { RestaurantTable, TableSale } from '../../types/table-sales';
+import TableGrid from './TableGrid';
+import TableSaleModal from './TableSaleModal';
+import TableDetailsModal from './TableDetailsModal';
+import { 
+  Users, 
+  DollarSign, 
+  Clock, 
+  CheckCircle,
+  AlertCircle,
+  RefreshCw
+} from 'lucide-react';
 
-interface TableDetailsModalProps {
-  table: RestaurantTable;
-  sale: TableSale;
+interface TableSalesPanelProps {
   storeId: 1 | 2;
-  onClose: () => void;
-  onCloseSale: (paymentType: TableSale['payment_type'], changeAmount?: number, discountAmount?: number) => void;
-  onUpdateStatus: (tableId: string, status: RestaurantTable['status']) => void;
-  onSaleUpdate?: (updatedSale: TableSale) => void;
+  operatorName?: string;
 }
 
-const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
-  table,
-  sale,
-  storeId,
-  onClose,
-  onCloseSale,
-  onUpdateStatus,
-  onSaleUpdate
-}) => {
-  const { addItemToSale, getSaleDetails } = useTableSales(storeId);
-  const [currentSale, setCurrentSale] = useState<TableSale>(sale);
+const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
+  const { tables, loading, error, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch } = useTableSales(storeId);
   
-  // Verificar se há caixa aberto
+  // Verificar status do caixa
   const store1CashRegister = usePDVCashRegister();
   const store2CashRegister = useStore2PDVCashRegister();
   const cashRegister = storeId === 1 ? store1CashRegister : store2CashRegister;
   
-  const [showPayment, setShowPayment] = useState(false);
-  const [showAddItem, setShowAddItem] = useState(false);
-  const [paymentType, setPaymentType] = useState<TableSale['payment_type']>('dinheiro');
-  const [changeAmount, setChangeAmount] = useState(0);
-  const [discountAmount, setDiscountAmount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
+  const [showSaleModal, setShowSaleModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [saleDetails, setSaleDetails] = useState<TableSale | null>(null);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -47,362 +40,214 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
     }).format(price);
   };
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('pt-BR');
+  const getStatusStats = () => {
+    const stats = {
+      livre: tables.filter(t => t.status === 'livre').length,
+      ocupada: tables.filter(t => t.status === 'ocupada').length,
+      aguardando_conta: tables.filter(t => t.status === 'aguardando_conta').length,
+      limpeza: tables.filter(t => t.status === 'limpeza').length
+    };
+    return stats;
   };
 
-  // Função para atualizar a venda local
-  const setSale = (updatedSale: TableSale) => {
-    setCurrentSale(updatedSale);
-    if (onSaleUpdate) {
-      onSaleUpdate(updatedSale);
+  const handleTableClick = async (table: RestaurantTable) => {
+    setSelectedTable(table);
+
+    if (table.status === 'livre') {
+      // Mesa livre - abrir nova venda
+      setShowSaleModal(true);
+    } else if (table.status === 'ocupada' && table.current_sale_id) {
+      // Mesa ocupada - mostrar detalhes da venda
+      const details = await getSaleDetails(table.current_sale_id);
+      if (details) {
+        setSaleDetails(details);
+        setShowDetailsModal(true);
+      }
     }
   };
 
-  const handleCloseSale = async () => {
-    setLoading(true);
+  const handleCreateSale = async (customerName?: string, customerCount: number = 1) => {
+    if (!selectedTable) return;
+
     try {
-      await onCloseSale(paymentType, changeAmount, discountAmount);
+      await createTableSale(selectedTable.id, operatorName, customerName, customerCount);
+      setShowSaleModal(false);
+      setSelectedTable(null);
+    } catch (error) {
+      console.error('Erro ao criar venda:', error);
+      alert('Erro ao criar venda. Tente novamente.');
+    }
+  };
+
+  const handleCloseSale = async (
+    paymentType: TableSale['payment_type'],
+    changeAmount: number = 0,
+    discountAmount: number = 0
+  ) => {
+    if (!saleDetails) return;
+
+    try {
+      await closeSale(saleDetails.id, paymentType, changeAmount, discountAmount);
+      setShowDetailsModal(false);
+      setSaleDetails(null);
+      setSelectedTable(null);
     } catch (error) {
       console.error('Erro ao fechar venda:', error);
-    } finally {
-      setLoading(false);
+      alert('Erro ao fechar venda. Tente novamente.');
     }
   };
 
-  const handleUpdateStatus = async (status: RestaurantTable['status']) => {
-    try {
-      await onUpdateStatus(table.id, status);
-    } catch (error) {
-      console.error('Erro ao atualizar status:', error);
-    }
-  };
+  const stats = getStatusStats();
 
-  const handleAddItem = async (item: any) => {
-    try {
-      console.log('📝 Processando adição de item:', item);
-      await addItemToSale(sale.id, item);
-      
-      // Mostrar feedback de sucesso
-      const successMessage = document.createElement('div');
-      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
-      successMessage.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-        </svg>
-        Item adicionado com sucesso!
-      `;
-      document.body.appendChild(successMessage);
-      
-      setTimeout(() => {
-        if (document.body.contains(successMessage)) {
-          document.body.removeChild(successMessage);
-        }
-      }, 3000);
-      
-      // Recarregar apenas os dados da venda sem refresh da página
-      const updatedSale = await getSaleDetails(sale.id);
-      if (updatedSale) {
-        // Atualizar o estado local da venda com os novos dados
-        setSale(updatedSale);
-      }
-    } catch (error) {
-      console.error('Erro ao adicionar item:', error);
-      alert('Erro ao adicionar item. Tente novamente.');
-      throw error; // Re-throw para o modal tratar
-    }
-  };
-  const totalWithDiscount = currentSale.subtotal - discountAmount;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Carregando mesas da Loja {storeId}...</span>
+      </div>
+    );
+  }
 
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-gray-800">
-                {table.name} - Venda #{sale.sale_number}
-              </h2>
-              <p className="text-gray-600">Loja {storeId}</p>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Informações da Venda */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-medium text-blue-800 mb-3">Informações da Venda</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Users size={16} className="text-blue-600" />
-                <span>Cliente: {currentSale.customer_name || 'Não informado'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users size={16} className="text-blue-600" />
-                <span>Pessoas: {currentSale.customer_count}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock size={16} className="text-blue-600" />
-                <span>Aberta em: {formatDateTime(currentSale.opened_at)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <DollarSign size={16} className="text-blue-600" />
-                <span>Operador: {currentSale.operator_name}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Itens da Venda */}
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="flex items-center gap-3">
+          <AlertCircle size={20} className="text-red-600" />
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-gray-800">Itens da Venda</h3>
-              <button 
-                onClick={() => setShowAddItem(true)}
-                className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm transition-colors"
-              >
-                <Plus size={16} />
-                Adicionar Item
-              </button>
-            </div>
-
-            {currentSale.items && currentSale.items.length > 0 ? (
-              <div className="space-y-3">
-                {currentSale.items.map((item) => (
-                  <div key={item.id} className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-800">{item.product_name}</h4>
-                        <p className="text-sm text-gray-600">Código: {item.product_code}</p>
-                        {item.notes && (
-                          <p className="text-sm text-gray-500 italic">Obs: {item.notes}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">
-                          {item.quantity}x {formatPrice(item.unit_price || 0)}
-                        </p>
-                        <p className="text-lg font-bold text-green-600">
-                          {formatPrice(item.subtotal)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <p>Nenhum item adicionado ainda</p>
-                <p className="text-sm">Clique em "Adicionar Item" para começar</p>
-              </div>
-            )}
+            <h3 className="font-medium text-red-800">Erro ao carregar mesas</h3>
+            <p className="text-red-700 text-sm">{error}</p>
           </div>
-
-          {/* Total */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-medium text-green-800">Total da Venda:</span>
-              <span className="text-2xl font-bold text-green-700">
-                {formatPrice(currentSale.subtotal)}
-              </span>
-            </div>
-          </div>
-
-          {/* Ações */}
-          {!showPayment ? (
-            <>
-              {/* Aviso se caixa estiver fechado */}
-              {!cashRegister.isOpen && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <div>
-                      <p className="font-medium text-yellow-800">Caixa Fechado</p>
-                      <p className="text-yellow-700 text-sm">
-                        A venda será finalizada, mas não será registrada no caixa. 
-                        Abra um caixa para registrar automaticamente as vendas.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => handleUpdateStatus('aguardando_conta')}
-                className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-lg font-medium transition-colors"
-              >
-                Solicitar Conta
-              </button>
-              <button
-                onClick={() => setShowPayment(true)}
-                className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-medium transition-colors"
-              >
-                Fechar Conta
-              </button>
-            </div>
-            </>
-          ) : (
-            /* Formulário de Pagamento */
-            <div className="space-y-4">
-              <h3 className="font-medium text-gray-800">Finalizar Pagamento</h3>
-              
-              {/* Desconto */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Desconto (R$)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max={currentSale.subtotal}
-                  value={discountAmount}
-                  onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              {/* Total com Desconto */}
-              {discountAmount > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>{formatPrice(currentSale.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Desconto:</span>
-                    <span className="text-red-600">-{formatPrice(discountAmount)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
-                    <span>Total:</span>
-                    <span>{formatPrice(totalWithDiscount)}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Forma de Pagamento */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Forma de Pagamento
-                </label>
-                <div className="grid grid-cols-1 gap-2">
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="dinheiro"
-                      checked={paymentType === 'dinheiro'}
-                      onChange={(e) => setPaymentType(e.target.value as TableSale['payment_type'])}
-                      className="text-green-600"
-                    />
-                    <Banknote size={20} className="text-green-600" />
-                    <span>Dinheiro</span>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="pix"
-                      checked={paymentType === 'pix'}
-                      onChange={(e) => setPaymentType(e.target.value as TableSale['payment_type'])}
-                      className="text-green-600"
-                    />
-                    <QrCode size={20} className="text-blue-600" />
-                    <span>PIX</span>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="cartao_credito"
-                      checked={paymentType === 'cartao_credito'}
-                      onChange={(e) => setPaymentType(e.target.value as TableSale['payment_type'])}
-                      className="text-green-600"
-                    />
-                    <CreditCard size={20} className="text-purple-600" />
-                    <span>Cartão de Crédito</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Troco */}
-              {paymentType === 'dinheiro' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Troco para quanto?
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min={totalWithDiscount}
-                    value={changeAmount}
-                    onChange={(e) => setChangeAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder={`Mínimo: ${formatPrice(totalWithDiscount)}`}
-                  />
-                  {changeAmount > totalWithDiscount && (
-                    <p className="text-sm text-green-600 mt-1">
-                      Troco: {formatPrice(changeAmount - totalWithDiscount)}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Botões de Ação */}
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowPayment(false)}
-                  className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                >
-                  Voltar
-                </button>
-                <button
-                  onClick={handleCloseSale}
-                  disabled={loading}
-                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Finalizando...
-                    </>
-                  ) : (
-                    <>
-                      Finalizar Venda
-                      {cashRegister.isOpen && (
-                        <span className="text-xs bg-white/20 px-2 py-1 rounded-full ml-2">
-                          + Caixa
-                        </span>
-                      )}
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
-      
-      {/* Modal para Adicionar Item */}
-      <AddItemModal
-        isOpen={showAddItem}
-        onClose={() => setShowAddItem(false)}
-        onAddItem={(item) => handleAddItem(item)}
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Vendas por Mesa - Loja {storeId}
+          </h2>
+          <p className="text-gray-600">Gerencie vendas e status das mesas</p>
+          {!cashRegister.isOpen && (
+            <p className="text-yellow-600 text-sm font-medium">
+              ⚠️ Caixa fechado - vendas não serão registradas no caixa
+            </p>
+          )}
+        </div>
+        
+        <button
+          onClick={refetch}
+          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+        >
+          <RefreshCw size={16} />
+          Atualizar
+        </button>
+      </div>
+
+      {/* Aviso sobre Caixa */}
+      {!cashRegister.isOpen && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-yellow-100 rounded-full p-2">
+              <AlertCircle size={20} className="text-yellow-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-yellow-800">Caixa Fechado - Loja {storeId}</h3>
+              <p className="text-yellow-700 text-sm">
+                As vendas das mesas podem ser realizadas, mas não serão registradas automaticamente no caixa. 
+                Para integração completa, abra um caixa na aba "Caixas".
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-600">Mesas Livres</p>
+              <p className="text-2xl font-bold text-green-700">{stats.livre}</p>
+            </div>
+            <CheckCircle className="w-8 h-8 text-green-500" />
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-600">Mesas Ocupadas</p>
+              <p className="text-2xl font-bold text-blue-700">{stats.ocupada}</p>
+            </div>
+            <Users className="w-8 h-8 text-blue-500" />
+          </div>
+        </div>
+
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-yellow-600">Aguardando Conta</p>
+              <p className="text-2xl font-bold text-yellow-700">{stats.aguardando_conta}</p>
+            </div>
+            <DollarSign className="w-8 h-8 text-yellow-500" />
+          </div>
+        </div>
+
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-purple-600">Em Limpeza</p>
+              <p className="text-2xl font-bold text-purple-700">{stats.limpeza}</p>
+            </div>
+            <Clock className="w-8 h-8 text-purple-500" />
+          </div>
+        </div>
+      </div>
+
+      {/* Grid de Mesas */}
+      <TableGrid 
+        tables={tables} 
+        onTableClick={handleTableClick}
         storeId={storeId}
       />
+
+      {/* Modal para Nova Venda */}
+      {showSaleModal && selectedTable && (
+        <TableSaleModal
+          table={selectedTable}
+          storeId={storeId}
+          onClose={() => {
+            setShowSaleModal(false);
+            setSelectedTable(null);
+          }}
+          onCreateSale={handleCreateSale}
+        />
+      )}
+
+      {/* Modal para Detalhes da Venda */}
+      {showDetailsModal && saleDetails && selectedTable && (
+        <TableDetailsModal
+          table={selectedTable}
+          sale={saleDetails}
+          storeId={storeId}
+          onClose={() => {
+            setShowDetailsModal(false);
+            setSaleDetails(null);
+            setSelectedTable(null);
+          }}
+          onCloseSale={handleCloseSale}
+          onUpdateStatus={updateTableStatus}
+        />
+      )}
     </div>
   );
 };
 
-export default TableDetailsModal;
+export default TableSalesPanel;
