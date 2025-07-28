@@ -80,6 +80,11 @@ export const useTableSales = (storeId: 1 | 2) => {
     try {
       console.log(`➕ Adicionando item à venda da Loja ${storeId}:`, { saleId, item });
 
+      // Validar dados do item
+      if (!item.product_code || !item.product_name || !item.subtotal) {
+        throw new Error('Dados do item inválidos');
+      }
+
       const { data, error } = await supabase
         .from(itemsTable)
         .insert([{
@@ -90,6 +95,7 @@ export const useTableSales = (storeId: 1 | 2) => {
           weight_kg: item.weight,
           unit_price: item.unit_price,
           price_per_gram: item.price_per_gram,
+          discount_amount: 0,
           subtotal: item.subtotal,
           notes: item.notes
         }])
@@ -98,11 +104,11 @@ export const useTableSales = (storeId: 1 | 2) => {
 
       if (error) throw error;
 
+      console.log(`✅ Item inserido no banco:`, data);
+
       // Atualizar total da venda
       await updateSaleTotal(saleId);
       
-      // Recarregar dados das mesas para atualizar a interface
-      await fetchTables();
 
       console.log(`✅ Item adicionado à venda da Loja ${storeId}`);
       return data;
@@ -114,6 +120,8 @@ export const useTableSales = (storeId: 1 | 2) => {
 
   const updateSaleTotal = useCallback(async (saleId: string) => {
     try {
+      console.log(`🧮 Calculando total da venda ${saleId}...`);
+      
       // Calcular total dos itens
       const { data: items, error: itemsError } = await supabase
         .from(itemsTable)
@@ -124,20 +132,26 @@ export const useTableSales = (storeId: 1 | 2) => {
 
       const subtotal = items?.reduce((sum, item) => sum + Number(item.subtotal), 0) || 0;
 
+      console.log(`💰 Novo subtotal calculado: R$ ${subtotal.toFixed(2)}`);
       // Atualizar venda
       const { error: updateError } = await supabase
         .from(salesTable)
         .update({
           subtotal: subtotal,
-          total_amount: subtotal // Sem desconto por enquanto
+          total_amount: subtotal,
+          updated_at: new Date().toISOString()
         })
         .eq('id', saleId);
 
       if (updateError) throw updateError;
 
       console.log(`✅ Total da venda atualizado na Loja ${storeId}: R$ ${subtotal.toFixed(2)}`);
+      
+      // Recarregar dados das mesas para atualizar a interface
+      await fetchTables();
     } catch (err) {
       console.error(`❌ Erro ao atualizar total da venda na Loja ${storeId}:`, err);
+      throw err;
     }
   }, [storeId, itemsTable, salesTable]);
 

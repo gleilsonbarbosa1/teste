@@ -61,9 +61,8 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
 
   const handleAddItem = async (item: any) => {
     try {
+      console.log('📝 Processando adição de item:', item);
       await addItemToSale(sale.id, item);
-      // Fechar modal e aguardar atualização via realtime
-      setShowAddItem(false);
       
       // Mostrar feedback de sucesso
       const successMessage = document.createElement('div');
@@ -81,9 +80,13 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
           document.body.removeChild(successMessage);
         }
       }, 3000);
+      
+      // Forçar atualização da página para mostrar o novo item
+      window.location.reload();
     } catch (error) {
       console.error('Erro ao adicionar item:', error);
       alert('Erro ao adicionar item. Tente novamente.');
+      throw error; // Re-throw para o modal tratar
     }
   };
   const totalWithDiscount = sale.subtotal - discountAmount;

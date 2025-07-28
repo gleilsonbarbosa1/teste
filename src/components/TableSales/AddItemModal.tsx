@@ -7,7 +7,7 @@ import { useStore2Products } from '../../hooks/useStore2Products';
 interface AddItemModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddItem: (item: TableCartItem) => void;
+  onAddItem: (item: TableCartItem) => Promise<void>;
   storeId: 1 | 2;
 }
 
@@ -42,7 +42,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
     if (!selectedProduct) return 0;
     
     if (selectedProduct.is_weighable && weight && selectedProduct.price_per_gram) {
-      return weight * 1000 * selectedProduct.price_per_gram;
+      return weight * selectedProduct.price_per_gram * 1000;
     } else if (!selectedProduct.is_weighable && selectedProduct.unit_price) {
       return quantity * selectedProduct.unit_price;
     }
@@ -50,9 +50,15 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
     return 0;
   };
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!selectedProduct) return;
 
+    console.log('🛒 Adicionando item:', {
+      product: selectedProduct.name,
+      quantity,
+      weight,
+      subtotal: calculateSubtotal()
+    });
     const item: TableCartItem = {
       product_code: selectedProduct.code,
       product_name: selectedProduct.name,
@@ -64,15 +70,20 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
       notes: notes || undefined
     };
 
-    onAddItem(item);
-    
-    // Reset form
-    setSelectedProduct(null);
-    setQuantity(1);
-    setWeight(undefined);
-    setNotes('');
-    setSearchTerm('');
-    onClose();
+    try {
+      await onAddItem(item);
+      
+      // Reset form only after successful addition
+      setSelectedProduct(null);
+      setQuantity(1);
+      setWeight(undefined);
+      setNotes('');
+      setSearchTerm('');
+      onClose();
+    } catch (error) {
+      console.error('❌ Erro ao adicionar item:', error);
+      alert('Erro ao adicionar item. Tente novamente.');
+    }
   };
 
   if (!isOpen) return null;
@@ -264,7 +275,12 @@ const AddItemModal: React.FC<AddItemModalProps> = ({
           </button>
           <button
             onClick={handleAddItem}
-            disabled={!selectedProduct || (selectedProduct.is_weighable && !weight) || calculateSubtotal() <= 0}
+            disabled={
+              !selectedProduct || 
+              (selectedProduct.is_weighable && (!weight || weight <= 0)) || 
+              (!selectedProduct.is_weighable && quantity <= 0) ||
+              calculateSubtotal() <= 0
+            }
             className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <Plus size={16} />
