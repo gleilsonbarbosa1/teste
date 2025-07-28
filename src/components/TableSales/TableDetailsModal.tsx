@@ -1,37 +1,32 @@
 import React, { useState } from 'react';
-import { useTableSales } from '../../hooks/useTableSales';
-import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
-import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
 import { RestaurantTable, TableSale } from '../../types/table-sales';
-import TableGrid from './TableGrid';
-import TableSaleModal from './TableSaleModal';
-import TableDetailsModal from './TableDetailsModal';
-import { 
-  Users, 
-  DollarSign, 
-  Clock, 
-  CheckCircle,
-  AlertCircle,
-  RefreshCw
-} from 'lucide-react';
+import { X, Plus, Trash2, CreditCard, Banknote, QrCode, Users, DollarSign, Clock } from 'lucide-react';
+import AddItemModal from './AddItemModal';
 
-interface TableSalesPanelProps {
+interface TableDetailsModalProps {
+  table: RestaurantTable;
+  sale: TableSale;
   storeId: 1 | 2;
-  operatorName?: string;
+  onClose: () => void;
+  onCloseSale: (paymentType: TableSale['payment_type'], changeAmount?: number, discountAmount?: number) => Promise<void>;
+  onUpdateStatus: (tableId: string, status: RestaurantTable['status']) => Promise<void>;
+  onAddItem?: (saleId: string, item: any) => Promise<void>;
 }
 
-const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
-  const { tables, loading, error, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch } = useTableSales(storeId);
-  
-  // Verificar status do caixa
-  const store1CashRegister = usePDVCashRegister();
-  const store2CashRegister = useStore2PDVCashRegister();
-  const cashRegister = storeId === 1 ? store1CashRegister : store2CashRegister;
-  
-  const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
-  const [showSaleModal, setShowSaleModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [saleDetails, setSaleDetails] = useState<TableSale | null>(null);
+const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
+  table,
+  sale,
+  storeId,
+  onClose,
+  onCloseSale,
+  onUpdateStatus,
+  onAddItem
+}) => {
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [paymentType, setPaymentType] = useState<TableSale['payment_type']>('dinheiro');
+  const [changeAmount, setChangeAmount] = useState<number>(0);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -40,214 +35,284 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     }).format(price);
   };
 
-  const getStatusStats = () => {
-    const stats = {
-      livre: tables.filter(t => t.status === 'livre').length,
-      ocupada: tables.filter(t => t.status === 'ocupada').length,
-      aguardando_conta: tables.filter(t => t.status === 'aguardando_conta').length,
-      limpeza: tables.filter(t => t.status === 'limpeza').length
-    };
-    return stats;
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString('pt-BR');
   };
 
-  const handleTableClick = async (table: RestaurantTable) => {
-    setSelectedTable(table);
-
-    if (table.status === 'livre') {
-      // Mesa livre - abrir nova venda
-      setShowSaleModal(true);
-    } else if (table.status === 'ocupada' && table.current_sale_id) {
-      // Mesa ocupada - mostrar detalhes da venda
-      const details = await getSaleDetails(table.current_sale_id);
-      if (details) {
-        setSaleDetails(details);
-        setShowDetailsModal(true);
-      }
-    }
-  };
-
-  const handleCreateSale = async (customerName?: string, customerCount: number = 1) => {
-    if (!selectedTable) return;
-
+  const handleCloseSale = async () => {
+    setLoading(true);
     try {
-      await createTableSale(selectedTable.id, operatorName, customerName, customerCount);
-      setShowSaleModal(false);
-      setSelectedTable(null);
-    } catch (error) {
-      console.error('Erro ao criar venda:', error);
-      alert('Erro ao criar venda. Tente novamente.');
-    }
-  };
-
-  const handleCloseSale = async (
-    paymentType: TableSale['payment_type'],
-    changeAmount: number = 0,
-    discountAmount: number = 0
-  ) => {
-    if (!saleDetails) return;
-
-    try {
-      await closeSale(saleDetails.id, paymentType, changeAmount, discountAmount);
-      setShowDetailsModal(false);
-      setSaleDetails(null);
-      setSelectedTable(null);
+      await onCloseSale(paymentType, changeAmount, discountAmount);
     } catch (error) {
       console.error('Erro ao fechar venda:', error);
       alert('Erro ao fechar venda. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const stats = getStatusStats();
+  const handleAddItem = async (item: any) => {
+    if (onAddItem) {
+      await onAddItem(sale.id, item);
+    }
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Carregando mesas da Loja {storeId}...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <div className="flex items-center gap-3">
-          <AlertCircle size={20} className="text-red-600" />
-          <div>
-            <h3 className="font-medium text-red-800">Erro ao carregar mesas</h3>
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const subtotal = sale.subtotal || 0;
+  const finalTotal = subtotal - discountAmount;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            Vendas por Mesa - Loja {storeId}
-          </h2>
-          <p className="text-gray-600">Gerencie vendas e status das mesas</p>
-          {!cashRegister.isOpen && (
-            <p className="text-yellow-600 text-sm font-medium">
-              ⚠️ Caixa fechado - vendas não serão registradas no caixa
-            </p>
-          )}
+    <>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
+          {/* Header */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">
+                  {table.name} - Venda #{sale.sale_number}
+                </h2>
+                <p className="text-gray-600">
+                  Loja {storeId} • Aberta em {formatDateTime(sale.opened_at)}
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-6">
+            {/* Informações da Venda */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users size={20} className="text-blue-600" />
+                  <h3 className="font-medium text-blue-800">Cliente</h3>
+                </div>
+                <p className="text-blue-700">
+                  {sale.customer_name || 'Não informado'}
+                </p>
+                <p className="text-blue-600 text-sm">
+                  {sale.customer_count} pessoa(s)
+                </p>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign size={20} className="text-green-600" />
+                  <h3 className="font-medium text-green-800">Total</h3>
+                </div>
+                <p className="text-2xl font-bold text-green-700">
+                  {formatPrice(finalTotal)}
+                </p>
+                {discountAmount > 0 && (
+                  <p className="text-green-600 text-sm">
+                    Desconto: {formatPrice(discountAmount)}
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock size={20} className="text-purple-600" />
+                  <h3 className="font-medium text-purple-800">Status</h3>
+                </div>
+                <p className="text-purple-700 capitalize">
+                  {sale.status === 'aberta' ? 'Em andamento' : sale.status}
+                </p>
+                <p className="text-purple-600 text-sm">
+                  Operador: {sale.operator_name}
+                </p>
+              </div>
+            </div>
+
+            {/* Itens da Venda */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Itens da Venda ({sale.items?.length || 0})
+                </h3>
+                {sale.status === 'aberta' && (
+                  <button
+                    onClick={() => setShowAddItem(true)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Plus size={16} />
+                    Adicionar Item
+                  </button>
+                )}
+              </div>
+
+              {sale.items && sale.items.length > 0 ? (
+                <div className="space-y-3">
+                  {sale.items.map((item) => (
+                    <div key={item.id} className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-800">{item.product_name}</h4>
+                          <p className="text-sm text-gray-600">Código: {item.product_code}</p>
+                          {item.notes && (
+                            <p className="text-sm text-gray-500 italic">Obs: {item.notes}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600">
+                            {item.weight_kg ? (
+                              `${item.weight_kg}kg × ${formatPrice((item.price_per_gram || 0) * 1000)}/kg`
+                            ) : (
+                              `${item.quantity}x × ${formatPrice(item.unit_price || 0)}`
+                            )}
+                          </p>
+                          <p className="font-semibold text-green-600">
+                            {formatPrice(item.subtotal)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>Nenhum item adicionado ainda</p>
+                  <p className="text-sm">Clique em "Adicionar Item" para começar</p>
+                </div>
+              )}
+            </div>
+
+            {/* Finalizar Venda */}
+            {sale.status === 'aberta' && (
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Finalizar Venda</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Forma de Pagamento */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Forma de Pagamento
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="dinheiro"
+                          checked={paymentType === 'dinheiro'}
+                          onChange={(e) => setPaymentType(e.target.value as any)}
+                          className="text-green-600"
+                        />
+                        <Banknote size={20} className="text-green-600" />
+                        <span>Dinheiro</span>
+                      </label>
+                      <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="pix"
+                          checked={paymentType === 'pix'}
+                          onChange={(e) => setPaymentType(e.target.value as any)}
+                          className="text-blue-600"
+                        />
+                        <QrCode size={20} className="text-blue-600" />
+                        <span>PIX</span>
+                      </label>
+                      <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="cartao_credito"
+                          checked={paymentType === 'cartao_credito'}
+                          onChange={(e) => setPaymentType(e.target.value as any)}
+                          className="text-purple-600"
+                        />
+                        <CreditCard size={20} className="text-purple-600" />
+                        <span>Cartão de Crédito</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Valores */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Desconto (R$)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={subtotal}
+                        value={discountAmount}
+                        onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+
+                    {paymentType === 'dinheiro' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Troco para (R$)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min={finalTotal}
+                          value={changeAmount}
+                          onChange={(e) => setChangeAmount(parseFloat(e.target.value) || 0)}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        />
+                        {changeAmount > finalTotal && (
+                          <p className="text-sm text-green-600 mt-1">
+                            Troco: {formatPrice(changeAmount - finalTotal)}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="flex justify-between items-center text-lg font-semibold">
+                        <span>Total Final:</span>
+                        <span className="text-green-600">{formatPrice(finalTotal)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                  <button
+                    onClick={() => onUpdateStatus(table.id, 'aguardando_conta')}
+                    className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Aguardar Conta
+                  </button>
+                  <button
+                    onClick={handleCloseSale}
+                    disabled={loading || finalTotal <= 0}
+                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors"
+                  >
+                    {loading ? 'Finalizando...' : 'Finalizar Venda'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-        
-        <button
-          onClick={refetch}
-          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          <RefreshCw size={16} />
-          Atualizar
-        </button>
       </div>
 
-      {/* Aviso sobre Caixa */}
-      {!cashRegister.isOpen && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-yellow-100 rounded-full p-2">
-              <AlertCircle size={20} className="text-yellow-600" />
-            </div>
-            <div>
-              <h3 className="font-medium text-yellow-800">Caixa Fechado - Loja {storeId}</h3>
-              <p className="text-yellow-700 text-sm">
-                As vendas das mesas podem ser realizadas, mas não serão registradas automaticamente no caixa. 
-                Para integração completa, abra um caixa na aba "Caixas".
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600">Mesas Livres</p>
-              <p className="text-2xl font-bold text-green-700">{stats.livre}</p>
-            </div>
-            <CheckCircle className="w-8 h-8 text-green-500" />
-          </div>
-        </div>
-
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600">Mesas Ocupadas</p>
-              <p className="text-2xl font-bold text-blue-700">{stats.ocupada}</p>
-            </div>
-            <Users className="w-8 h-8 text-blue-500" />
-          </div>
-        </div>
-
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-yellow-600">Aguardando Conta</p>
-              <p className="text-2xl font-bold text-yellow-700">{stats.aguardando_conta}</p>
-            </div>
-            <DollarSign className="w-8 h-8 text-yellow-500" />
-          </div>
-        </div>
-
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-purple-600">Em Limpeza</p>
-              <p className="text-2xl font-bold text-purple-700">{stats.limpeza}</p>
-            </div>
-            <Clock className="w-8 h-8 text-purple-500" />
-          </div>
-        </div>
-      </div>
-
-      {/* Grid de Mesas */}
-      <TableGrid 
-        tables={tables} 
-        onTableClick={handleTableClick}
-        storeId={storeId}
-      />
-
-      {/* Modal para Nova Venda */}
-      {showSaleModal && selectedTable && (
-        <TableSaleModal
-          table={selectedTable}
+      {/* Modal Adicionar Item */}
+      {showAddItem && (
+        <AddItemModal
+          isOpen={showAddItem}
+          onClose={() => setShowAddItem(false)}
+          onAddItem={handleAddItem}
           storeId={storeId}
-          onClose={() => {
-            setShowSaleModal(false);
-            setSelectedTable(null);
-          }}
-          onCreateSale={handleCreateSale}
         />
       )}
-
-      {/* Modal para Detalhes da Venda */}
-      {showDetailsModal && saleDetails && selectedTable && (
-        <TableDetailsModal
-          table={selectedTable}
-          sale={saleDetails}
-          storeId={storeId}
-          onClose={() => {
-            setShowDetailsModal(false);
-            setSaleDetails(null);
-            setSelectedTable(null);
-          }}
-          onCloseSale={handleCloseSale}
-          onUpdateStatus={updateTableStatus}
-        />
-      )}
-    </div>
+    </>
   );
 };
 
-export default TableSalesPanel;
+export default TableDetailsModal;
