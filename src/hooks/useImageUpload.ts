@@ -281,23 +281,30 @@ export const useImageUpload = () => {
           supabaseUrl === 'your_supabase_url_here' || 
           supabaseKey === 'your_supabase_anon_key_here' ||
           supabaseUrl.includes('placeholder')) {
-        console.warn('Supabase not configured, using fallback image');
+        console.warn('⚠️ Supabase não configurado - usando imagem padrão');
         return null
       }
 
       const cleanProductId = productId;
             
       try {
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
         const { data, error } = await supabase
           .from('product_image_associations')
           .select(`
             image:product_images(public_url)
           `)
           .eq('product_id', cleanProductId)
-          .maybeSingle();
+          .maybeSingle()
+          .abortSignal(controller.signal);
+        
+        clearTimeout(timeoutId);
         
         if (error) {
-          console.warn(`⚠️ Database error loading image for product ${cleanProductId}:`, error.message);
+          console.warn(`⚠️ Erro no banco ao carregar imagem para produto ${cleanProductId}:`, error.message);
           return null;
         }
 
@@ -306,26 +313,31 @@ export const useImageUpload = () => {
         }
         
         return data.image?.public_url || null;
-      } catch (fetchError) {
+      } catch (fetchError: any) {
         // Handle network errors gracefully
-        if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
-          console.warn(`🌐 Network error loading image for product ${cleanProductId} - using fallback`);
+        if (fetchError.name === 'AbortError') {
+          console.warn(`⏱️ Timeout ao carregar imagem para produto ${cleanProductId} - usando fallback`);
+        } else if (fetchError instanceof TypeError && 
+                   (fetchError.message.includes('Failed to fetch') || 
+                    fetchError.message.includes('fetch') || 
+                    fetchError.message.includes('NetworkError'))) {
+          console.warn(`🌐 Erro de conectividade ao carregar imagem para produto ${cleanProductId} - usando fallback`);
         } else {
-          console.warn(`⚠️ Unexpected error loading image for product ${cleanProductId}:`, fetchError);
+          console.warn(`⚠️ Erro inesperado ao carregar imagem para produto ${cleanProductId}:`, fetchError);
         }
         return null;
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
       
       // Handle different types of network errors gracefully
       if (err instanceof TypeError && (errorMessage.includes('Failed to fetch') || 
           errorMessage.includes('fetch') || errorMessage.includes('NetworkError'))) {
-        console.warn(`🌐 Network connectivity issue - using fallback image for product ${productId}`);
+        console.warn(`🌐 Problema de conectividade - usando imagem padrão para produto ${productId}`);
       } else if (errorMessage.includes('timeout') || errorMessage.includes('aborted')) {
-        console.warn(`⏱️ Request timeout - using fallback image for product ${productId}`);
+        console.warn(`⏱️ Timeout da requisição - usando imagem padrão para produto ${productId}`);
       } else {
-        console.warn(`⚠️ Unexpected error loading image for product ${productId}:`, errorMessage);
+        console.warn(`⚠️ Erro inesperado ao carregar imagem para produto ${productId}:`, errorMessage);
       }
       
       return null;
