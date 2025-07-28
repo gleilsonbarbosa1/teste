@@ -1,16 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { RestaurantTable, TableSale, TableSaleItem, TableCartItem } from '../types/table-sales';
+import { usePDVCashRegister } from './usePDVCashRegister';
+import { useStore2PDVCashRegister } from './useStore2PDVCashRegister';
 
 export const useTableSales = (storeId: 1 | 2) => {
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Hooks de caixa baseado na loja
+  const store1CashRegister = usePDVCashRegister();
+  const store2CashRegister = useStore2PDVCashRegister();
+  
+  const cashRegister = storeId === 1 ? store1CashRegister : store2CashRegister;
 
   // Definir nomes das tabelas baseado na loja
   const tablesTable = storeId === 1 ? 'store1_tables' : 'store2_tables';
   const salesTable = storeId === 1 ? 'store1_table_sales' : 'store2_table_sales';
   const itemsTable = storeId === 1 ? 'store1_table_sale_items' : 'store2_table_sale_items';
+  const cashEntriesTable = storeId === 1 ? 'pdv_cash_entries' : 'pdv2_cash_entries';
 
   const fetchTables = useCallback(async () => {
     try {
@@ -189,13 +198,45 @@ export const useTableSales = (storeId: 1 | 2) => {
 
       if (error) throw error;
 
+      // Adicionar entrada no caixa se houver caixa aberto
+      if (cashRegister.currentRegister && cashRegister.isOpen) {
+        try {
+          console.log(`💰 Adicionando venda de mesa ao caixa da Loja ${storeId}:`, {
+            registerId: cashRegister.currentRegister.id,
+            amount: totalAmount,
+            paymentType
+          });
+          
+          const paymentMethodName = getPaymentMethodName(paymentType);
+          
+          await supabase
+            .from(cashEntriesTable)
+            .insert([{
+              register_id: cashRegister.currentRegister.id,
+              type: 'income',
+              amount: totalAmount,
+              description: `Venda Mesa - Loja ${storeId} (${paymentMethodName})`,
+              payment_method: paymentType
+            }]);
+            
+          console.log(`✅ Entrada de caixa criada para venda de mesa da Loja ${storeId}`);
+          
+          // Atualizar dados do caixa
+          await cashRegister.refreshData();
+        } catch (cashError) {
+          console.error(`⚠️ Erro ao adicionar entrada no caixa da Loja ${storeId} (venda salva):`, cashError);
+          // Não falhar a venda se houver erro no caixa
+        }
+      } else {
+        console.warn(`⚠️ Nenhum caixa aberto na Loja ${storeId} - venda não registrada no caixa`);
+      }
       console.log(`✅ Venda fechada na Loja ${storeId}`);
       await fetchTables(); // Recarregar mesas
     } catch (err) {
       console.error(`❌ Erro ao fechar venda na Loja ${storeId}:`, err);
       throw new Error(err instanceof Error ? err.message : 'Erro ao fechar venda');
     }
-  }, [storeId, salesTable, fetchTables]);
+  }, [storeId, salesTable, fetchTables, cashRegister, cashEntriesTable]);
 
   const getSaleDetails = useCallback(async (saleId: string): Promise<TableSale | null> => {
     try {
@@ -274,4 +315,17 @@ export const useTableSales = (storeId: 1 | 2) => {
     updateTableStatus,
     refetch: fetchTables
   };
+};
+
+// Helper function to get payment method display name
+const getPaymentMethodName = (method: string): string => {
+  const methodNames: Record<string, string> = {
+    'dinheiro': 'Dinheiro',
+    'pix': 'PIX',
+    'cartao_credito': 'Cartão de Crédito',
+    'cartao_debito': 'Cartão de Débito',
+    'voucher': 'Voucher',
+    'misto': 'Pagamento Misto'
+  };
+  return methodNames[method] || method;
 };

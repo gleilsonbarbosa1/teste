@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useTableSales } from '../../hooks/useTableSales';
+import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
+import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
 import { RestaurantTable, TableSale } from '../../types/table-sales';
 import TableGrid from './TableGrid';
 import TableSaleModal from './TableSaleModal';
@@ -20,6 +22,12 @@ interface TableSalesPanelProps {
 
 const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
   const { tables, loading, error, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch } = useTableSales(storeId);
+  
+  // Verificar status do caixa
+  const store1CashRegister = usePDVCashRegister();
+  const store2CashRegister = useStore2PDVCashRegister();
+  const cashRegister = storeId === 1 ? store1CashRegister : store2CashRegister;
+  
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -126,6 +134,11 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
             Vendas por Mesa - Loja {storeId}
           </h2>
           <p className="text-gray-600">Gerencie vendas e status das mesas</p>
+          {!cashRegister.isOpen && (
+            <p className="text-yellow-600 text-sm font-medium">
+              ⚠️ Caixa fechado - vendas não serão registradas no caixa
+            </p>
+          )}
         </div>
         
         <button
@@ -136,6 +149,24 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
           Atualizar
         </button>
       </div>
+
+      {/* Aviso sobre Caixa */}
+      {!cashRegister.isOpen && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-yellow-100 rounded-full p-2">
+              <AlertCircle size={20} className="text-yellow-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-yellow-800">Caixa Fechado - Loja {storeId}</h3>
+              <p className="text-yellow-700 text-sm">
+                As vendas das mesas podem ser realizadas, mas não serão registradas automaticamente no caixa. 
+                Para integração completa, abra um caixa na aba "Caixas".
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
