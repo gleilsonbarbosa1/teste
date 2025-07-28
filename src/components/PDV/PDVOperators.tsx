@@ -1,735 +1,251 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit3, Trash2, Search, Eye, EyeOff, Lock, Save } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, AlertTriangle, DollarSign, CheckCircle, Printer } from 'lucide-react';
+import { PDVCashRegister, PDVCashRegisterSummary, PDVCashRegisterEntry } from '../../types/pdv';
 import { usePermissions } from '../../hooks/usePermissions';
-import PermissionGuard from '../PermissionGuard';
-import { supabase } from '../../lib/supabase';
-import { PDVOperator } from '../../types/pdv';
 
-const PDVOperators: React.FC = () => {
+interface CashRegisterCloseConfirmationProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (closingAmount: number) => void;
+  register: PDVCashRegister | null;
+  summary: PDVCashRegisterSummary | null;
+  isProcessing: boolean;
+}
+
+const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  register,
+  summary,
+  isProcessing
+}) => {
   const { hasPermission } = usePermissions();
-  const [operators, setOperators] = useState<PDVOperator[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingOperator, setEditingOperator] = useState<PDVOperator | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const canViewExpectedBalance = hasPermission('can_view_expected_balance');
 
-  useEffect(() => {
-    fetchOperators();
-  }, []);
+  if (!isOpen) return null;
 
-  const fetchOperators = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('pdv_operators')
-        .select('*')
-        .order('name');
+  // State for closing amount
+  const [closingAmount, setClosingAmount] = useState(
+    canViewExpectedBalance ? (summary?.expected_balance || 0) : 0
+  );
+  const [printMovements, setPrintMovements] = useState(true);
 
-      if (error) throw error;
-      setOperators(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar operadores:', error);
-      alert('Erro ao carregar operadores');
-    } finally {
-      setLoading(false);
-    }
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(price);
   };
-
-  const filteredOperators = searchTerm
-    ? operators.filter(op => 
-        op.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        op.code.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : operators;
-
-  const handleCreate = () => {
-    setEditingOperator({
-      id: '',
-      name: 'Novo Operador',
-      code: 'OP' + Math.floor(Math.random() * 1000).toString().padStart(3, '0'),
-      password_hash: '',
-      is_active: true,
-      permissions: {
-        can_discount: true,
-        can_cancel: true,
-        can_manage_products: false
-      },
-      created_at: '',
-      updated_at: ''
-    });
-    setIsCreating(true);
-  };
-
-  const handleSave = async () => {
-    if (!editingOperator) return;
-
-    if (!editingOperator.name.trim() || !editingOperator.code.trim()) {
-      alert('Nome e código são obrigatórios');
-      return;
-    }
-
-    if (isCreating && !editingOperator.password_hash.trim()) {
-      alert('Senha é obrigatória para novos operadores');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      if (isCreating) {
-        const { data, error } = await supabase
-          .from('pdv_operators')
-          .insert([{
-            name: editingOperator.name,
-            code: editingOperator.code,
-            password_hash: editingOperator.password_hash,
-            is_active: editingOperator.is_active,
-            permissions: editingOperator.permissions
-          }])
-          .select()
-          .single();
-
-        if (error) throw error;
-        setOperators(prev => [...prev, data]);
-      } else {
-        const updates: Partial<PDVOperator> = {
-          name: editingOperator.name,
-          code: editingOperator.code,
-          is_active: editingOperator.is_active,
-          permissions: editingOperator.permissions
-        };
-
-        // Só incluir senha se foi alterada
-        if (editingOperator.password_hash) {
-          updates.password_hash = editingOperator.password_hash;
-        }
-
-        const { data, error } = await supabase
-          .from('pdv_operators')
-          .update(updates)
-          .eq('id', editingOperator.id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        setOperators(prev => prev.map(op => op.id === data.id ? data : op));
-      }
-      
-      setEditingOperator(null);
-      setIsCreating(false);
-    } catch (error) {
-      console.error('Erro ao salvar operador:', error);
-      alert('Erro ao salvar operador');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async (id: string, name: string) => {
-    if (confirm(`Tem certeza que deseja excluir o operador "${name}"?`)) {
-      try {
-        const { error } = await supabase
-          .from('pdv_operators')
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
-        setOperators(prev => prev.filter(op => op.id !== id));
-      } catch (error) {
-        console.error('Erro ao excluir operador:', error);
-        alert('Erro ao excluir operador');
-      }
-    }
-  };
-
-  const handleToggleActive = async (operator: PDVOperator) => {
-    try {
-      const { data, error } = await supabase
-        .from('pdv_operators')
-        .update({ is_active: !operator.is_active })
-        .eq('id', operator.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      setOperators(prev => prev.map(op => op.id === data.id ? data : op));
-    } catch (error) {
-      console.error('Erro ao alterar status:', error);
-      alert('Erro ao alterar status');
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-        <span className="ml-2 text-gray-600">Carregando operadores...</span>
-      </div>
-    );
-  }
 
   return (
-    <PermissionGuard hasPermission={hasPermission('can_view_operators')} showMessage={true}>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-              <Users size={24} className="text-orange-600" />
-              Gerenciar Operadores
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+              <div className="bg-yellow-100 rounded-full p-2">
+                <AlertTriangle size={24} className="text-yellow-600" />
+              </div>
+              Confirmar Fechamento de Caixa
             </h2>
-            <p className="text-gray-600">Configure os operadores do PDV</p>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
           </div>
-          <button
-            onClick={handleCreate}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-          >
-            <Plus size={20} />
-            Novo Operador
-          </button>
+          <p className="text-gray-600">
+            Você está prestes a fechar o caixa atual. Esta ação não pode ser desfeita.
+          </p>
         </div>
 
-      {/* Search */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
-        <div className="relative">
-          <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar operadores..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-          />
-        </div>
-      </div>
-
-      {/* Operators Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Código</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Nome</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Permissões</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredOperators.map((operator) => (
-                <tr key={operator.id} className="hover:bg-gray-50">
-                  <td className="py-4 px-4">
-                    <span className="font-mono text-sm">{operator.code}</span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="font-medium text-gray-800">{operator.name}</div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="space-y-1">
-                      <div className={`text-xs px-2 py-1 rounded-full inline-block ${
-                        operator.permissions.can_discount ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {operator.permissions.can_discount ? 'Pode dar desconto' : 'Sem desconto'}
-                      </div>
-                      <div className={`text-xs px-2 py-1 rounded-full inline-block ml-1 ${
-                        operator.permissions.can_cancel ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {operator.permissions.can_cancel ? 'Pode cancelar' : 'Sem cancelamento'}
-                      </div>
-                      <div className={`text-xs px-2 py-1 rounded-full inline-block ml-1 ${
-                        operator.permissions.can_manage_products ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {operator.permissions.can_manage_products ? 'Gerencia produtos' : 'Sem gestão de produtos'}
-                      </div>
-                      <div className={`text-xs px-2 py-1 rounded-full inline-block ml-1 ${
-                        operator.permissions.can_view_cash_register ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {operator.permissions.can_view_cash_register ? 'Acesso ao Caixa' : 'Sem acesso ao Caixa'}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <button
-                      onClick={() => handleToggleActive(operator)}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                        operator.is_active
-                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                          : 'bg-red-100 text-red-800 hover:bg-red-200'
-                      }`}
-                    >
-                      {operator.is_active ? (
-                        <>
-                          <Eye size={12} />
-                          Ativo
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff size={12} />
-                          Inativo
-                        </>
-                      )}
-                    </button>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        disabled={operator.code === 'ADMIN'}
-                        onClick={() => {
-                          setEditingOperator({...operator, password_hash: ''});
-                          setIsCreating(false);
-                        }}
-                        className={`p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors ${
-                          operator.code === 'ADMIN' ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                        title="Editar operador"
-                      >
-                        <Edit3 size={16} />
-                      </button>
-                      <button
-                        disabled={operator.code === 'ADMIN'}
-                        onClick={() => handleDelete(operator.id, operator.name)}
-                        className={`p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors ${
-                          operator.code === 'ADMIN' ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                        title="Excluir operador"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredOperators.length === 0 && (
-          <div className="text-center py-12">
-            <Users size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500">
-              {searchTerm ? 'Nenhum operador encontrado' : 'Nenhum operador cadastrado'}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Edit/Create Modal */}
-      {editingOperator && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">
-                {isCreating ? 'Novo Operador' : 'Editar Operador'}
-              </h2>
-            </div>
-
-            <div className="p-6 space-y-4 overflow-y-auto">
+        <div className="p-6 overflow-y-auto">
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome *
-                </label>
-                <input
-                  type="text"
-                  value={editingOperator.name}
-                  onChange={(e) => setEditingOperator({
-                    ...editingOperator,
-                    name: e.target.value
-                  })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  placeholder="Nome do operador"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Código *
-                </label>
-                <input
-                  type="text"
-                  value={editingOperator.code}
-                  onChange={(e) => setEditingOperator({
-                    ...editingOperator,
-                    code: e.target.value
-                  })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  placeholder="Ex: OP001"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Senha {isCreating ? '*' : '(deixe em branco para manter a atual)'}
-                </label>
-                <div className="relative">
-                  <Lock size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="password"
-                    value={editingOperator.password_hash}
-                    onChange={(e) => setEditingOperator({
-                      ...editingOperator,
-                      password_hash: e.target.value
-                    })}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder={isCreating ? "Senha" : "Nova senha (opcional)"}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Permissões Básicas
-                </label>
+                <h3 className="text-lg font-bold text-blue-800 mb-2">Resumo do Caixa</h3>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingOperator.permissions.can_discount}
-                      onChange={(e) => setEditingOperator({
-                        ...editingOperator,
-                        permissions: {
-                          ...editingOperator.permissions,
-                          can_discount: e.target.checked
-                        }
-                      })}
-                      className="w-4 h-4 text-orange-600"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Pode aplicar descontos
-                    </span>
-                  </label>
-                  
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingOperator.permissions.can_cancel}
-                      onChange={(e) => setEditingOperator({
-                        ...editingOperator,
-                        permissions: {
-                          ...editingOperator.permissions,
-                          can_cancel: e.target.checked
-                        }
-                      })}
-                      className="w-4 h-4 text-orange-600"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Pode cancelar vendas
-                    </span>
-                  </label>
-                  
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingOperator.permissions.can_manage_products}
-                      onChange={(e) => setEditingOperator({
-                        ...editingOperator,
-                        permissions: {
-                          ...editingOperator.permissions,
-                          can_manage_products: e.target.checked
-                        }
-                      })}
-                      className="w-4 h-4 text-orange-600"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Pode gerenciar produtos
-                    </span>
-                  </label>
+                  <div className="flex justify-between">
+                  <span className="font-medium text-blue-800">{formatPrice(summary.opening_amount || register?.opening_amount || 0)}</span>
+                    <span className="font-medium text-blue-800">{formatPrice(register?.opening_amount || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-700">Vendas PDV:</span>
+                    <span className="font-medium text-blue-800">{formatPrice(summary?.sales_total || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-700">Vendas Delivery:</span>
+                    <span className="font-medium text-blue-800">{formatPrice(summary?.delivery_total || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-700">Outras entradas:</span>
+                    <span className="font-medium text-blue-800">{formatPrice(summary?.other_income_total || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-700">Saídas:</span>
+                    <span className="font-medium text-blue-800">{formatPrice(summary?.total_expense || 0)}</span>
+                  </div>
+                  {canViewExpectedBalance && (
+                    <div className="pt-2 border-t border-blue-200">
+                      <div className="flex justify-between">
+                        <span className="font-medium text-blue-800">Saldo esperado:</span>
+                        <span className="font-bold text-blue-800">{formatPrice(summary?.expected_balance || 0)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Permissões de Acesso aos Menus
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Operações */}
-                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-2 text-sm">Operações</h4>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_view_sales ?? true}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_view_sales: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Vendas
-                        </span>
-                      </label>
-                      
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_view_cash_register ?? true}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_view_cash_register: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Caixas
-                        </span>
-                      </label>
-                      
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_view_products ?? true}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_view_products: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Produtos
-                        </span>
-                      </label>
-                      
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_view_orders ?? true}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_view_orders: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Pedidos
-                        </span>
-                      </label>
-                    </div>
+                {canViewExpectedBalance && (
+                  <div className="flex justify-between pt-1 text-xs text-gray-500">
+                    <p className="text-xs">Apenas transações em dinheiro</p>
+                    <p>
+                      {formatPrice(summary?.opening_amount || 0)} + entradas - saídas
+                    </p>
                   </div>
-                  
-                  {/* Relatórios */}
-                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-2 text-sm">Relatórios</h4>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_view_reports ?? true}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_view_reports: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Gráficos
-                        </span>
-                      </label>
-                      
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_view_sales_report ?? true}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_view_sales_report: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Vendas
-                        </span>
-                      </label>
-                      
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_view_cash_report ?? true}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_view_cash_report: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Caixa Diário
-                        </span>
-                      </label>
-                      
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_view_operators ?? false}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_view_operators: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Operadores
-                        </span>
-                      </label>
-                      
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_view_cash_report ?? true}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_view_cash_report: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Caixa por Período
-                        </span>
-                      </label>
-                      
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_view_cash_report ?? true}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_view_cash_report: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Histórico de Caixas
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                  
-                  {/* Gerenciamento */}
-                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-2 text-sm">Gerenciamento</h4>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_view_operators ?? false}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_view_operators: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Operadores
-                        </span>
-                      </label>
-                      
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingOperator.permissions.can_manage_products ?? false}
-                          onChange={(e) => setEditingOperator({
-                            ...editingOperator,
-                            permissions: {
-                              ...editingOperator.permissions,
-                              can_manage_products: e.target.checked
-                            }
-                          })}
-                          className="w-4 h-4 text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Configurações
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={editingOperator.is_active}
-                    onChange={(e) => setEditingOperator({
-                      ...editingOperator,
-                      is_active: e.target.checked
-                    })}
-                    className="w-4 h-4 text-orange-600"
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    Operador ativo
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3 sticky bottom-0 bg-white">
-              <button
-                onClick={() => {
-                  setEditingOperator(null);
-                  setIsCreating(false);
-                }}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !editingOperator.name.trim() || !editingOperator.code.trim()}
-                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white rounded-lg transition-colors flex items-center gap-2"
-              >
-                {saving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    {isCreating ? 'Criar Operador' : 'Salvar Alterações'}
-                  </>
                 )}
-              </button>
+              </div>
             </div>
           </div>
+
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              Após o fechamento, você poderá:
+            </p>
+            <ul className="space-y-2 text-gray-600 pl-6 list-disc">
+              <li>Imprimir as movimentações do caixa</li>
+              <li>Visualizar o relatório diário completo</li>
+              <li>Enviar o resumo por WhatsApp</li>
+            </ul>
+            
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={16} className="text-yellow-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-yellow-700">
+                  Certifique-se de que o valor em caixa confere com o saldo esperado antes de fechar.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Printer size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                <div className="flex-1">
+                  <label className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={printMovements}
+                      onChange={(e) => setPrintMovements(e.target.checked)}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <div>
+                      <span className="font-medium text-blue-800">
+                        Imprimir movimentações do caixa após fechamento
+                      </span>
+                      <p className="text-blue-700 text-sm mt-1">
+                        Gera um relatório térmico com todas as movimentações do caixa
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Valor de fechamento
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={closingAmount}
+                onChange={(e) => setClosingAmount(parseFloat(e.target.value) || 0)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Informe o valor real em caixa no momento do fechamento
+              </p>
+              
+              {/* Aviso de diferença */}
+              {canViewExpectedBalance && closingAmount !== (summary?.expected_balance || 0) && closingAmount > 0 && (
+                <div className={`mt-2 p-3 rounded-lg border ${
+                  closingAmount > (summary?.expected_balance || 0)
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-red-50 border-red-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={16} className={
+                      closingAmount > (summary?.expected_balance || 0)
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    } />
+                    <div>
+                      <p className={`text-sm font-medium ${
+                        closingAmount > (summary?.expected_balance || 0)
+                          ? 'text-green-800'
+                          : 'text-red-800'
+                      }`}>
+                        {closingAmount > (summary?.expected_balance || 0) ? '💰 Sobra no Caixa' : '⚠️ Falta no Caixa'}
+                      </p>
+                      <p className={`text-sm ${
+                        closingAmount > (summary?.expected_balance || 0)
+                          ? 'text-green-700'
+                          : 'text-red-700'
+                      }`}>
+                        Diferença: {formatPrice(Math.abs(closingAmount - (summary?.expected_balance || 0)))}
+                        {closingAmount > (summary?.expected_balance || 0) ? ' a mais' : ' a menos'}
+                      </p>
+                      <p className={`text-xs mt-1 ${
+                        closingAmount > (summary?.expected_balance || 0)
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }`}>
+                        Saldo esperado: {formatPrice(summary?.expected_balance || 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => {
+                // Call the onConfirm function passed from the parent
+                onConfirm(closingAmount, printMovements);
+              }}
+              disabled={isProcessing}
+              className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              {isProcessing ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={20} />
+                  Confirmar Fechamento
+                </>
+              )}
+            </button>
+          </div>
         </div>
-      )}
+      </div>
     </div>
-    </PermissionGuard>
   );
 };
 
-export default PDVOperators;
+export default CashRegisterCloseConfirmation;
