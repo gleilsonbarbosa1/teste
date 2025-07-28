@@ -1,536 +1,317 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Calculator, Package, BarChart3, Settings, Users, ArrowLeft, DollarSign, Bell, FileText, LogOut, User, Layers, ChevronUp, ChevronDown, Truck, ShoppingBag, MessageSquare } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import React, { useState } from 'react';
+import { X, AlertTriangle, DollarSign, CheckCircle, Printer } from 'lucide-react';
+import { PDVCashRegister, PDVCashRegisterSummary, PDVCashRegisterEntry } from '../../types/pdv';
 import { usePermissions } from '../../hooks/usePermissions';
-import { useScale } from '../../hooks/useScale';
-import { initializePrinterSettings } from '../../utils/printerConfig';
-import PDVSalesScreen from './PDVSalesScreen';
-import UnifiedAttendancePage from '../UnifiedAttendancePage';
-import PDVProductsManager from './PDVProductsManager';
-import PDVReports from './PDVReports';
-import { useStoreHours } from '../../hooks/useStoreHours';
-import PDVCashReportWithDateFilter from './PDVCashReportWithDateFilter';
-import PDVCashReportWithDetails from './PDVCashReportWithDetails';
-import PDVDailyCashReport from './PDVDailyCashReport';
-import PDVDailyDeliveryReport from './PDVDailyDeliveryReport';
-import PDVSettings from './PDVSettings'; 
-import PDVOperators from './PDVOperators';
-import PDVSalesReport from './PDVSalesReport';
-import CashRegisterMenu from './CashRegisterMenu';
-import AttendantPanel from '../Orders/AttendantPanel';
+import { usePermissions } from '../../hooks/usePermissions';
 
-// Define menu items before component to avoid initialization issues
-// Organize menu items by category
-const menuCategories = [
-  {
-    id: 'main',
-    label: 'Principal',
-    icon: Layers,
-    items: [
-      { id: 'attendance' as const, label: 'Vendas', icon: Calculator, color: 'bg-green-500' },
-      { id: 'cash_menu' as const, label: 'Caixas', icon: DollarSign, color: 'bg-yellow-500' },
-      { id: 'products' as const, label: 'Produtos', icon: Package, color: 'bg-blue-500' },
-      { id: 'orders' as const, label: 'Pedidos', icon: Truck, color: 'bg-purple-500' },
-    ]
-  },
-  {
-    id: 'reports',
-    label: 'Relatórios',
-    icon: FileText,
-    items: [
-      { id: 'reports' as const, label: 'Gráficos', icon: BarChart3, color: 'bg-purple-500' },
-      { id: 'sales_report' as const, label: 'Relatório de Vendas', icon: BarChart3, color: 'bg-indigo-500' },
-      { id: 'daily_cash_report' as const, label: 'Relatório de Caixa Diário', icon: FileText, color: 'bg-teal-500' },
-      { id: 'delivery_report' as const, label: 'Relatório de Delivery', icon: Truck, color: 'bg-purple-500' },
-      { id: 'cash_report' as const, label: 'Relatório de Caixa por Período', icon: DollarSign, color: 'bg-emerald-500' },
-      { id: 'cash_report_details' as const, label: 'Histórico de Caixas', icon: FileText, color: 'bg-amber-500' }
-    ]
-  },
-  {
-    id: 'management',
-    label: 'Gerenciamento',
-    icon: Settings,
-    items: [
-      { id: 'operators' as const, label: 'Operadores', icon: Users, color: 'bg-orange-500' },
-      { id: 'settings' as const, label: 'Configurações', icon: Settings, color: 'bg-gray-500' },
-    ]
-  }
-];
-
-// Flatten menu items for permission checking
-const flatMenuItems = menuCategories.flatMap(category => category.items);
-
-// Define the operator type with permissions
-interface PDVMainOperator {
-  id: string;
-  name: string;
-  permissions: {
-    can_discount: boolean;
-    can_cancel: boolean;
-    can_manage_products: boolean;
-    can_view_sales?: boolean;
-    can_view_cash_register?: boolean;
-    can_view_products?: boolean;
-    can_view_orders?: boolean;
-    can_view_reports?: boolean;
-    can_view_sales_report?: boolean;
-    can_view_cash_report?: boolean;
-    can_view_operators?: boolean;
-  };
+interface CashRegisterCloseConfirmationProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (closingAmount: number, justification?: string) => void;
+  register: PDVCashRegister | null;
+  summary: PDVCashRegisterSummary | null;
+  isProcessing: boolean;
 }
 
-interface PDVMainProps {
-  onBack?: () => void; 
-  operator?: PDVMainOperator; 
-}
-
-const PDVMain: React.FC<PDVMainProps> = ({ onBack, operator }) => {
-  const [activeScreen, setActiveScreen] = useState<'attendance' | 'products' | 'reports' | 'settings' | 'operators' | 'cash_register' | 'sales_report' | 'cash_report' | 'orders' | 'cash_menu' | 'daily_cash_report' | 'cash_report_details' | 'delivery_report'>('attendance');
+const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  register,
+  summary,
+  isProcessing
+}) => {
   const { hasPermission } = usePermissions();
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
-    main: true,
-    reports: true,
-    management: true
-  });
-  const [newOrderAlert, setNewOrderAlert] = useState(false);
-  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
-  const [filteredMenuCategories, setFilteredMenuCategories] = useState(menuCategories);
-  const { storeSettings } = useStoreHours();
-  const audioRef = useRef<HTMLAudioElement>(new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"));
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true); 
-  
-  // Initialize scale hook at the PDVMain level
-  const scaleHook = useScale();
-  
-  // Initialize printer settings on component mount
-  useEffect(() => {
-    initializePrinterSettings();
-  }, []);
-  
-  // Check for active screen in localStorage (for navigation between components)
-  useEffect(() => {
-    const storedScreen = localStorage.getItem('pdv_active_screen');
-    if (storedScreen) {
-      // Check if it's a valid screen
-      const validScreens = [
-        'attendance', 'products', 'reports', 'settings', 'operators', 
-        'cash_register', 'sales_report', 'cash_report', 'orders', 
-        'cash_menu', 'daily_cash_report', 'cash_report_details', 'delivery_report'
-      ];
-      
-      if (validScreens.includes(storedScreen)) {
-        setActiveScreen(storedScreen as any);
-        // Clear the stored screen to prevent it from being used again
-        localStorage.removeItem('pdv_active_screen');
-      }
-    }
-  }, []);
+  const canViewExpectedBalance = hasPermission('can_view_expected_balance');
 
-  // Carregar configuração de som
-  useEffect(() => {
-    try {
-      const soundSettings = localStorage.getItem('orderSoundSettings');
-      if (soundSettings) {
-        const settings = JSON.parse(soundSettings);
-        setSoundEnabled(settings.enabled);
-        
-        // Atualizar volume do áudio
-        if (audioRef.current) {
-          audioRef.current.volume = settings.volume || 0.7;
-        }
-      } else {
-        // Configuração padrão
-        localStorage.setItem('orderSoundSettings', JSON.stringify({
-          enabled: true,
-          volume: 0.7,
-          soundUrl: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
-        }));
-      }
-    } catch (error) {
-      console.error('Erro ao carregar configurações de som:', error);
-    }
-  }, []);
+  const { hasPermission } = usePermissions();
+  const canViewExpectedBalance = hasPermission('can_view_expected_balance');
 
-  const toggleCategory = (categoryId: string) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [categoryId]: !prev[categoryId]
-    }));
+  if (!isOpen) return null;
+
+  // State for closing amount
+  const [closingAmount, setClosingAmount] = useState(
+    canViewExpectedBalance ? (summary?.expected_balance || 0) : 0
+  );
+  const [hasInformedAmount, setHasInformedAmount] = useState(false);
+  const [justification, setJustification] = useState('');
+  const [printMovements, setPrintMovements] = useState(true);
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(price);
   };
 
-  // Verificar novos pedidos periodicamente
-  useEffect(() => {
-    // Função para verificar novos pedidos
-    const checkNewOrders = async () => {
-      try {
-        console.log('🔍 Verificando novos pedidos...');
-        const { data, error } = await supabase
-          .from('orders')
-          .select('id, status')
-          .eq('status', 'pending');
-        
-        if (error) throw error;
-        
-        const newCount = data?.length || 0;
-        
-        // Se temos uma contagem anterior e agora temos mais pedidos, tocar alerta
-        if (pendingOrdersCount > 0 && newCount > pendingOrdersCount) {
-          playNotificationSound();
-          
-          // Mostrar notificação do navegador se permitido
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('Novo Pedido!', {
-              body: 'Um novo pedido de delivery foi recebido.'
-            });
-          }
-          console.log('🔔 Novos pedidos detectados!', newCount - pendingOrdersCount);
-          playNotificationSound();
-        }
-        
-        setPendingOrdersCount(newCount);
-      } catch (err) {
-        console.error('Erro ao verificar novos pedidos:', err);
-      }
-    };
-    
-    // Verificar imediatamente e depois a cada 30 segundos
-    checkNewOrders();
-    const interval = setInterval(checkNewOrders, 30000);
-    
-    return () => clearInterval(interval);
-  }, [pendingOrdersCount]);
-
-  // Função para tocar som de notificação
-  const playNotificationSound = () => {
-    setNewOrderAlert(true);
-    
-    // Verificar se o som está habilitado
-    if (!soundEnabled) {
-      console.log('🔕 Som de notificação desabilitado nas configurações');
-      return;
-    }
-    
-    try {
-      // Reiniciar o áudio para garantir que ele toque
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(e => {
-          console.error('Erro ao tocar som:', e);
-          // Tentar método alternativo
-          playFallbackSound();
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao tocar som de notificação:', error);
-      // Tentar método alternativo
-      playFallbackSound();
+  const handleAmountConfirm = () => {
+    if (closingAmount > 0) {
+      setHasInformedAmount(true);
     }
   };
 
-  const permissionMap = {
-    'pdv': 'can_view_attendance',
-    'orders': 'can_view_orders',
-  };
-  
-  // Método alternativo para tocar som
-  const playFallbackSound = () => {
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      // Criar um som de campainha/sino
-      const playBellSound = () => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // Frequência mais alta para chamar atenção
-        oscillator.frequency.value = 1200;
-        oscillator.type = 'sine';
-        
-        // Volume inicial mais alto
-        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-      };
-      
-      // Tocar o som duas vezes com intervalo para chamar mais atenção
-      playBellSound();
-      
-      // Tocar novamente após 300ms
-      setTimeout(() => {
-        playBellSound();
-      }, 300);
-    } catch (error) {
-      console.error('Erro ao tocar som de fallback:', error);
-    }
-  };
+  const expectedBalance = summary?.expected_balance || 0;
+  const difference = closingAmount - expectedBalance;
+  const hasDifference = Math.abs(difference) > 0.01; // Tolerância de 1 centavo
+  const needsJustification = hasDifference && hasInformedAmount;
 
-  // Alternar som de notificação
-  const toggleSound = () => {
-    try {
-      const newState = !soundEnabled;
-      setSoundEnabled(newState);
-      
-      // Salvar no localStorage
-      const soundSettings = localStorage.getItem('orderSoundSettings');
-      const settings = soundSettings ? JSON.parse(soundSettings) : { volume: 0.7, soundUrl: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" };
-      settings.enabled = newState;
-      localStorage.setItem('orderSoundSettings', JSON.stringify(settings));
-      
-      // Tocar som de teste se estiver habilitando
-      if (newState) {
-        playNotificationSound();
-      }
-    } catch (error) {
-      console.error('Erro ao salvar configurações de som:', error);
-    }
-  };
-
-  // Resetar alerta quando mudar para a tela de pedidos
-  useEffect(() => {
-    if (activeScreen === 'orders') {
-      setNewOrderAlert(false);
-    }
-  }, [activeScreen]);
-
-  // Filter menu items based on operator permissions
-  useEffect(() => {
-    if (!operator) {
-      // If no operator provided, show all menu items (admin mode)
-      setFilteredMenuCategories(menuCategories);
-      return;
-    }
-
-    // Admin user always sees all menu items
-    if (operator.code?.toUpperCase() === 'ADMIN') {
-      setFilteredMenuCategories(menuCategories);
-      return;
-    }
-
-    const permissionMap: Record<string, keyof typeof operator.permissions> = {
-      'sales': 'can_view_sales',
-      'attendance': 'can_view_sales',
-      'cash_register': 'can_view_cash_register',
-      'cash_menu': 'can_view_cash_register',
-      'products': 'can_view_products',
-      'orders': 'can_view_orders',
-      'reports': 'can_view_reports',
-      'sales_report': 'can_view_sales_report',
-      'cash_report': 'can_view_cash_report',
-      'delivery_report': 'can_view_orders',
-      'cash_report_details': 'can_view_cash_report',
-      'daily_cash_report': 'can_view_cash_report',
-      'operators': 'can_view_operators',
-      'settings': 'can_manage_products' // Settings requires product management permission
-    };
-
-    const filteredCategories = menuCategories.map(category => {
-      const filteredItems = category.items.filter(item => {
-        const permissionKey = permissionMap[item.id];
-        return !permissionKey || operator.permissions[permissionKey] !== false;
-      });
-      
-      return {
-        ...category,
-        items: filteredItems
-      };
-    }).filter(category => category.items.length > 0);
-
-    setFilteredMenuCategories(filteredCategories);
-  }, [operator]);
-
-  const renderScreen = () => {
-    switch (activeScreen) {
-      case 'attendance':
-        return <UnifiedAttendancePage operator={operator} scaleHook={scaleHook} storeSettings={storeSettings} />;
-      case 'products':
-        return <PDVProductsManager />;
-      case 'reports':
-        return <PDVReports />;
-      case 'settings':
-        return <PDVSettings />;
-      case 'operators':
-        return <PDVOperators />;
-      case 'orders':
-        return <AttendantPanel />;
-      case 'cash_menu':
-        return <CashRegisterMenu />;
-      case 'sales_report':
-        return <PDVSalesReport />;
-      case 'cash_report':
-        return <PDVCashReportWithDateFilter />;
-      case 'daily_cash_report':
-        return <PDVDailyCashReport />;
-      case 'delivery_report':
-        return <PDVDailyDeliveryReport />;
-      case 'cash_report_details':
-        return <PDVCashReportWithDetails />;
-      default:
-        return <UnifiedAttendancePage operator={operator} />;
-    }
-  };
+  const canProceed = hasInformedAmount && (!needsJustification || justification.trim().length > 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {onBack && (
-                <button
-                  onClick={onBack}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  title="Voltar"
-                >
-                  <ArrowLeft size={20} className="text-gray-600" />
-                </button>
-              )}
-              <div className="bg-green-100 rounded-full p-2">
-                <Calculator size={24} className="text-green-600" />
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+              <div className="bg-yellow-100 rounded-full p-2">
+                <AlertTriangle size={24} className="text-yellow-600" />
               </div>
+              Confirmar Fechamento de Caixa
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <p className="text-gray-600">
+            {!hasInformedAmount 
+              ? 'Informe o valor contado no caixa para prosseguir com o fechamento.'
+              : 'Confirme os dados do fechamento de caixa.'
+            }
+          </p>
+        </div>
+
+        <div className="p-6 overflow-y-auto">
+          {!hasInformedAmount ? (
+            // ETAPA 1: Informar valor contado
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-lg font-bold text-blue-800 mb-2">Contagem do Caixa</h3>
+                    <p className="text-blue-700 text-sm">
+                      Conte todo o dinheiro físico presente no caixa e informe o valor total.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">PDV - Elite Açaí</h1>
-                <p className="text-gray-600">Sistema de Ponto de Venda</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Valor contado no caixa *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={closingAmount}
+                  onChange={(e) => setClosingAmount(parseFloat(e.target.value) || 0)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0,00"
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Informe o valor total em dinheiro presente no caixa
+                </p>
               </div>
             </div>
-            
-            <div className="flex items-center gap-4">
-              {/* Logged in user info */}
-              {operator && (
-                <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg">
-                  <User size={18} className="text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">{operator.name}</span>
-                  <button
-                    onClick={onBack}
-                    className="ml-2 p-1 hover:bg-gray-200 rounded-full transition-colors"
-                    title="Sair"
-                  >
-                    <LogOut size={16} className="text-gray-600" />
-                  </button>
+          ) : (
+            // ETAPA 2: Mostrar comparação e solicitar justificativa se necessário
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                  <div className="w-full">
+                    <h3 className="text-lg font-bold text-blue-800 mb-3">Conferência do Fechamento</h3>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Valor informado (contado):</span>
+                        <span className="font-bold text-blue-800">{formatPrice(closingAmount)}</span>
+                      </div>
+                      
+                      {canViewExpectedBalance && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-blue-700">Saldo esperado (sistema):</span>
+                            <span className="font-medium text-blue-800">{formatPrice(expectedBalance)}</span>
+                          </div>
+                          
+                          <div className="pt-2 border-t border-blue-200">
+                            <div className="flex justify-between">
+                              <span className="font-medium text-blue-800">Diferença:</span>
+                              <span className={`font-bold ${
+                                difference > 0 ? 'text-green-600' : difference < 0 ? 'text-red-600' : 'text-blue-800'
+                              }`}>
+                                {difference === 0 ? 'Exato' : 
+                                 difference > 0 ? `+${formatPrice(difference)} (sobra)` : 
+                                 `${formatPrice(difference)} (falta)`}
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resumo das movimentações (sempre visível) */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <h4 className="font-medium text-gray-800 mb-2">Resumo das Movimentações</h4>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Valor de abertura:</span>
+                    <span className="font-medium">{formatPrice(summary?.opening_amount || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Vendas PDV:</span>
+                    <span className="font-medium text-green-600">{formatPrice(summary?.sales_total || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Vendas Delivery:</span>
+                    <span className="font-medium text-green-600">{formatPrice(summary?.delivery_total || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Outras entradas:</span>
+                    <span className="font-medium text-green-600">{formatPrice(summary?.other_income_total || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Saídas:</span>
+                    <span className="font-medium text-red-600">{formatPrice(summary?.total_expense || 0)}</span>
+                  </div>
+                </div>
+              </div>
+              {canViewExpectedBalance && closingAmount !== (summary?.expected_balance || 0) && closingAmount > 0 && (
+              {/* Justificativa obrigatória para diferenças */}
+              {needsJustification && (
+                <div className={`border rounded-xl p-4 ${
+                  difference > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={20} className={
+                      difference > 0 ? 'text-yellow-600' : 'text-red-600'
+                    } className="mt-1 flex-shrink-0" />
+                    <div className="w-full">
+                      <h4 className={`font-medium mb-2 ${
+                        difference > 0 ? 'text-yellow-800' : 'text-red-800'
+                      }`}>
+                        Justificativa Obrigatória
+                      </h4>
+                      <p className={`text-sm mb-3 ${
+                        difference > 0 ? 'text-yellow-700' : 'text-red-700'
+                      }`}>
+                        Foi detectada uma diferença de {formatPrice(Math.abs(difference))}. 
+                        É obrigatório informar a justificativa para esta diferença.
+                      </p>
+                      <textarea
+                        value={justification}
+                        onChange={(e) => setJustification(e.target.value)}
+                        placeholder="Descreva o motivo da diferença encontrada..."
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        rows={3}
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
-              
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleSound}
-                  className={`p-2 rounded-full transition-colors ${soundEnabled ? 'text-green-600 hover:bg-green-100' : 'text-gray-400 hover:bg-gray-100'}`}
-                  title={soundEnabled ? "Desativar som de notificações" : "Ativar som de notificações"}
-                >
-                  {soundEnabled ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M17.95 6.05a8 8 0 010 11.9M6.343 9.657a2 2 0 000 2.828l1.414 1.414a4 4 0 01-1.414 1.414l-1.414-1.414a2 2 0 00-2.828 0L2.1 14.9a2 2 0 000 2.828l1.414 1.414a2 2 0 002.828 0l1.414-1.414a4 4 0 011.414-1.414l-1.414-1.414a2 2 0 000-2.828L6.343 9.657z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15.414a2 2 0 002.828 0l1.414-1.414a4 4 0 011.414-1.414l-1.414-1.414a2 2 0 000-2.828L6.343 9.657a2 2 0 00-2.828 0L2.1 14.9a2 2 0 000 2.828l1.414 1.414a2 2 0 002.828 0l1.414-1.414a4 4 0 011.414-1.414l-1.414-1.414a2 2 0 000-2.828L6.343 9.657z" />
-                    </svg>
+            </div>
+          )}
+
+          {hasInformedAmount && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Printer size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                <div className="flex-1">
+                  <label className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={printMovements}
+                  {canViewExpectedBalance && (
+                    <div className="pt-2 border-t border-blue-200">
+                      <div className="flex justify-between">
+                        <span className="font-medium text-blue-800">Saldo esperado:</span>
+                        <span className="font-bold text-blue-800">{formatPrice(summary?.expected_balance || 0)}</span>
+                      </div>
+                    </div>
                   )}
-                </button>
-                <div className="relative cursor-pointer" onClick={() => setActiveScreen('orders')}>
-                <Bell size={20} className={newOrderAlert ? "text-red-600" : "text-gray-600"} />
-                {pendingOrdersCount > 0 && (
-                  <span className={`absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center ${newOrderAlert ? 'animate-pulse' : ''}`}>
-                    {pendingOrdersCount}
-                  </span>
+                      </span>
+                {canViewExpectedBalance && (
+                  <div className="flex justify-between pt-1 text-xs text-gray-500">
+                    <p className="text-xs">Apenas transações em dinheiro</p>
+                    <p>
+                      {formatPrice(summary?.opening_amount || 0)} + entradas - saídas
+                    </p>
+                  </div>
                 )}
-                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </header>
+          )}
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Navigation with Categories */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6 space-y-4">
-          <div className="space-y-4">
-            {filteredMenuCategories.map((category) => (
-              <div key={category.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer"
-                  onClick={() => toggleCategory(category.id)}
+          <div className="mt-6 flex gap-3">
+            {!hasInformedAmount ? (
+              <>
+                <button
+                  onClick={onClose}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
                 >
-                  <div className="flex items-center gap-2">
-                    <category.icon size={20} className="text-gray-700" />
-                    <h3 className="font-medium text-gray-800">{category.label}</h3>
-                  </div>
-                  {expandedCategories[category.id] ? (
-                    <ChevronUp size={18} className="text-gray-500" />
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAmountConfirm}
+                  disabled={closingAmount <= 0}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors"
+                >
+                  Confirmar Valor
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    setHasInformedAmount(false);
+                    setJustification('');
+                  }}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
+                >
+                  Voltar
+                </button>
+                <button
+                  onClick={() => onConfirm(closingAmount, justification || undefined)}
+                  disabled={isProcessing || !canProceed}
+                  className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Processando...
+                    </>
                   ) : (
-                    <ChevronDown size={18} className="text-gray-500" />
+                    <>
+                      <CheckCircle size={20} />
+                      Confirmar Fechamento
+                    </>
                   )}
-                </div>
-                
-                {expandedCategories[category.id] && (
-                  <div className="p-3 flex flex-wrap gap-3">
-                    {category.items.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = activeScreen === item.id;
-                      
-                      // Check if user has permission to see this menu item
-                      const menuPermissionMap: Record<string, string> = {
-                        'attendance': 'can_view_sales',
-                        'cash_menu': 'can_view_cash_register',
-                        'products': 'can_view_products',
-                        'reports': 'can_view_reports',
-                        'sales_report': 'can_view_sales_report',
-                        'daily_cash_report': 'can_view_cash_report',
-                        'cash_report': 'can_view_cash_report',
-                        'cash_report_details': 'can_view_cash_report',
-                        'operators': 'can_view_operators',
-                        'settings': 'can_manage_products',
-                        'pdv': 'can_view_attendance'
-                      };
-                      
-                      const permissionNeeded = menuPermissionMap[item.id];
-                      // Always show all menu items when no operator is provided (admin mode)
-                      // Or when the operator is ADMIN
-                      const hasMenuPermission = !operator || 
-                                               operator.code?.toUpperCase() === 'ADMIN' || 
-                                               operator.name?.toUpperCase().includes('ADMIN') || 
-                                               !permissionNeeded || hasPermission(permissionNeeded as any);
-
-                      // Skip rendering this menu item if user doesn't have permission
-                      if (!hasMenuPermission) return null;
-
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => setActiveScreen(item.id)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                            isActive
-                              ? `${item.color} text-white shadow-lg transform scale-105`
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          <Icon size={18} />
-                          {item.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
+                </button>
+              </>
+            )}
           </div>
-        </div>
-
-        {/* Screen Content */}
-        <div className="transition-all duration-300">
-          {renderScreen()}
+          
+          {needsJustification && !justification.trim() && (
+            <div className="mt-2 text-center">
+              <p className="text-sm text-red-600">
+                ⚠️ Justificativa obrigatória para diferenças no caixa
+              </p>
+            </div>
+          )}
         </div>
       </div>
-      
-      {/* Audio element for notification sound */}
-      {/* Audio is now handled via the useRef with new Audio() */}
     </div>
   );
 };
 
-export default PDVMain;
+export default CashRegisterCloseConfirmation;

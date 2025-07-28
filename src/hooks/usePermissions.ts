@@ -26,11 +26,30 @@ export interface PermissionKey {
   can_create_manual_orders: boolean;
 }
 
-export const usePermissions = () => {
+interface PDVOperator {
+  id: string;
+  name: string;
+  code: string;
+  permissions: Partial<PermissionKey>;
+}
+
+interface Store2User {
+  id: string;
+  name: string;
+  username: string;
+  permissions: Partial<PermissionKey>;
+}
+
+export const usePermissions = (operator?: PDVOperator | Store2User) => {
   const { currentUser } = useStore2Attendance();
 
   const hasPermission = (permission: keyof PermissionKey): boolean => {
-    // Check Store2 user permissions
+    // Use the passed operator parameter first
+    if (operator?.permissions) {
+      return operator.permissions[permission] === true;
+    }
+    
+    // Fallback to Store2 user permissions
     if (currentUser?.permissions) {
       return currentUser.permissions[permission] === true;
     }
@@ -39,6 +58,10 @@ export const usePermissions = () => {
   };
 
   const getPermissions = (): Partial<PermissionKey> => {
+    if (operator?.permissions) {
+      return operator.permissions;
+    }
+    
     if (currentUser?.permissions) {
       return currentUser.permissions;
     }
@@ -49,6 +72,7 @@ export const usePermissions = () => {
   return {
     hasPermission,
     getPermissions,
+    currentOperator: operator,
     currentUser
   };
 };
