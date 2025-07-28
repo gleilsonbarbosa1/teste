@@ -1,4 +1,3 @@
-import { usePDV } from './usePDV';
 import { useStore2Attendance } from './useStore2Attendance';
 
 export interface PermissionKey {
@@ -28,15 +27,9 @@ export interface PermissionKey {
 }
 
 export const usePermissions = () => {
-  const { currentOperator } = usePDV();
   const { currentUser } = useStore2Attendance();
 
   const hasPermission = (permission: keyof PermissionKey): boolean => {
-    // Check PDV operator permissions first
-    if (currentOperator?.permissions) {
-      return currentOperator.permissions[permission] === true;
-    }
-    
     // Check Store2 user permissions
     if (currentUser?.permissions) {
       return currentUser.permissions[permission] === true;
@@ -46,10 +39,6 @@ export const usePermissions = () => {
   };
 
   const getPermissions = (): Partial<PermissionKey> => {
-    if (currentOperator?.permissions) {
-      return currentOperator.permissions;
-    }
-    
     if (currentUser?.permissions) {
       return currentUser.permissions;
     }
@@ -60,7 +49,6 @@ export const usePermissions = () => {
   return {
     hasPermission,
     getPermissions,
-    currentOperator,
     currentUser
   };
 };
