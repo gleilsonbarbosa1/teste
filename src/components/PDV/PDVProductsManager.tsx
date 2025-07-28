@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { X, AlertTriangle, DollarSign, CheckCircle, Printer } from 'lucide-react';
 import { PDVCashRegister, PDVCashRegisterSummary, PDVCashRegisterEntry } from '../../types/pdv';
 import { usePermissions } from '../../hooks/usePermissions';
-import { usePermissions } from '../../hooks/usePermissions';
 
 interface CashRegisterCloseConfirmationProps {
   isOpen: boolean;
@@ -21,9 +20,6 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
   summary,
   isProcessing
 }) => {
-  const { hasPermission } = usePermissions();
-  const canViewExpectedBalance = hasPermission('can_view_expected_balance');
-
   const { hasPermission } = usePermissions();
   const canViewExpectedBalance = hasPermission('can_view_expected_balance');
 
@@ -185,16 +181,16 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
                   </div>
                 </div>
               </div>
-              {canViewExpectedBalance && closingAmount !== (summary?.expected_balance || 0) && closingAmount > 0 && (
+
               {/* Justificativa obrigatória para diferenças */}
               {needsJustification && (
                 <div className={`border rounded-xl p-4 ${
                   difference > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
                 }`}>
                   <div className="flex items-start gap-3">
-                    <AlertTriangle size={20} className={
+                    <AlertTriangle size={20} className={`mt-1 flex-shrink-0 ${
                       difference > 0 ? 'text-yellow-600' : 'text-red-600'
-                    } className="mt-1 flex-shrink-0" />
+                    }`} />
                     <div className="w-full">
                       <h4 className={`font-medium mb-2 ${
                         difference > 0 ? 'text-yellow-800' : 'text-red-800'
@@ -219,35 +215,24 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
                   </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {hasInformedAmount && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <Printer size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                <div className="flex-1">
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={printMovements}
-                  {canViewExpectedBalance && (
-                    <div className="pt-2 border-t border-blue-200">
-                      <div className="flex justify-between">
-                        <span className="font-medium text-blue-800">Saldo esperado:</span>
-                        <span className="font-bold text-blue-800">{formatPrice(summary?.expected_balance || 0)}</span>
-                      </div>
-                    </div>
-                  )}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Printer size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                  <div className="flex-1">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={printMovements}
+                        onChange={(e) => setPrintMovements(e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-blue-800 font-medium">
+                        Imprimir relatório de movimentações
                       </span>
-                {canViewExpectedBalance && (
-                  <div className="flex justify-between pt-1 text-xs text-gray-500">
-                    <p className="text-xs">Apenas transações em dinheiro</p>
-                    <p>
-                      {formatPrice(summary?.opening_amount || 0)} + entradas - saídas
-                    </p>
+                    </label>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           )}
