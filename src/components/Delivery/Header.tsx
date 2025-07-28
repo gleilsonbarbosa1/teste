@@ -8,7 +8,19 @@ const Header: React.FC = () => {
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-8">
         <div className="text-center">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <ShoppingBag size={48} className="text-white" />
+            <img 
+              src="/logo elite.jpeg" 
+              alt="Elite Açaí Logo" 
+              className="w-20 h-20 object-contain bg-white rounded-full p-2"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                // Fallback to icon if image fails to load
+                const fallback = document.createElement('div');
+                fallback.innerHTML = '<svg class="w-20 h-20 text-white bg-white rounded-full p-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4l1-12z"></path></svg>';
+                target.parentNode?.insertBefore(fallback, target);
+              }}
+            />
             <h1 className="text-4xl md:text-5xl font-bold">
               Elite Açaí
             </h1>

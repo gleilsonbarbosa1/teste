@@ -49,6 +49,15 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
+              <img 
+                src="/logo elite.jpeg" 
+                alt="Elite Açaí Logo" 
+                className="w-12 h-12 object-contain bg-white rounded-full p-1 border-2 border-blue-200"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
               <div className="bg-blue-100 rounded-full p-2">
                 <Store size={24} className="text-blue-600" />
               </div>

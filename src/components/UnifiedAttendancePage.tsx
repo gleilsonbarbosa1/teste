@@ -67,6 +67,15 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
+              <img 
+                src="/logo elite.jpeg" 
+                alt="Elite Açaí Logo" 
+                className="w-12 h-12 object-contain bg-white rounded-full p-1 border-2 border-green-200"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
               <div className="bg-green-100 rounded-full p-2">
                 <ShoppingBag size={24} className="text-green-600" />
               </div>

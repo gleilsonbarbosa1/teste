@@ -39,6 +39,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
       params: {
         eventsPerSecond: 10
       }
+    },
+    // Add retry and timeout configuration
+    fetch: (url, options = {}) => {
+      return fetch(url, {
+        ...options,
+        signal: AbortSignal.timeout(15000), // 15 second timeout
+      });
     }
   })
 }

@@ -331,6 +331,12 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 
                 <div className="space-y-2">
                   {group.complements.map((complement) => {
+                    // Não mostrar complementos inativos
+                    if (complement.isActive === false || complement.is_active === false) {
+                      console.log(`🚫 Complemento ${complement.name} oculto (inativo)`)
+                      return null;
+                    }
+                    
                     const isSelected = isComplementSelected(group.id, complement.id);
                     const groupCount = getGroupSelectionCount(group.id);
                     const canSelect = groupCount < group.maxItems || isSelected;

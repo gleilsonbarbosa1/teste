@@ -50,7 +50,7 @@ const DeliveryPage: React.FC = () => {
   const { getStoreStatus } = useStoreHours();
   const productScheduling = useProductScheduling();
   const { getRecommendations } = useRecommendations();
-  const { products: deliveryProducts, loading: productsLoading } = useDeliveryProducts();
+  const { products: deliveryProducts, loading: productsLoading, refetch: refetchProducts } = useDeliveryProducts();
   
   // Configurar hook para funções de availability
   React.useEffect(() => {
@@ -64,6 +64,15 @@ const DeliveryPage: React.FC = () => {
       setCustomerId(storedCustomerId);
     }
   }, []);
+  
+  // Show connection status if there are issues
+  const [showConnectionWarning, setShowConnectionWarning] = useState(false);
+  
+  React.useEffect(() => {
+    // Check if we're in offline mode
+    const hasError = deliveryProducts.length === 0 && !productsLoading;
+    setShowConnectionWarning(hasError);
+  }, [deliveryProducts, productsLoading]);
   
   // Converter produtos do banco para o formato esperado pelo componente
   const products = React.useMemo(() => {
@@ -85,17 +94,39 @@ const DeliveryPage: React.FC = () => {
             required: group.required || false,
             minItems: group.min_items || 0,
             maxItems: group.max_items || 1,
-            complements: Array.isArray(group.complements) ? group.complements.map(comp => ({
-              id: comp.id || `comp-${Math.random()}`,
-              name: comp.name || 'Complemento',
-              price: comp.price || 0,
-              description: comp.description || ''
-            })) : (Array.isArray(group.options) ? group.options.map(opt => ({
-              id: opt.id || `opt-${Math.random()}`,
-              name: opt.name || 'Opção',
-              price: opt.price || 0,
-              description: opt.description || ''
-            })) : [])
+            complements: Array.isArray(group.complements) 
+              ? group.complements
+                  .filter(comp => {
+                    const isActive = comp.isActive !== false && comp.is_active !== false;
+                    if (!isActive) {
+                      console.log(`🚫 Complemento ${comp.name} filtrado (inativo):`, comp);
+                    }
+                    return isActive;
+                  })
+                  .map(comp => ({
+                    id: comp.id || `comp-${Math.random()}`,
+                    name: comp.name || 'Complemento',
+                    price: comp.price || 0,
+                    description: comp.description || '',
+                    isActive: comp.isActive !== false && comp.is_active !== false
+                  }))
+              : (Array.isArray(group.options) 
+                ? group.options
+                    .filter(opt => {
+                      const isActive = opt.isActive !== false && opt.is_active !== false;
+                      if (!isActive) {
+                        console.log(`🚫 Opção ${opt.name} filtrada (inativa):`, opt);
+                      }
+                      return isActive;
+                    })
+                    .map(opt => ({
+                      id: opt.id || `opt-${Math.random()}`,
+                      name: opt.name || 'Opção',
+                      price: opt.price || 0,
+                      description: opt.description || '',
+                      isActive: opt.isActive !== false && opt.is_active !== false
+                    }))
+                : [])
           }))
         : [],
       sizes: dbProduct.sizes,
@@ -106,6 +137,16 @@ const DeliveryPage: React.FC = () => {
       } : undefined
     }));
   }, [deliveryProducts]);
+
+  // Recarregar produtos quando necessário
+  React.useEffect(() => {
+    // Disponibilizar função de refresh globalmente
+    (window as any).refreshDeliveryProducts = refetchProducts;
+    
+    return () => {
+      delete (window as any).refreshDeliveryProducts;
+    };
+  }, [refetchProducts]);
   
   // Filtrar apenas produtos ativos
   const activeProducts = products.filter(product => {
@@ -218,6 +259,25 @@ const DeliveryPage: React.FC = () => {
       <section className="py-4 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <StoreStatusBanner />
+          
+          {/* Connection Warning */}
+          {showConnectionWarning && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-yellow-100 rounded-full p-2">
+                  <AlertCircle size={20} className="text-yellow-600" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-yellow-800">Modo Offline</h3>
+                  <p className="text-yellow-700 text-sm">
+                    Conectividade limitada com o servidor. Exibindo produtos em modo demonstração.
+                    Alguns produtos podem não estar atualizados.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <IARecommender 
             customerId={customerId} 
             onProductSelect={(productId) => {

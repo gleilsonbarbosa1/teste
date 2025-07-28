@@ -69,20 +69,96 @@ export const useDeliveryProducts = () => {
       
       console.log('🔄 Carregando produtos do banco de dados...');
       
-      const { data, error } = await supabase
+      // Add timeout and retry logic for Supabase requests
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout: Conexão com Supabase demorou mais de 10 segundos')), 10000);
+      });
+      
+      const fetchPromise = supabase
         .from('delivery_products')
         .select('*')
         .order('name');
+      
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro do Supabase:', error);
+        throw new Error(`Erro do banco de dados: ${error.message}`);
+      }
       
       console.log(`✅ ${data?.length || 0} produtos carregados do banco`);
       setProducts(data || []);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar produtos';
-      console.error('❌ Erro ao carregar produtos:', errorMessage);
-      setError(errorMessage);
-      setProducts([]);
+      console.error('❌ Erro ao carregar produtos:', err);
+      
+      // Handle different types of errors gracefully
+      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+        console.warn('🌐 Erro de conectividade - usando produtos de demonstração');
+        setError('Sem conexão com o servidor - usando modo offline');
+        
+        // Load demo products as fallback
+        try {
+          const { products: demoProducts } = await import('../data/products');
+          const mappedProducts = demoProducts.map(product => ({
+            id: product.id,
+            name: product.name,
+            category: product.category as DeliveryProduct['category'],
+            price: product.price,
+            original_price: product.originalPrice,
+            description: product.description,
+            image_url: product.image,
+            is_active: product.isActive !== false,
+            is_weighable: product.is_weighable || false,
+            price_per_gram: product.pricePerGram,
+            complement_groups: product.complementGroups,
+            sizes: product.sizes,
+            scheduled_days: product.scheduledDays,
+            availability_type: product.availability?.type || 'always',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+          
+          setProducts(mappedProducts);
+        } catch (importError) {
+          console.error('❌ Erro ao carregar produtos de demonstração:', importError);
+          setProducts([]);
+        }
+      } else if (err instanceof Error && err.message.includes('Timeout')) {
+        console.warn('⏱️ Timeout na conexão - usando produtos de demonstração');
+        setError('Conexão lenta - usando modo offline');
+        
+        // Load demo products as fallback for timeout
+        try {
+          const { products: demoProducts } = await import('../data/products');
+          const mappedProducts = demoProducts.map(product => ({
+            id: product.id,
+            name: product.name,
+            category: product.category as DeliveryProduct['category'],
+            price: product.price,
+            original_price: product.originalPrice,
+            description: product.description,
+            image_url: product.image,
+            is_active: product.isActive !== false,
+            is_weighable: product.is_weighable || false,
+            price_per_gram: product.pricePerGram,
+            complement_groups: product.complementGroups,
+            sizes: product.sizes,
+            scheduled_days: product.scheduledDays,
+            availability_type: product.availability?.type || 'always',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+          
+          setProducts(mappedProducts);
+        } catch (importError) {
+          console.error('❌ Erro ao carregar produtos de demonstração:', importError);
+          setProducts([]);
+        }
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar produtos';
+        setError(errorMessage);
+        setProducts([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -212,8 +288,10 @@ export const useDeliveryProducts = () => {
 
   const syncWithDatabase = useCallback(async () => {
     console.log('🔄 Sincronizando produtos com banco de dados...');
+    console.log('📊 Estado atual dos produtos:', products.length);
     await fetchProducts();
-  }, [fetchProducts]);
+    console.log('✅ Sincronização concluída');
+  }, [fetchProducts, products]);
 
   const deleteProduct = useCallback(async (id: string) => {
     try {
@@ -325,6 +403,7 @@ export const useDeliveryProducts = () => {
     createProduct,
     updateProduct,
     deleteProduct,
-    refetch: fetchProducts
+    refetch: fetchProducts,
+    syncWithDatabase
   };
 };

@@ -10,6 +10,7 @@ interface ComplementOption {
   name: string;
   price: number;
   description: string;
+  is_active?: boolean;
 }
 
 interface ComplementGroup {
@@ -74,7 +75,7 @@ const DEFAULT_COMPLEMENT_GROUPS: ComplementGroup[] = [
       { name: "CREME DE PAÇOCA", price: 0, description: "Creme de paçoca" },
       { name: "CREME DE OVOMALTINE", price: 0, description: "Creme de ovomaltine" },
       { name: "CREME DE PISTACHE", price: 0, description: "Creme de pistache" }
-    ]
+    ].map(comp => ({ ...comp, is_active: true }))
   },
   {
     name: "3 ADICIONAIS * OPCIONAL (ATÉ 3 ITENS)",
@@ -134,7 +135,7 @@ const DEFAULT_COMPLEMENT_GROUPS: ComplementGroup[] = [
       { name: "PORÇÕES DE BROWNIE", price: 0, description: "Porções de brownie" },
       { name: "RASPAS DE CHOCOLATE", price: 0, description: "Raspas de chocolate" },
       { name: "RECHEIO DE FERREIRO ROCHÊ", price: 0, description: "Recheio de ferreiro rochê" }
-    ]
+    ].map(comp => ({ ...comp, is_active: true }))
   },
   {
     name: "10 ADICIONAIS * OPCIONAL (ATÉ 10 ITENS)",
@@ -169,7 +170,7 @@ const DEFAULT_COMPLEMENT_GROUPS: ComplementGroup[] = [
       { name: "COBERTURA FINE DENTADURA", price: 2, description: "Cobertura fine dentadura" },
       { name: "COBERTURA FINE BEIJINHO", price: 2, description: "Cobertura fine beijinho" },
       { name: "COBERTURA FINE BANANINHA", price: 2, description: "Cobertura fine bananinha" }
-    ]
+    ].map(comp => ({ ...comp, is_active: true }))
   },
   {
     name: "VOCÊ PREFERE OS OPCIONAIS SEPARADOS OU JUNTO COM O AÇAÍ?",
@@ -354,6 +355,35 @@ const ProductsPanel: React.FC = () => {
       
       // Forçar recarregamento dos produtos após salvar
       console.log('✅ Produto salvo, recarregando lista...');
+      try {
+        // Tentar recarregar produtos do delivery se o hook estiver disponível
+        const deliveryRefresh = (window as any).refreshDeliveryProducts;
+        if (deliveryRefresh) {
+          console.log('🔄 Atualizando produtos do delivery após alteração...')
+          await deliveryRefresh();
+          console.log('✅ Produtos do delivery atualizados')
+        }
+        
+        // Mostrar feedback de sucesso
+        const successMessage = document.createElement('div');
+        successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+        successMessage.innerHTML = `
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          Produto excluído com sucesso!
+        `;
+        document.body.appendChild(successMessage);
+        
+        setTimeout(() => {
+          if (document.body.contains(successMessage)) {
+            document.body.removeChild(successMessage);
+          }
+        }, 3000);
+        
+      } catch (error) {
+        console.log('Delivery refresh não disponível:', error);
+      }
       setTimeout(() => {
         window.location.reload();
       }, 1000);
@@ -438,9 +468,10 @@ const ProductsPanel: React.FC = () => {
       }, 3000);
     } catch (error) {
       console.error('Erro ao salvar programação:', error);
-      alert('Erro ao salvar programação. Tente novamente.');
+      alert('Erro ao salvar programação do produto.');
     }
   };
+
   const applyDefaultComplementGroups = () => {
     setFormData(prev => ({
       ...prev,
@@ -568,7 +599,8 @@ const ProductsPanel: React.FC = () => {
     const newOption: ComplementOption = {
       name: "",
       price: 0,
-      description: ""
+      description: "",
+      is_active: true
     };
     
     setFormData(prev => ({
@@ -991,11 +1023,12 @@ const ProductsPanel: React.FC = () => {
                             </div>
 
                             {group.options.length > 0 && (
-                              <div className="grid grid-cols-6 gap-2 text-xs font-medium text-gray-700 bg-gray-100 p-2 rounded">
+                              <div className="grid grid-cols-7 gap-2 text-xs font-medium text-gray-700 bg-gray-100 p-2 rounded">
                                 <div>Ordem</div>
                                 <div>Nome</div>
                                 <div>Preço (R$)</div>
                                 <div>Descrição</div>
+                                <div>Status</div>
                                 <div>Ações</div>
                               </div>
                             )}
@@ -1004,10 +1037,10 @@ const ProductsPanel: React.FC = () => {
                               {group.options.map((option, optionIndex) => (
                                 <div 
                                   key={optionIndex} 
-                                  className={`grid grid-cols-6 gap-2 items-center bg-white p-2 rounded border transition-all ${
+                                  className={`grid grid-cols-7 gap-2 items-center bg-white p-2 rounded border transition-all ${
                                     draggedOptionIndex?.groupIndex === groupIndex && draggedOptionIndex?.optionIndex === optionIndex 
                                       ? 'opacity-50 scale-95' : ''
-                                  }`}
+                                  } ${option.is_active === false ? 'bg-red-50 border-red-200' : ''}`}
                                   draggable
                                   onDragStart={(e) => handleOptionDragStart(e, groupIndex, optionIndex)}
                                   onDragOver={handleOptionDragOver}
@@ -1037,6 +1070,17 @@ const ProductsPanel: React.FC = () => {
                                     className="border border-gray-300 rounded px-2 py-1 text-sm"
                                     placeholder="Descrição"
                                   />
+                                  <div className="flex items-center justify-center">
+                                    <label className="flex items-center gap-1">
+                                      <input
+                                        type="checkbox"
+                                        checked={option.is_active !== false}
+                                        onChange={(e) => updateComplementOption(groupIndex, optionIndex, { is_active: e.target.checked })}
+                                        className="w-3 h-3 text-green-600"
+                                      />
+                                      <span className="text-xs text-gray-600">Ativo</span>
+                                    </label>
+                                  </div>
                                   <button
                                     type="button"
                                     onClick={() => removeComplementOption(groupIndex, optionIndex)}

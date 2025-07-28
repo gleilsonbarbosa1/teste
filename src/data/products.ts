@@ -28,7 +28,7 @@ const standardComplementGroups = [
       { id: 'acai-tradicional', name: 'AÇAÍ PREMIUM TRADICIONAL', price: 0, description: 'Açaí tradicional premium' },
       { id: 'acai-fit', name: 'AÇAÍ PREMIUM (0% AÇÚCAR - FIT)', price: 0, description: 'Açaí sem açúcar, ideal para dieta' },
       { id: 'acai-morango', name: 'AÇAÍ PREMIUM COM MORANGO', price: 0, description: 'Açaí premium com sabor morango' }
-    ]
+    ].map(comp => ({ ...comp, isActive: true }))
   },
   {
     id: 'quantidade-acai',
@@ -41,7 +41,7 @@ const standardComplementGroups = [
       { id: 'nao-quero-acai', name: 'NÃO QUERO AÇAÍ', price: 0, description: 'Sem açaí' },
       { id: 'menos-acai', name: 'MENOS AÇAÍ', price: 0, description: 'Quantidade reduzida de açaí' },
       { id: 'quantidade-normal', name: 'QUANTIDADE NORMAL', price: 0, description: 'Quantidade padrão de açaí' }
-    ]
+    ].map(comp => ({ ...comp, isActive: true }))
   },
   {
     id: 'cremes-opcional',
@@ -58,7 +58,7 @@ const standardComplementGroups = [
       { id: 'creme-pacoca', name: 'CREME DE PAÇOCA', price: 0, description: 'Creme de paçoca' },
       { id: 'creme-ovomaltine', name: 'CREME DE OVOMALTINE', price: 0, description: 'Creme de ovomaltine' },
       { id: 'creme-pistache', name: 'CREME DE PISTACHE', price: 0, description: 'Creme de pistache' }
-    ]
+    ].map(comp => ({ ...comp, isActive: true }))
   },
   {
     id: 'adicionais-3',
