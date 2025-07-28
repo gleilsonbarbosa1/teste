@@ -13,6 +13,7 @@ interface TableDetailsModalProps {
   onClose: () => void;
   onCloseSale: (paymentType: TableSale['payment_type'], changeAmount?: number, discountAmount?: number) => void;
   onUpdateStatus: (tableId: string, status: RestaurantTable['status']) => void;
+  onSaleUpdate?: (updatedSale: TableSale) => void;
 }
 
 const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
@@ -21,9 +22,11 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
   storeId,
   onClose,
   onCloseSale,
-  onUpdateStatus
+  onUpdateStatus,
+  onSaleUpdate
 }) => {
-  const { addItemToSale } = useTableSales(storeId);
+  const { addItemToSale, getSaleDetails } = useTableSales(storeId);
+  const [currentSale, setCurrentSale] = useState<TableSale>(sale);
   
   // Verificar se há caixa aberto
   const store1CashRegister = usePDVCashRegister();
@@ -46,6 +49,14 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('pt-BR');
+  };
+
+  // Função para atualizar a venda local
+  const setSale = (updatedSale: TableSale) => {
+    setCurrentSale(updatedSale);
+    if (onSaleUpdate) {
+      onSaleUpdate(updatedSale);
+    }
   };
 
   const handleCloseSale = async () => {
@@ -89,15 +100,19 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
         }
       }, 3000);
       
-      // Forçar atualização da página para mostrar o novo item
-      window.location.reload();
+      // Recarregar apenas os dados da venda sem refresh da página
+      const updatedSale = await getSaleDetails(sale.id);
+      if (updatedSale) {
+        // Atualizar o estado local da venda com os novos dados
+        setSale(updatedSale);
+      }
     } catch (error) {
       console.error('Erro ao adicionar item:', error);
       alert('Erro ao adicionar item. Tente novamente.');
       throw error; // Re-throw para o modal tratar
     }
   };
-  const totalWithDiscount = sale.subtotal - discountAmount;
+  const totalWithDiscount = currentSale.subtotal - discountAmount;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -128,19 +143,19 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <Users size={16} className="text-blue-600" />
-                <span>Cliente: {sale.customer_name || 'Não informado'}</span>
+                <span>Cliente: {currentSale.customer_name || 'Não informado'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Users size={16} className="text-blue-600" />
-                <span>Pessoas: {sale.customer_count}</span>
+                <span>Pessoas: {currentSale.customer_count}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock size={16} className="text-blue-600" />
-                <span>Aberta em: {formatDateTime(sale.opened_at)}</span>
+                <span>Aberta em: {formatDateTime(currentSale.opened_at)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <DollarSign size={16} className="text-blue-600" />
-                <span>Operador: {sale.operator_name}</span>
+                <span>Operador: {currentSale.operator_name}</span>
               </div>
             </div>
           </div>
@@ -158,9 +173,9 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
               </button>
             </div>
 
-            {sale.items && sale.items.length > 0 ? (
+            {currentSale.items && currentSale.items.length > 0 ? (
               <div className="space-y-3">
-                {sale.items.map((item) => (
+                {currentSale.items.map((item) => (
                   <div key={item.id} className="bg-gray-50 rounded-lg p-4">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -195,7 +210,7 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
             <div className="flex justify-between items-center">
               <span className="text-lg font-medium text-green-800">Total da Venda:</span>
               <span className="text-2xl font-bold text-green-700">
-                {formatPrice(sale.subtotal)}
+                {formatPrice(currentSale.subtotal)}
               </span>
             </div>
           </div>
@@ -250,7 +265,7 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
                   type="number"
                   step="0.01"
                   min="0"
-                  max={sale.subtotal}
+                  max={currentSale.subtotal}
                   value={discountAmount}
                   onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -262,7 +277,7 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span>{formatPrice(sale.subtotal)}</span>
+                    <span>{formatPrice(currentSale.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Desconto:</span>
@@ -383,7 +398,7 @@ const TableDetailsModal: React.FC<TableDetailsModalProps> = ({
       <AddItemModal
         isOpen={showAddItem}
         onClose={() => setShowAddItem(false)}
-        onAddItem={handleAddItem}
+        onAddItem={(item) => handleAddItem(item)}
         storeId={storeId}
       />
     </div>
