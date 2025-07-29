@@ -36,6 +36,9 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
   const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
+  
+  // Always allow access for attendant panel - remove permission guard
+  const canAccess = true;
 
   // Carregar configuração de som
   useEffect(() => {
@@ -307,7 +310,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
   }
 
   return (
-    <PermissionGuard hasPermission={hasPermission('can_view_orders')} showMessage={true}>
+    <div>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <header className="bg-white shadow-sm border-b print:hidden">
@@ -497,7 +500,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
         />
       )}
     </div>
-    </PermissionGuard>
+    </div>
   );
 };
 

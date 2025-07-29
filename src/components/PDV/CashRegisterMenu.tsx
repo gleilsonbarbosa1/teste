@@ -230,7 +230,7 @@ const CashRegisterMenu: React.FC = () => {
   }
 
   return (
-    <PermissionGuard hasPermission={hasPermission('can_view_cash_register') || hasPermission('can_view_cash_report')} showMessage={true}>
+    <div>
       <div className="space-y-6">
         {/* Supabase Configuration Warning */}
         {!supabaseConfigured && (
@@ -849,7 +849,7 @@ const CashRegisterMenu: React.FC = () => {
         </div>
       )}
     </div>
-    </PermissionGuard>
+    </div>
   );
 };
 
