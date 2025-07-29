@@ -27,7 +27,8 @@ import {
   FileText,
   Settings,
   Package,
-  Calendar
+  Calendar,
+  TrendingUp
 } from 'lucide-react';
 
 const PDVPage: React.FC = () => {
@@ -46,7 +47,6 @@ const PDVPage: React.FC = () => {
     return null;
   });
 
-  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'daily_report' | 'detailed_report' | 'period_report'>('sales');
   const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'daily_report' | 'detailed_report' | 'period_report' | 'operators' | 'products' | 'reports' | 'settings' | 'sales_report'>('sales');
   const { hasPermission } = usePermissions(loggedInOperator);
   const { storeSettings } = useStoreHours();
@@ -303,7 +303,6 @@ const PDVPage: React.FC = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {availableTabs.map((tab) => {
               const Icon = tab.icon;
