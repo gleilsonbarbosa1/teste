@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, Calendar, BarChart3, TrendingUp, Package, RefreshCw, AlertCircle } from 'lucide-react';
+import { FileText, Download, Calendar, BarChart3, TrendingUp, Package, RefreshCw, AlertCircle, DollarSign } from 'lucide-react';
 import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
 import { supabase } from '../../lib/supabase';
 
