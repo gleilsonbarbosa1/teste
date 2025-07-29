@@ -49,7 +49,6 @@ const PDVPage: React.FC = () => {
     return null;
   });
 
-  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'daily_report' | 'detailed_report' | 'period_report' | 'operators' | 'products' | 'reports' | 'settings' | 'sales_report'>('sales');
   const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'daily_report' | 'detailed_report' | 'period_report' | 'daily_delivery_report' | 'operators' | 'products' | 'reports' | 'settings' | 'sales_report'>('sales');
   const { hasPermission } = usePermissions(loggedInOperator);
   const { storeSettings } = useStoreHours();
