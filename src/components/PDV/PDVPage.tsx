@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import PDVLogin from './PDVLogin';
 import PDVSalesScreen from './PDVSalesScreen';
 import CashRegisterMenu from './CashRegisterMenu';
+import PDVCashReportWithDetails from './PDVCashReportWithDetails';
+import PDVDailyCashReport from './PDVDailyCashReport';
+import PDVCashReportWithDateFilter from './PDVCashReportWithDateFilter';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useScale } from '../../hooks/useScale';
 import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
@@ -14,7 +17,11 @@ import {
   ArrowLeft,
   AlertCircle,
   User,
-  LogOut
+  LogOut,
+  BarChart3,
+  FileText,
+  Settings,
+  Package
 } from 'lucide-react';
 
 const PDVPage: React.FC = () => {
@@ -33,7 +40,7 @@ const PDVPage: React.FC = () => {
     return null;
   });
 
-  const [activeTab, setActiveTab] = useState<'sales' | 'cash'>('sales');
+  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'daily_report' | 'detailed_report' | 'period_report'>('sales');
   const { hasPermission } = usePermissions(loggedInOperator);
   const { storeSettings } = useStoreHours();
   const { isOpen: isCashRegisterOpen } = usePDVCashRegister();
@@ -73,6 +80,67 @@ const PDVPage: React.FC = () => {
     return <PDVLogin onLogin={handleLogin} />;
   }
 
+  // Definir abas disponíveis baseado nas permissões
+  const availableTabs = [
+    {
+      id: 'sales' as const,
+      label: 'Vendas',
+      icon: Calculator,
+      color: 'bg-green-600',
+      permission: 'can_view_sales',
+      description: 'Sistema de vendas'
+    },
+    {
+      id: 'cash' as const,
+      label: 'Caixas',
+      icon: DollarSign,
+      color: 'bg-yellow-500',
+      permission: 'can_view_cash_register',
+      description: 'Controle de caixa'
+    },
+    {
+      id: 'daily_report' as const,
+      label: 'Relatório Diário',
+      icon: Calendar,
+      color: 'bg-blue-600',
+      permission: 'can_view_cash_report',
+      description: 'Relatório do dia'
+    },
+    {
+      id: 'detailed_report' as const,
+      label: 'Relatório Detalhado',
+      icon: FileText,
+      color: 'bg-indigo-600',
+      permission: 'can_view_cash_report',
+      description: 'Histórico completo'
+    },
+    {
+      id: 'period_report' as const,
+      label: 'Relatório por Período',
+      icon: BarChart3,
+      color: 'bg-purple-600',
+      permission: 'can_view_cash_report',
+      description: 'Análise por período'
+    }
+  ].filter(tab => isAdmin || hasPermission(tab.permission as any));
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'sales':
+        return <PDVSalesScreen operator={loggedInOperator} scaleHook={scale} storeSettings={storeSettings} />;
+      case 'cash':
+        return <CashRegisterMenu operator={loggedInOperator} />;
+      case 'daily_report':
+        return <PDVDailyCashReport />;
+      case 'detailed_report':
+        return <PDVCashReportWithDetails />;
+      case 'period_report':
+        return <PDVCashReportWithDateFilter />;
+      default:
+        return <PDVSalesScreen operator={loggedInOperator} scaleHook={scale} storeSettings={storeSettings} />;
+    }
+  };
+
   // Se está logado, mostrar sistema PDV completo
   return (
     <div className="min-h-screen bg-gray-50">
@@ -95,7 +163,7 @@ const PDVPage: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">PDV - Elite Açaí</h1>
-                <p className="text-gray-600">Loja 1 - Sistema de Vendas</p>
+                <p className="text-gray-600">Loja 1 - Sistema Completo</p>
               </div>
             </div>
             
@@ -105,6 +173,14 @@ const PDVPage: React.FC = () => {
                 <User size={18} className="text-gray-600" />
                 <span className="text-sm font-medium text-gray-700">{loggedInOperator.name}</span>
               </div>
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg transition-colors text-sm"
+                title="Voltar ao site"
+              >
+                <ArrowLeft size={16} />
+                Site
+              </button>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-colors text-sm"
@@ -160,45 +236,53 @@ const PDVPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Navigation Tabs */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6 print:hidden">
-          <div className="flex flex-wrap gap-4">
-            {(isAdmin || hasPermission('can_view_sales')) && (
-              <button
-                onClick={() => setActiveTab('sales')}
-                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'sales'
-                    ? 'bg-green-600 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Calculator size={20} />
-                Vendas
-              </button>
-            )}
-            
-            {(isAdmin || hasPermission('can_view_cash_register')) && (
-              <button
-                onClick={() => setActiveTab('cash')}
-                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'cash'
-                    ? 'bg-yellow-500 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <DollarSign size={20} />
-                Caixas
-              </button>
-            )}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <Package size={20} className="text-gray-600" />
+              Sistema PDV Completo - Loja 1
+            </h2>
+            <div className="text-sm text-gray-500">
+              {availableTabs.length} módulo(s) disponível(is)
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {availableTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
+                    isActive
+                      ? `${tab.color} text-white border-transparent shadow-lg transform scale-105`
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-md'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`rounded-full p-2 ${
+                      isActive ? 'bg-white/20' : 'bg-gray-100'
+                    }`}>
+                      <Icon size={20} className={isActive ? 'text-white' : 'text-gray-600'} />
+                    </div>
+                    <h3 className="font-semibold">{tab.label}</h3>
+                  </div>
+                  <p className={`text-sm ${
+                    isActive ? 'text-white/80' : 'text-gray-500'
+                  }`}>
+                    {tab.description}
+                  </p>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Content */}
-        <div className="transition-all duration-300 print:hidden">
-          {activeTab === 'sales' && (isAdmin || hasPermission('can_view_sales')) && (
-            <PDVSalesScreen operator={loggedInOperator} scaleHook={scale} storeSettings={storeSettings} />
-          )}
-          {activeTab === 'cash' && (isAdmin || hasPermission('can_view_cash_register')) && (
-            <CashRegisterMenu operator={loggedInOperator} />
-          )}
+        <div className="transition-all duration-300">
+          {renderContent()}
         </div>
       </div>
     </div>
