@@ -43,6 +43,8 @@ const Cart: React.FC<CartProps> = ({
   const [customerBalance, setCustomerBalance] = useState<CustomerBalance | null>(null);
   const [appliedCashback, setAppliedCashback] = useState(0);
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
+  const [loadingCustomer, setLoadingCustomer] = useState(false);
+  const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo>({
     name: '',
     phone: '',
@@ -65,25 +67,152 @@ const Cart: React.FC<CartProps> = ({
   // Carregar dados do cliente quando o telefone for preenchido
   useEffect(() => {
     const loadCustomerData = async () => {
-      if (deliveryInfo.phone && deliveryInfo.phone.length >= 11) {
+      // Só buscar se o telefone tiver pelo menos 11 dígitos
+      const phoneNumbers = deliveryInfo.phone.replace(/\D/g, '');
+      if (phoneNumbers.length >= 11) {
         try {
-          const customerData = await getOrCreateCustomer(deliveryInfo.phone, deliveryInfo.name);
-          setCustomer(customerData);
+          setLoadingCustomer(true);
           
-          const balance = await getCustomerBalance(customerData.id);
-          setCustomerBalance(balance);
+          // Primeiro, tentar encontrar cliente existente
+          const existingCustomer = await getCustomerByPhone(phoneNumbers);
+          
+          if (existingCustomer) {
+            console.log('✅ Cliente encontrado:', existingCustomer);
+            setCustomer(existingCustomer);
+            
+            // Preencher automaticamente os dados do cliente
+            setDeliveryInfo(prev => ({
+              ...prev,
+              name: existingCustomer.name || prev.name
+            }));
+            
+            // Carregar saldo de cashback
+            const balance = await getCustomerBalance(existingCustomer.id);
+            setCustomerBalance(balance);
+            
+            // Mostrar notificação de cliente reconhecido
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+            notification.innerHTML = `
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Cliente reconhecido: ${existingCustomer.name || 'Cliente'}
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+              if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+              }
+            }, 3000);
+          } else {
+            // Cliente não encontrado, limpar dados
+            setCustomer(null);
+            setCustomerBalance(null);
+            setAppliedCashback(0);
+          }
         } catch (error) {
-          console.error('Erro ao carregar dados do cliente:', error);
+          console.error('Erro ao buscar cliente:', error);
+          setCustomer(null);
+          setCustomerBalance(null);
+          setAppliedCashback(0);
+        } finally {
+          setLoadingCustomer(false);
         }
       } else {
+        // Telefone incompleto, limpar dados
         setCustomer(null);
         setCustomerBalance(null);
         setAppliedCashback(0);
       }
     };
 
-    loadCustomerData();
-  }, [deliveryInfo.phone, deliveryInfo.name, getOrCreateCustomer, getCustomerBalance]);
+    // Debounce para evitar muitas consultas
+    const timeoutId = setTimeout(loadCustomerData, 500);
+    return () => clearTimeout(timeoutId);
+  }, [deliveryInfo.phone, getCustomerByPhone, getCustomerBalance]);
+
+  // Função para buscar sugestões de clientes por nome
+  const searchCustomerSuggestions = useCallback(async (name: string) => {
+    if (name.length < 3) {
+      setCustomerSuggestions([]);
+      return;
+    }
+
+    try {
+      // Buscar clientes por nome (implementar no hook useCashback)
+      const suggestions = await searchCustomersByName(name);
+      setCustomerSuggestions(suggestions.slice(0, 5)); // Máximo 5 sugestões
+    } catch (error) {
+      console.error('Erro ao buscar sugestões:', error);
+      setCustomerSuggestions([]);
+    }
+  }, []);
+
+  // Debounce para busca de sugestões por nome
+  useEffect(() => {
+    if (deliveryInfo.name && !customer) {
+      const timeoutId = setTimeout(() => {
+        searchCustomerSuggestions(deliveryInfo.name);
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setCustomerSuggestions([]);
+    }
+  }, [deliveryInfo.name, customer, searchCustomerSuggestions]);
+
+  // Função para selecionar cliente das sugestões
+  const selectCustomerSuggestion = async (selectedCustomer: Customer) => {
+    setCustomer(selectedCustomer);
+    setDeliveryInfo(prev => ({
+      ...prev,
+      name: selectedCustomer.name || prev.name,
+      phone: formatPhone(selectedCustomer.phone)
+    }));
+    setCustomerSuggestions([]);
+    
+    // Carregar saldo de cashback
+    try {
+      const balance = await getCustomerBalance(selectedCustomer.id);
+      setCustomerBalance(balance);
+    } catch (error) {
+      console.error('Erro ao carregar saldo:', error);
+    }
+  };
+
+  // Função anterior modificada para criar cliente se não existir
+  const ensureCustomerExists = async () => {
+    if (!customer && deliveryInfo.phone && deliveryInfo.name) {
+          
+      try {
+        const phoneNumbers = deliveryInfo.phone.replace(/\D/g, '');
+        const customerData = await getOrCreateCustomer(phoneNumbers, deliveryInfo.name);
+        setCustomer(customerData);
+        
+        const balance = await getCustomerBalance(customerData.id);
+          setCustomerBalance(balance);
+        
+        return customerData;
+      } catch (error) {
+        console.error('Erro ao criar/buscar cliente:', error);
+        return null;
+      }
+    }
+    return customer;
+  };
+
+  // Função para buscar clientes por nome (adicionar ao hook useCashback)
+  const searchCustomersByName = async (name: string): Promise<Customer[]> => {
+    try {
+      // Esta função precisa ser implementada no hook useCashback
+      // Por enquanto, retornar array vazio
+      return [];
+    } catch (error) {
+      console.error('Erro ao buscar clientes por nome:', error);
+      return [];
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -282,16 +411,24 @@ const Cart: React.FC<CartProps> = ({
 
       // Processar transações de cashback se cliente estiver identificado
       if (customer) {
+        // Cliente já existe, usar o existente
+        currentCustomer = customer;
+      } else {
+        // Criar novo cliente se não existir
+        currentCustomer = await ensureCustomerExists();
+      }
+      
+      if (currentCustomer) {
         // Aplicar resgate de cashback se houver
         if (appliedCashback > 0) {
           // Round to 2 decimal places to ensure precision consistency
           const roundedCashback = Math.round(appliedCashback * 100) / 100;
-          await createRedemptionTransaction(customer.id, roundedCashback, newOrder.id);
+          await createRedemptionTransaction(currentCustomer.id, roundedCashback, newOrder.id);
         }
 
         // Criar transação de compra para gerar cashback
         const purchaseTransaction = await createPurchaseTransaction(
-          customer.id, 
+          currentCustomer.id, 
           getTotalWithCashback(), 
           newOrder.id
         );
@@ -544,26 +681,62 @@ const Cart: React.FC<CartProps> = ({
                 <label className="block text-sm font-medium text-gray-700">
                   Nome completo *
                 </label>
-                <input
-                  type="text"
-                  value={deliveryInfo.name}
-                  onChange={(e) => setDeliveryInfo(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
-                  placeholder="Seu nome"
-                />
-              </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={deliveryInfo.name}
+                    onChange={(e) => setDeliveryInfo(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                    placeholder="Seu nome"
+                    required
+                  />
+                  
+                  {/* Sugestões de clientes */}
+                  {customerSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 mt-1">
+                      {customerSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion.id}
+                          type="button"
+                          onClick={() => selectCustomerSuggestion(suggestion)}
+                          className="w-full text-left p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 first:rounded-t-lg last:rounded-b-lg"
+                        >
+                          <div className="font-medium text-gray-800">{suggestion.name}</div>
+                          <div className="text-sm text-gray-500">{formatPhone(suggestion.phone)}</div>
+                          {suggestion.email && (
+                            <div className="text-xs text-gray-400">{suggestion.email}</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Telefone *
                 </label>
-                <input
-                  type="tel"
-                  value={deliveryInfo.phone}
-                  onChange={(e) => setDeliveryInfo(prev => ({ ...prev, phone: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
-                  placeholder="(85) 99999-9999"
-                />
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={deliveryInfo.phone}
+                    onChange={handlePhoneChange}
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                    placeholder="(85) 99999-9999"
+                    required
+                  />
+                  {loadingCustomer && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {customer ? 
+                    '✅ Cliente reconhecido - dados preenchidos automaticamente' : 
+                    'Digite seu telefone para identificação automática'
+                  }
+                </p>
               </div>
 
               {/* Exibir cashback se cliente identificado */}
