@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   Calculator, 
   Package, 
   DollarSign, 
@@ -10,7 +10,8 @@ import {
   AlertCircle,
   User,
   LogOut,
-  Users
+  Users,
+  Clock
 } from 'lucide-react';
 import AttendantPanel from './Orders/AttendantPanel'; 
 import PDVSalesScreen from './PDV/PDVSalesScreen';
@@ -34,7 +35,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
   const [activeTab, setActiveTab] = useState<'sales' | 'orders' | 'cash' | 'tables'>('sales');
   const { hasPermission } = usePermissions(operator);
   const { storeSettings: localStoreSettings } = useStoreHours();
-  const { isOpen: isCashRegisterOpen, currentRegister } = usePDVCashRegister();
+  const { isOpen: isCashRegisterOpen, currentRegister, previousDayOpenRegister } = usePDVCashRegister();
   const scale = useScale();
   const { orders } = useOrders();
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
@@ -59,6 +60,14 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
     
     setSupabaseConfigured(isConfigured);
   }, []);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -121,6 +130,26 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                 <p className="text-yellow-700 text-sm">
                   O Supabase não está configurado. Algumas funcionalidades estarão limitadas.
                   Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para acesso completo.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Previous Day Open Register Alert */}
+      {supabaseConfigured && previousDayOpenRegister && (
+        <div className="max-w-7xl mx-auto px-4 mt-6 print:hidden">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-red-100 rounded-full p-2">
+                <Clock size={20} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-red-800">Caixa do Dia Anterior Não Fechado</h3>
+                <p className="text-red-700 text-sm">
+                  Há um caixa aberto desde {formatDate(previousDayOpenRegister.opened_at)} que não foi fechado.
+                  É recomendado fechar este caixa antes de continuar as operações.
                 </p>
               </div>
             </div>

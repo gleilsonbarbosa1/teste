@@ -9,6 +9,7 @@ import {
   User,
   LogOut,
   Store,
+  Clock,
   Users
 } from 'lucide-react';
 import Store2PDVSalesScreen from './Store2PDVSalesScreen';
@@ -25,7 +26,7 @@ interface Store2UnifiedAttendancePageProps {
 
 const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = ({ operator, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'tables'>('sales');
-  const { isOpen: isCashRegisterOpen } = useStore2PDVCashRegister();
+  const { isOpen: isCashRegisterOpen, previousDayOpenRegister } = useStore2PDVCashRegister();
   const scale = useScale();
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
 
@@ -41,6 +42,14 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
     
     setSupabaseConfigured(isConfigured);
   }, []);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -102,6 +111,26 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
                 <h3 className="font-medium text-yellow-800">Sistema em Modo Demonstração - Loja 2</h3>
                 <p className="text-yellow-700 text-sm">
                   O Supabase não está configurado. Algumas funcionalidades estarão limitadas.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Previous Day Open Register Alert */}
+      {supabaseConfigured && previousDayOpenRegister && (
+        <div className="max-w-7xl mx-auto px-4 mt-6 print:hidden">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-red-100 rounded-full p-2">
+                <Clock size={20} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-red-800">Caixa do Dia Anterior Não Fechado - Loja 2</h3>
+                <p className="text-red-700 text-sm">
+                  Há um caixa da Loja 2 aberto desde {formatDate(previousDayOpenRegister.opened_at)} que não foi fechado.
+                  É recomendado fechar este caixa antes de continuar as operações.
                 </p>
               </div>
             </div>
