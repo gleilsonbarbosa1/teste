@@ -15,7 +15,7 @@ interface DailyDeliveryData {
   delivered_orders: number;
   cancelled_orders: number;
   total_delivery_fees: number;
-  payment_methods: {
+  paymentMethodsData: {
     money: number;
     pix: number;
     card: number;
@@ -76,7 +76,7 @@ const PDVDailyDeliveryReport: React.FC = () => {
           delivered_orders: 4,
           cancelled_orders: 1,
           total_delivery_fees: 75.00,
-          payment_methods: {
+          paymentMethodsData: {
             money: 200.50,
             pix: 185.00,
             card: 100.00
@@ -121,7 +121,7 @@ const PDVDailyDeliveryReport: React.FC = () => {
           delivered_orders: 0,
           cancelled_orders: 0,
           total_delivery_fees: 0,
-          payment_methods: { money: 0, pix: 0, card: 0 },
+          paymentMethodsData: { money: 0, pix: 0, card: 0 },
           neighborhoods: []
         });
         setLoading(false);
@@ -144,7 +144,7 @@ const PDVDailyDeliveryReport: React.FC = () => {
       };
 
       // Processar formas de pagamento
-      const paymentMethods = {
+      const paymentMethodsData = {
         money: orders.filter(o => o.payment_method === 'money').reduce((sum, o) => sum + o.total_price, 0),
         pix: orders.filter(o => o.payment_method === 'pix').reduce((sum, o) => sum + o.total_price, 0),
         card: orders.filter(o => o.payment_method === 'card').reduce((sum, o) => sum + o.total_price, 0)
@@ -173,7 +173,7 @@ const PDVDailyDeliveryReport: React.FC = () => {
         average_order_value: averageOrderValue,
         total_delivery_fees: totalDeliveryFees,
         ...statusCounts,
-        payment_methods,
+        paymentMethodsData,
         neighborhoods
       });
 
@@ -221,9 +221,9 @@ const PDVDailyDeliveryReport: React.FC = () => {
       ['Cancelados', deliveryData.cancelled_orders.toString()],
       [''],
       ['Formas de Pagamento'],
-      ['Dinheiro', formatPrice(deliveryData.payment_methods.money)],
-      ['PIX', formatPrice(deliveryData.payment_methods.pix)],
-      ['Cartão', formatPrice(deliveryData.payment_methods.card)],
+      ['Dinheiro', formatPrice(deliveryData.paymentMethodsData.money)],
+      ['PIX', formatPrice(deliveryData.paymentMethodsData.pix)],
+      ['Cartão', formatPrice(deliveryData.paymentMethodsData.card)],
       [''],
       ['Top Bairros'],
       ['Bairro', 'Pedidos', 'Receita'],
@@ -446,19 +446,19 @@ const PDVDailyDeliveryReport: React.FC = () => {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                 <p className="text-sm text-green-600 font-medium">Dinheiro</p>
                 <p className="text-xl font-bold text-green-700">
-                  {formatPrice(deliveryData.payment_methods.money)}
+                  {formatPrice(deliveryData.paymentMethodsData.money)}
                 </p>
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
                 <p className="text-sm text-blue-600 font-medium">PIX</p>
                 <p className="text-xl font-bold text-blue-700">
-                  {formatPrice(deliveryData.payment_methods.pix)}
+                  {formatPrice(deliveryData.paymentMethodsData.pix)}
                 </p>
               </div>
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
                 <p className="text-sm text-purple-600 font-medium">Cartão</p>
                 <p className="text-xl font-bold text-purple-700">
-                  {formatPrice(deliveryData.payment_methods.card)}
+                  {formatPrice(deliveryData.paymentMethodsData.card)}
                 </p>
               </div>
             </div>
