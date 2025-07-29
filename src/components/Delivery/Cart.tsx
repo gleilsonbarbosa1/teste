@@ -860,9 +860,17 @@ const Cart: React.FC<CartProps> = ({
                       <div className="mb-3">
                         <p className="text-sm font-medium text-blue-700 mb-2">QR Code PIX:</p>
                         <img 
-                          src="/WhatsApp Image 2025-07-22 at 14.53.40.jpeg" 
+                          src="/WhatsApp%20Image%202025-07-22%20at%2014.53.40.jpeg" 
                           alt="QR Code PIX" 
-                          className="w-32 h-32 mx-auto border border-gray-200 rounded-lg"
+                          className="w-32 h-32 mx-auto border border-gray-200 rounded-lg object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const fallback = document.createElement('div');
+                            fallback.className = 'w-32 h-32 mx-auto border border-gray-200 rounded-lg bg-gray-100 flex items-center justify-center';
+                            fallback.innerHTML = '<p class="text-gray-500 text-sm">QR Code<br/>Indisponível</p>';
+                            target.parentNode?.insertBefore(fallback, target);
+                          }}
                         />
                       </div>
                     </div>
