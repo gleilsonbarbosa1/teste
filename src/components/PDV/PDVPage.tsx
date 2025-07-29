@@ -7,7 +7,6 @@ import PDVCashReportWithDetails from './PDVCashReportWithDetails';
 import PDVDailyDeliveryReport from './PDVDailyDeliveryReport';
 import PDVDailyCashReport from './PDVDailyCashReport';
 import PDVCashReportWithDateFilter from './PDVCashReportWithDateFilter';
-import PDVSalesScreen from './PDVSalesScreen';
 import PDVOperators from './PDVOperators';
 import PDVProductsManager from './PDVProductsManager';
 import PDVReports from './PDVReports';
