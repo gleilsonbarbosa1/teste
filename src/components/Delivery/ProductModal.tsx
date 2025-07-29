@@ -9,20 +9,30 @@ interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddToCart: (product: Product, selectedSize?: ProductSize, quantity: number, observations?: string, selectedComplements?: SelectedComplement[]) => void;
+  initialSize?: ProductSize;
+  initialQuantity?: number;
+  initialObservations?: string;
+  initialComplements?: SelectedComplement[];
+  isEditing?: boolean;
 }
 
 const ProductModal: React.FC<ProductModalProps> = ({ 
   product, 
   isOpen, 
   onClose, 
-  onAddToCart 
+  onAddToCart,
+  initialSize,
+  initialQuantity = 1,
+  initialObservations = '',
+  initialComplements = [],
+  isEditing = false
 }) => {
   const [selectedSize, setSelectedSize] = useState<ProductSize | undefined>(
-    product.sizes ? product.sizes[0] : undefined
+    initialSize || (product.sizes ? product.sizes[0] : undefined)
   );
-  const [quantity, setQuantity] = useState(1);
-  const [observations, setObservations] = useState('');
-  const [selectedComplements, setSelectedComplements] = useState<SelectedComplement[]>([]);
+  const [quantity, setQuantity] = useState(initialQuantity);
+  const [observations, setObservations] = useState(initialObservations);
+  const [selectedComplements, setSelectedComplements] = useState<SelectedComplement[]>(initialComplements);
   const [productImage, setProductImage] = useState<string | null>(null);
   const hasSetCustomImage = useRef<boolean>(false);
   const [incompleteGroups, setIncompleteGroups] = useState<string[]>([]);
@@ -176,9 +186,11 @@ const ProductModal: React.FC<ProductModalProps> = ({
     
     onAddToCart(product, selectedSize, quantity, observations, selectedComplements);
     onClose();
-    setQuantity(1);
-    setObservations('');
-    setSelectedComplements([]);
+    if (!isEditing) {
+      setQuantity(1);
+      setObservations('');
+      setSelectedComplements([]);
+    }
     setIncompleteGroups([]);
     setShowValidationAlert(false);
   };
@@ -277,7 +289,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                           )}
                         </div>
                         <div className="font-bold text-purple-600">
-                          className="sr-only"
+                          {formatPrice(size.price)}
                         </div>
                       </div>
                     </button>
@@ -493,7 +505,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             }`}
           >
             <ShoppingCart size={20} />
-            {`Adicionar - ${formatPrice(getTotalPrice())}`}
+            {isEditing ? `Salvar Alterações - ${formatPrice(getTotalPrice())}` : `Adicionar - ${formatPrice(getTotalPrice())}`}
           </button>
         </div>
       </div>

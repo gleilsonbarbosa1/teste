@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Minus, ShoppingCart, MessageCircle, Trash2, MapPin, ArrowLeft, Gift, ChevronRight, CreditCard, Banknote, QrCode, AlertCircle } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
 import { CartItem } from '../../types/product';
 import { DeliveryInfo } from '../../types/delivery';
 import { Customer, CustomerBalance } from '../../types/cashback';
@@ -9,6 +10,7 @@ import { useNeighborhoods } from '../../hooks/useNeighborhoods';
 import { useCashback } from '../../hooks/useCashback';
 import CashbackDisplay from '../Cashback/CashbackDisplay';
 import CashbackButton from '../Cashback/CashbackButton';
+import ProductModal from './ProductModal';
 
 interface CartProps {
   items: CartItem[];
@@ -19,6 +21,7 @@ interface CartProps {
   onClearCart: () => void;
   totalPrice: number;
   disabled?: boolean;
+  onEditItem?: (itemId: string, product: any, selectedSize?: any, quantity: number, observations?: string, selectedComplements?: any[]) => void;
 }
 
 const Cart: React.FC<CartProps> = ({
@@ -29,7 +32,8 @@ const Cart: React.FC<CartProps> = ({
   onRemoveItem,
   onClearCart,
   totalPrice,
-  disabled = false
+  disabled = false,
+  onEditItem
 }) => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [showOrderTracking, setShowOrderTracking] = useState(false);
@@ -38,6 +42,7 @@ const Cart: React.FC<CartProps> = ({
   const { isOpen: isCashRegisterOpen } = usePDVCashRegister();
   const [customerBalance, setCustomerBalance] = useState<CustomerBalance | null>(null);
   const [appliedCashback, setAppliedCashback] = useState(0);
+  const [editingItem, setEditingItem] = useState<CartItem | null>(null);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo>({
     name: '',
     phone: '',
@@ -129,6 +134,16 @@ const Cart: React.FC<CartProps> = ({
     setAppliedCashback(0);
   };
 
+  const handleEditItem = (item: CartItem) => {
+    setEditingItem(item);
+  };
+
+  const handleSaveEditedItem = (product: any, selectedSize?: any, quantity: number = 1, observations?: string, selectedComplements: any[] = []) => {
+    if (editingItem && onEditItem) {
+      onEditItem(editingItem.id, product, selectedSize, quantity, observations, selectedComplements);
+      setEditingItem(null);
+    }
+  };
   const generateWhatsAppMessage = (orderId?: string, cashbackEarned?: number) => {
     let message = `🥤 *PEDIDO ELITE AÇAÍ*\n\n`;
     
@@ -495,6 +510,14 @@ const Cart: React.FC<CartProps> = ({
                               </button>
                             </div>
                             <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleEditItem(item)}
+                                disabled={disabled}
+                                className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-full transition-colors disabled:opacity-50"
+                                title="Editar complementos"
+                              >
+                                <Edit3 size={16} />
+                              </button>
                               <span className="font-bold text-purple-600 text-lg">
                                 {formatPrice(item.totalPrice)}
                               </span>
@@ -835,6 +858,21 @@ const Cart: React.FC<CartProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modal de Edição */}
+      {editingItem && (
+        <ProductModal
+          product={editingItem.product}
+          isOpen={true}
+          onClose={() => setEditingItem(null)}
+          onAddToCart={handleSaveEditedItem}
+          initialSize={editingItem.selectedSize}
+          initialQuantity={editingItem.quantity}
+          initialObservations={editingItem.observations}
+          initialComplements={editingItem.selectedComplements}
+          isEditing={true}
+        />
+      )}
     </div>
   );
 };

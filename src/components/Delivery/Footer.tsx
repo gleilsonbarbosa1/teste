@@ -102,9 +102,9 @@ const Footer: React.FC<FooterProps> = ({ storeSettings }) => {
         </div>
         
         <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-          <p>&copy; 2024 Elite Açaí. Todos os direitos reservados.</p>
+          <p>&copy; 2025 Elite Açaí. Todos os direitos reservados.</p>
           <p className="text-sm mt-1">CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
-          <p className="text-sm mt-2">Delivery disponível nas duas lojas • Açaí fresquinho direto na sua casa</p>
+          <p className="text-sm mt-2">Delivery disponível apenas na loja 1 • Açaí fresquinho direto na sua casa</p>
         </div>
       </div>
     </footer>

@@ -240,6 +240,13 @@ const DeliveryPage: React.FC = () => {
   // Verificar se a loja está aberta
   const storeStatus = getStoreStatus();
 
+  const handleEditCartItem = (itemId: string, product: any, selectedSize?: any, quantity: number = 1, observations?: string, selectedComplements: any[] = []) => {
+    // Remove o item antigo
+    removeFromCart(itemId);
+    
+    // Adiciona o item editado
+    addToCart(product, selectedSize, quantity, observations, selectedComplements);
+  };
   if (productsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -537,6 +544,7 @@ const DeliveryPage: React.FC = () => {
         onClearCart={clearCart}
         totalPrice={getTotalPrice()}
         disabled={!storeStatus.isOpen}
+        onEditItem={handleEditCartItem}
       />
     </div>
   );
