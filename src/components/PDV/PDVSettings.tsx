@@ -379,9 +379,12 @@ const PDVSettings: React.FC = () => {
                   className="w-4 h-4 text-green-600"
                 />
                 <span className="text-sm font-medium text-gray-700">
-                  Impressão automática
+                  Impressão automática de pedidos pendentes
                 </span>
               </label>
+              <p className="text-xs text-gray-500 mt-1 ml-6">
+                Imprime automaticamente quando novos pedidos chegam no atendimento
+              </p>
             </div>
 
             <div>
