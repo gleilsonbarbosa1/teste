@@ -1,37 +1,22 @@
 import React, { useState } from 'react';
-import { X, AlertTriangle, DollarSign, CheckCircle, Printer } from 'lucide-react';
-import { PDVCashRegister, PDVCashRegisterSummary, PDVCashRegisterEntry } from '../../types/pdv';
-import { usePermissions } from '../../hooks/usePermissions';
+import { TrendingUp, Calendar, DollarSign, Package, Users, Download } from 'lucide-react';
 
-interface CashRegisterCloseConfirmationProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (closingAmount: number, justification?: string) => void;
-  register: PDVCashRegister | null;
-  summary: PDVCashRegisterSummary | null;
-  isProcessing: boolean;
-}
+const PDVSalesReport: React.FC = () => {
+  const [dateRange, setDateRange] = useState({
+    start: new Date().toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
 
-const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps> = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  register,
-  summary,
-  isProcessing
-}) => {
-  const { hasPermission } = usePermissions();
-  const canViewExpectedBalance = hasPermission('can_view_expected_balance');
-
-  if (!isOpen) return null;
-
-  // State for closing amount
-  const [closingAmount, setClosingAmount] = useState(
-    canViewExpectedBalance ? (summary?.expected_balance || 0) : 0
-  );
-  const [hasInformedAmount, setHasInformedAmount] = useState(false);
-  const [justification, setJustification] = useState('');
-  const [printMovements, setPrintMovements] = useState(true);
+  const mockData = {
+    totalSales: 2450.80,
+    salesCount: 45,
+    averageTicket: 54.46,
+    topProducts: [
+      { name: 'Açaí 500ml', quantity: 15, revenue: 344.85 },
+      { name: 'Açaí 700ml', quantity: 12, revenue: 383.88 },
+      { name: 'Combo Casal', quantity: 8, revenue: 399.92 }
+    ]
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -40,266 +25,122 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
     }).format(price);
   };
 
-  const handleAmountConfirm = () => {
-    if (closingAmount > 0) {
-      setHasInformedAmount(true);
-    }
-  };
-
-  const expectedBalance = summary?.expected_balance || 0;
-  const difference = closingAmount - expectedBalance;
-  const hasDifference = Math.abs(difference) > 0.01; // Tolerância de 1 centavo
-  const needsJustification = hasDifference && hasInformedAmount;
-
-  const canProceed = hasInformedAmount && (!needsJustification || justification.trim().length > 0);
-
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
-              <div className="bg-yellow-100 rounded-full p-2">
-                <AlertTriangle size={24} className="text-yellow-600" />
-              </div>
-              Confirmar Fechamento de Caixa
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <X size={20} />
-            </button>
-          </div>
-          <p className="text-gray-600">
-            {!hasInformedAmount 
-              ? 'Informe o valor contado no caixa para prosseguir com o fechamento.'
-              : 'Confirme os dados do fechamento de caixa.'
-            }
-          </p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <TrendingUp size={24} className="text-green-600" />
+            Relatório de Vendas - Loja 1
+          </h2>
+          <p className="text-gray-600">Análise detalhada das vendas e performance</p>
         </div>
+        <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+          <Download size={16} />
+          Exportar
+        </button>
+      </div>
 
-        <div className="p-6 overflow-y-auto">
-          {!hasInformedAmount ? (
-            // ETAPA 1: Informar valor contado
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-bold text-blue-800 mb-2">Contagem do Caixa</h3>
-                    <p className="text-blue-700 text-sm">
-                      Conte todo o dinheiro físico presente no caixa e informe o valor total.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Valor contado no caixa *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={closingAmount}
-                  onChange={(e) => setClosingAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0,00"
-                  autoFocus
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Informe o valor total em dinheiro presente no caixa
-                </p>
-              </div>
-            </div>
-          ) : (
-            // ETAPA 2: Mostrar comparação e solicitar justificativa se necessário
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                  <div className="w-full">
-                    <h3 className="text-lg font-bold text-blue-800 mb-3">Conferência do Fechamento</h3>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Valor informado (contado):</span>
-                        <span className="font-bold text-blue-800">{formatPrice(closingAmount)}</span>
-                      </div>
-                      
-                      {canViewExpectedBalance && (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="text-blue-700">Saldo esperado (sistema):</span>
-                            <span className="font-medium text-blue-800">{formatPrice(expectedBalance)}</span>
-                          </div>
-                          
-                          <div className="pt-2 border-t border-blue-200">
-                            <div className="flex justify-between">
-                              <span className="font-medium text-blue-800">Diferença:</span>
-                              <span className={`font-bold ${
-                                difference > 0 ? 'text-green-600' : difference < 0 ? 'text-red-600' : 'text-blue-800'
-                              }`}>
-                                {difference === 0 ? 'Exato' : 
-                                 difference > 0 ? `+${formatPrice(difference)} (sobra)` : 
-                                 `${formatPrice(difference)} (falta)`}
-                              </span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Resumo das movimentações (sempre visível) */}
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                <h4 className="font-medium text-gray-800 mb-2">Resumo das Movimentações</h4>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Valor de abertura:</span>
-                    <span className="font-medium">{formatPrice(summary?.opening_amount || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Vendas PDV:</span>
-                    <span className="font-medium text-green-600">{formatPrice(summary?.sales_total || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Vendas Delivery:</span>
-                    <span className="font-medium text-green-600">{formatPrice(summary?.delivery_total || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Outras entradas:</span>
-                    <span className="font-medium text-green-600">{formatPrice(summary?.other_income_total || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Saídas:</span>
-                    <span className="font-medium text-red-600">{formatPrice(summary?.total_expense || 0)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Justificativa obrigatória para diferenças */}
-              {needsJustification && (
-                <div className={`border rounded-xl p-4 ${
-                  difference > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
-                }`}>
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle size={20} className={`mt-1 flex-shrink-0 ${
-                      difference > 0 ? 'text-yellow-600' : 'text-red-600'
-                    }`} />
-                    <div className="w-full">
-                      <h4 className={`font-medium mb-2 ${
-                        difference > 0 ? 'text-yellow-800' : 'text-red-800'
-                      }`}>
-                        Justificativa Obrigatória
-                      </h4>
-                      <p className={`text-sm mb-3 ${
-                        difference > 0 ? 'text-yellow-700' : 'text-red-700'
-                      }`}>
-                        Foi detectada uma diferença de {formatPrice(Math.abs(difference))}. 
-                        É obrigatório informar a justificativa para esta diferença.
-                      </p>
-                      <textarea
-                        value={justification}
-                        onChange={(e) => setJustification(e.target.value)}
-                        placeholder="Descreva o motivo da diferença encontrada..."
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                        rows={3}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Printer size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                  <div className="flex-1">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={printMovements}
-                        onChange={(e) => setPrintMovements(e.target.checked)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-blue-800 font-medium">
-                        Imprimir relatório de movimentações
-                      </span>
-                    </label>
-                    <p className="text-xs text-blue-600 mt-1 ml-6">
-                      Imprime um resumo detalhado de todas as movimentações do caixa
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-6 flex gap-3">
-            {!hasInformedAmount ? (
-              <>
-                <button
-                  onClick={onClose}
-                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleAmountConfirm}
-                  disabled={closingAmount <= 0}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors"
-                >
-                  Confirmar Valor
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => {
-                    setHasInformedAmount(false);
-                    setJustification('');
-                  }}
-                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
-                >
-                  Voltar
-                </button>
-                <button
-                  onClick={() => onConfirm(closingAmount, justification || undefined)}
-                  disabled={isProcessing || !canProceed}
-                  className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                >
-                  {isProcessing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle size={20} />
-                      Confirmar Fechamento
-                    </>
-                  )}
-                </button>
-              </>
-            )}
+      {/* Filtros */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Filtros</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Data Inicial
+            </label>
+            <input
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
-          
-          {needsJustification && !justification.trim() && (
-            <div className="mt-2 text-center">
-              <p className="text-sm text-red-600">
-                ⚠️ Justificativa obrigatória para diferenças no caixa
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Data Final
+            </label>
+            <input
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Cards de Resumo */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total de Vendas</p>
+              <p className="text-2xl font-bold text-green-600">
+                {formatPrice(mockData.totalSales)}
               </p>
             </div>
-          )}
+            <DollarSign className="w-8 h-8 text-green-500" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Número de Vendas</p>
+              <p className="text-2xl font-bold text-blue-600">{mockData.salesCount}</p>
+            </div>
+            <Package className="w-8 h-8 text-blue-500" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Ticket Médio</p>
+              <p className="text-2xl font-bold text-purple-600">
+                {formatPrice(mockData.averageTicket)}
+              </p>
+            </div>
+            <Users className="w-8 h-8 text-purple-500" />
+          </div>
+        </div>
+      </div>
+
+      {/* Produtos Mais Vendidos */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Produtos Mais Vendidos</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left py-3 px-4 font-medium text-gray-700">Produto</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-700">Quantidade</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-700">Receita</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {mockData.topProducts.map((product, index) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="py-4 px-4">
+                    <span className="font-medium text-gray-800">{product.name}</span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className="text-gray-700">{product.quantity}</span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className="font-semibold text-green-600">
+                      {formatPrice(product.revenue)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
 };
 
-export default CashRegisterCloseConfirmation;
+export default PDVSalesReport;
