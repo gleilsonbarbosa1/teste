@@ -412,10 +412,10 @@ const Cart: React.FC<CartProps> = ({
       // Processar transações de cashback se cliente estiver identificado
       if (customer) {
         // Cliente já existe, usar o existente
-        currentCustomer = customer;
+        let currentCustomer = customer;
       } else {
         // Criar novo cliente se não existir
-        currentCustomer = await ensureCustomerExists();
+        let currentCustomer = await ensureCustomerExists();
       }
       
       if (currentCustomer) {
