@@ -21,7 +21,8 @@ import {
   BarChart3,
   FileText,
   Settings,
-  Package
+  Package,
+  Calendar
 } from 'lucide-react';
 
 const PDVPage: React.FC = () => {
