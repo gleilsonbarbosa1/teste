@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Gift, Phone, User, Search } from 'lucide-react';
 import { useCashback } from '../../hooks/useCashback';
 import { Customer, CustomerBalance } from '../../types/cashback';
+import { supabase } from '../../lib/supabase';
 import CashbackDisplay from '../Cashback/CashbackDisplay';
 import CashbackHistory from '../Cashback/CashbackHistory';
 
