@@ -52,7 +52,8 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
 
   // Carregar configurações de impressora
   const [printerSettings, setPrinterSettings] = useState({
-    auto_print_delivery: false
+    auto_print_delivery: false,
+    auto_print_enabled: false
   });
   
   useEffect(() => {
@@ -62,7 +63,8 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
         const settings = JSON.parse(savedSettings);
         if (settings.printer_layout) {
           setPrinterSettings({
-            auto_print_delivery: settings.printer_layout.auto_print_delivery || false
+            auto_print_delivery: settings.printer_layout.auto_print_delivery || false,
+            auto_print_enabled: settings.printer_layout.auto_print_enabled || false
           });
         }
       }
@@ -71,6 +73,31 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
     }
   }, []);
 
+  // Carregar configurações de impressão automática do banco
+  useEffect(() => {
+    const loadPrinterSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('pdv_settings')
+          .select('auto_print')
+          .eq('id', 'loja1')
+          .single();
+
+        if (data && !error) {
+          setPrinterSettings(prev => ({
+            ...prev,
+            auto_print_enabled: data.auto_print || false,
+            auto_print_delivery: data.auto_print || false
+          }));
+          console.log('✅ Configurações de impressão carregadas:', data.auto_print);
+        }
+      } catch (err) {
+        console.warn('⚠️ Erro ao carregar configurações de impressão:', err);
+      }
+    };
+
+    loadPrinterSettings();
+  }, []);
   // Alternar som de notificação
   const toggleSound = () => {
     try {
@@ -93,15 +120,13 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
     const currentPendingCount = orders.filter(order => order.status === 'pending').length;
     setPendingOrdersCount(currentPendingCount);
     
-    // Verificar se há novos pedidos
-    if (currentPendingCount > lastOrderCount && lastOrderCount > 0) {
+    // Verificar se há novos pedidos pendentes
+    if (currentPendingCount > lastOrderCount && lastOrderCount >= 0) {
       console.log('🔔 Novos pedidos detectados!');
       
       // Encontrar o novo pedido
-      const newOrders = orders.filter(order => 
-        order.status === 'pending' && 
-        !orders.some(o => o.id === order.id && o.status !== 'pending')
-      );
+      const pendingOrders = orders.filter(order => order.status === 'pending');
+      const newOrders = pendingOrders.slice(0, currentPendingCount - lastOrderCount);
       
       if (newOrders.length > 0) {
         // Pegar o pedido mais recente
@@ -111,10 +136,33 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
         
         setNewOrder(latestOrder);
         
+        console.log('🖨️ Verificando configuração de impressão automática:', {
+          auto_print_enabled: printerSettings.auto_print_enabled,
+          auto_print_delivery: printerSettings.auto_print_delivery,
+          newOrderId: latestOrder.id
+        });
+        
         // Imprimir automaticamente se configurado
-        if (printerSettings.auto_print_delivery) {
+        if (printerSettings.auto_print_enabled && latestOrder.status === 'pending') {
           console.log('🖨️ Imprimindo pedido automaticamente:', latestOrder.id);
           setShowPrintPreview(true);
+          
+          // Mostrar notificação de impressão automática
+          const printNotification = document.createElement('div');
+          printNotification.className = 'fixed top-4 left-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+          printNotification.innerHTML = `
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+            </svg>
+            Imprimindo pedido #${latestOrder.id.slice(-8)} automaticamente
+          `;
+          document.body.appendChild(printNotification);
+          
+          setTimeout(() => {
+            if (document.body.contains(printNotification)) {
+              document.body.removeChild(printNotification);
+            }
+          }, 4000);
         }
       }
       
@@ -126,21 +174,9 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
       }
     }
     
-    // Se já tínhamos contagem anterior e agora temos mais pedidos pendentes, tocar som
-    if (lastOrderCount > 0 && currentPendingCount > lastOrderCount) {
-      console.log('🔔 Novos pedidos detectados!');
-      
-      // Verificar se o som está habilitado
-      if (soundEnabled) {
-        playNewOrderSound();
-      } else {
-        console.log('🔕 Som de notificação desabilitado nas configurações');
-      }
-    }
-    
     // Atualizar contagem para próxima verificação
     setLastOrderCount(currentPendingCount);
-  }, [orders]);
+  }, [orders, printerSettings.auto_print_enabled, soundEnabled]);
 
   // Função para tocar som de novo pedido
   const playNewOrderSound = () => {
@@ -337,6 +373,14 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
                   </button>
                 )}
               </div>
+              {printerSettings.auto_print_enabled && (
+                <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-full text-xs">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Auto Print
+                </div>
+              )}
             </div>
           </div>
         </header>

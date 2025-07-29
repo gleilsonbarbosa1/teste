@@ -19,6 +19,7 @@ import ProtectedRoute from './DeliveryDriver/ProtectedRoute';
 import Store2ReportsPage from './Store2/Store2ReportsPage';
 import Store2ManagementPage from './Store2/Store2ManagementPage';
 import TableSalesPanel from './TableSales/TableSalesPanel';
+import PDVPage from './PDV/PDVPage';
 
 const Router: React.FC = () => {
   // Solicitar permissão para notificações ao iniciar o app
@@ -32,34 +33,6 @@ const Router: React.FC = () => {
     }
   }, []);
 
-  const [loggedInOperator, setLoggedInOperator] = useState<PDVOperator | null>(null);
-
-  const handlePDVLogin = (operator: PDVOperator) => {
-    setLoggedInOperator(operator);
-    localStorage.setItem('pdv_operator', JSON.stringify(operator));
-    window.location.href = '/pdv/app'; 
-  };
-
-  const handlePDVLogout = () => {
-    setLoggedInOperator(null);
-    localStorage.removeItem('pdv_operator');
-    window.location.href = '/pdv';
-  };
-  
-  // Check for stored operator on component mount
-  useEffect(() => {
-    const storedOperator = localStorage.getItem('pdv_operator');
-    if (storedOperator) {
-      try {
-        const operator = JSON.parse(storedOperator);
-        setLoggedInOperator(operator);
-      } catch (error) {
-        console.error('Error parsing stored operator:', error);
-        localStorage.removeItem('pdv_operator');
-      }
-    }
-  }, []);
-
   return (
     <BrowserRouter>
       <Routes>
@@ -70,8 +43,9 @@ const Router: React.FC = () => {
         <Route path="/atendimento" element={<AttendancePage />} />
         <Route path="/administrativo" element={<AdminPage />} />
         <Route path="/acesso-negado" element={<AccessDeniedPage />} />
-        <Route path="/pdv" element={loggedInOperator ? <PDVMain onBack={handlePDVLogout} operator={loggedInOperator} /> : <PDVLogin onLogin={handlePDVLogin} />} />
-        <Route path="/pdv/app" element={loggedInOperator ? <PDVMain onBack={handlePDVLogout} operator={loggedInOperator} /> : <PDVLogin onLogin={handlePDVLogin} />} />
+        <Route path="/pdv" element={<PDVPage />} />
+        <Route path="/pdv/app" element={<PDVPage />} />
+        <Route path="/odv" element={<PDVPage />} />
         <Route path="/login" element={<DeliveryLogin />} />
         <Route path="/entregas" element={
           <ProtectedRoute>

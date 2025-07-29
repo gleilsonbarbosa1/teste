@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Plus, Minus, ShoppingCart, MessageCircle, Trash2, MapPin, ArrowLeft, Gift, ChevronRight, CreditCard, Banknote, QrCode, AlertCircle } from 'lucide-react';
 import { Edit3 } from 'lucide-react';
 import { CartItem } from '../../types/product';
@@ -43,6 +43,8 @@ const Cart: React.FC<CartProps> = ({
   const [customerBalance, setCustomerBalance] = useState<CustomerBalance | null>(null);
   const [appliedCashback, setAppliedCashback] = useState(0);
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
+  const [loadingCustomer, setLoadingCustomer] = useState(false);
+  const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo>({
     name: '',
     phone: '',
@@ -59,21 +61,78 @@ const Cart: React.FC<CartProps> = ({
     getCustomerBalance, 
     createPurchaseTransaction, 
     createRedemptionTransaction,
-    validateCashbackAmount 
+    validateCashbackAmount,
+    getCustomerByPhone,
+    searchCustomersByName
   } = useCashback();
+
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    const limited = numbers.slice(0, 11);
+    
+    if (limited.length <= 2) {
+      return limited;
+    } else if (limited.length <= 7) {
+      return `(${limited.slice(0, 2)}) ${limited.slice(2)}`;
+    } else {
+      return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value);
+    setDeliveryInfo(prev => ({ ...prev, phone: formatted }));
+  };
 
   // Carregar dados do cliente quando o telefone for preenchido
   useEffect(() => {
     const loadCustomerData = async () => {
-      if (deliveryInfo.phone && deliveryInfo.phone.length >= 11) {
+      const phoneNumbers = deliveryInfo.phone.replace(/\D/g, '');
+      if (phoneNumbers.length >= 11) {
         try {
-          const customerData = await getOrCreateCustomer(deliveryInfo.phone, deliveryInfo.name);
-          setCustomer(customerData);
+          setLoadingCustomer(true);
           
-          const balance = await getCustomerBalance(customerData.id);
-          setCustomerBalance(balance);
+          const existingCustomer = await getCustomerByPhone(phoneNumbers);
+          
+          if (existingCustomer) {
+            console.log('✅ Cliente encontrado:', existingCustomer);
+            setCustomer(existingCustomer);
+            
+            setDeliveryInfo(prev => ({
+              ...prev,
+              name: existingCustomer.name || prev.name
+            }));
+            
+            const balance = await getCustomerBalance(existingCustomer.id);
+            setCustomerBalance(balance);
+            
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+            notification.innerHTML = `
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Cliente reconhecido: ${existingCustomer.name || 'Cliente'}
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+              if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+              }
+            }, 3000);
+          } else {
+            setCustomer(null);
+            setCustomerBalance(null);
+            setAppliedCashback(0);
+          }
         } catch (error) {
-          console.error('Erro ao carregar dados do cliente:', error);
+          console.error('Erro ao buscar cliente:', error);
+          setCustomer(null);
+          setCustomerBalance(null);
+          setAppliedCashback(0);
+        } finally {
+          setLoadingCustomer(false);
         }
       } else {
         setCustomer(null);
@@ -82,8 +141,71 @@ const Cart: React.FC<CartProps> = ({
       }
     };
 
-    loadCustomerData();
-  }, [deliveryInfo.phone, deliveryInfo.name, getOrCreateCustomer, getCustomerBalance]);
+    const timeoutId = setTimeout(loadCustomerData, 500);
+    return () => clearTimeout(timeoutId);
+  }, [deliveryInfo.phone, getCustomerByPhone, getCustomerBalance]);
+
+  const searchCustomerSuggestions = useCallback(async (name: string) => {
+    if (name.length < 3) {
+      setCustomerSuggestions([]);
+      return;
+    }
+
+    try {
+      const suggestions = await searchCustomersByName(name);
+      setCustomerSuggestions(suggestions.slice(0, 5));
+    } catch (error) {
+      console.error('Erro ao buscar sugestões:', error);
+      setCustomerSuggestions([]);
+    }
+  }, [searchCustomersByName]);
+
+  useEffect(() => {
+    if (deliveryInfo.name && !customer) {
+      const timeoutId = setTimeout(() => {
+        searchCustomerSuggestions(deliveryInfo.name);
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setCustomerSuggestions([]);
+    }
+  }, [deliveryInfo.name, customer, searchCustomerSuggestions]);
+
+  const selectCustomerSuggestion = async (selectedCustomer: Customer) => {
+    setCustomer(selectedCustomer);
+    setDeliveryInfo(prev => ({
+      ...prev,
+      name: selectedCustomer.name || prev.name,
+      phone: formatPhone(selectedCustomer.phone)
+    }));
+    setCustomerSuggestions([]);
+    
+    try {
+      const balance = await getCustomerBalance(selectedCustomer.id);
+      setCustomerBalance(balance);
+    } catch (error) {
+      console.error('Erro ao carregar saldo:', error);
+    }
+  };
+
+  const ensureCustomerExists = async () => {
+    if (!customer && deliveryInfo.phone && deliveryInfo.name) {
+      try {
+        const phoneNumbers = deliveryInfo.phone.replace(/\D/g, '');
+        const customerData = await getOrCreateCustomer(phoneNumbers, deliveryInfo.name);
+        setCustomer(customerData);
+        
+        const balance = await getCustomerBalance(customerData.id);
+        setCustomerBalance(balance);
+        
+        return customerData;
+      } catch (error) {
+        console.error('Erro ao criar/buscar cliente:', error);
+        return null;
+      }
+    }
+    return customer;
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -144,10 +266,10 @@ const Cart: React.FC<CartProps> = ({
       setEditingItem(null);
     }
   };
+
   const generateWhatsAppMessage = (orderId?: string, cashbackEarned?: number) => {
     let message = `🥤 *PEDIDO ELITE AÇAÍ*\n\n`;
     
-    // Itens do pedido
     message += `📋 *ITENS:*\n`;
     items.forEach((item, index) => {
       message += `${index + 1}. ${item.product.name.replace(/[^\x00-\x7F]/g, "")}`;
@@ -156,7 +278,6 @@ const Cart: React.FC<CartProps> = ({
       }
       message += `\n   Qtd: ${item.quantity}x - ${formatPrice(item.totalPrice)}`;
       
-      // Complementos selecionados
       if (item.selectedComplements && item.selectedComplements.length > 0) {
         message += `\n   *Complementos:*`;
         item.selectedComplements.forEach(selected => {
@@ -173,7 +294,6 @@ const Cart: React.FC<CartProps> = ({
       message += `\n\n`;
     });
 
-    // Valores
     message += `💰 *VALORES:*\n`;
     message += `Subtotal: ${formatPrice(totalPrice)}\n`;
     if (getDeliveryFee() > 0) {
@@ -184,14 +304,12 @@ const Cart: React.FC<CartProps> = ({
     }
     message += `*TOTAL: ${formatPrice(getTotalWithCashback())}*\n\n`;
 
-    // Cashback ganho
     if (cashbackEarned && cashbackEarned > 0) {
       message += `🎁 *CASHBACK GANHO:*\n`;
       message += `Você ganhou ${formatPrice(cashbackEarned)} de cashback!\n`;
       message += `Use até o final deste mês.\n\n`;
     }
 
-    // Dados de entrega
     message += `📍 *DADOS DE ENTREGA:*\n`;
     message += `Nome: ${deliveryInfo.name.replace(/[^\x00-\x7F]/g, "")}\n`;
     message += `Telefone: ${deliveryInfo.phone}\n`;
@@ -208,7 +326,6 @@ const Cart: React.FC<CartProps> = ({
       message += `Complemento: ${deliveryInfo.complement.replace(/[^\x00-\x7F]/g, "")}\n`;
     }
     
-    // Forma de pagamento
     message += `\n💳 *PAGAMENTO:* `;
     switch (deliveryInfo.paymentMethod) {
       case 'money':
@@ -230,7 +347,6 @@ const Cart: React.FC<CartProps> = ({
         break;
     }
 
-    // Link de acompanhamento se o pedido foi criado
     if (orderId) {
       message += `\n\n🔗 *ACOMPANHAR PEDIDO:*\n`;
       message += `${window.location.origin}/pedido/${orderId}\n\n`;
@@ -244,7 +360,6 @@ const Cart: React.FC<CartProps> = ({
     try {
       const neighborhood = getSelectedNeighborhood();
       
-      // Criar pedido no sistema
       const orderData = {
         customer_name: deliveryInfo.name,
         customer_phone: deliveryInfo.phone,
@@ -280,37 +395,48 @@ const Cart: React.FC<CartProps> = ({
 
       let cashbackEarned = 0;
 
-      // Processar transações de cashback se cliente estiver identificado
       if (customer) {
-        // Aplicar resgate de cashback se houver
+        let currentCustomer = customer;
+        
         if (appliedCashback > 0) {
-          // Round to 2 decimal places to ensure precision consistency
           const roundedCashback = Math.round(appliedCashback * 100) / 100;
-          await createRedemptionTransaction(customer.id, roundedCashback, newOrder.id);
+          await createRedemptionTransaction(currentCustomer.id, roundedCashback, newOrder.id);
         }
 
-        // Criar transação de compra para gerar cashback
         const purchaseTransaction = await createPurchaseTransaction(
-          customer.id, 
+          currentCustomer.id, 
           getTotalWithCashback(), 
           newOrder.id
         );
         cashbackEarned = purchaseTransaction.cashback_amount;
+      } else {
+        let currentCustomer = await ensureCustomerExists();
+        
+        if (currentCustomer) {
+          if (appliedCashback > 0) {
+            const roundedCashback = Math.round(appliedCashback * 100) / 100;
+            await createRedemptionTransaction(currentCustomer.id, roundedCashback, newOrder.id);
+          }
+
+          const purchaseTransaction = await createPurchaseTransaction(
+            currentCustomer.id, 
+            getTotalWithCashback(), 
+            newOrder.id
+          );
+          cashbackEarned = purchaseTransaction.cashback_amount;
+        }
       }
 
-      // Enviar para WhatsApp com informações de cashback
       const message = generateWhatsAppMessage(newOrder.id, cashbackEarned);
       const whatsappUrl = `https://wa.me/5585989041010?text=${message}`;
       window.open(whatsappUrl, '_blank');
 
-      // Limpar carrinho e mostrar tracking
       onClearCart();
       setShowCheckout(false);
       setShowOrderTracking(true);
       
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
-      // Fallback para WhatsApp apenas
       const message = generateWhatsAppMessage();
       const whatsappUrl = `https://wa.me/5585989041010?text=${message}`;
       window.open(whatsappUrl, '_blank');
@@ -333,7 +459,6 @@ const Cart: React.FC<CartProps> = ({
 
   if (!isOpen) return null;
 
-  // Mostrar tela de acompanhamento se pedido foi criado
   if (showOrderTracking && orderId) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -433,7 +558,6 @@ const Cart: React.FC<CartProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {!showCheckout ? (
-            // Carrinho
             <div>
               {items.length === 0 ? (
                 <div className="text-center py-12">
@@ -465,7 +589,6 @@ const Cart: React.FC<CartProps> = ({
                             <p className="text-sm text-gray-600 mt-1">{item.selectedSize.name}</p>
                           )}
                           
-                          {/* Complementos */}
                           {item.selectedComplements && item.selectedComplements.length > 0 && (
                             <div className="mt-3">
                               <p className="text-xs font-medium text-gray-700 mb-2">Complementos:</p>
@@ -538,35 +661,69 @@ const Cart: React.FC<CartProps> = ({
               )}
             </div>
           ) : (
-            // Checkout
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Nome completo *
                 </label>
-                <input
-                  type="text"
-                  value={deliveryInfo.name}
-                  onChange={(e) => setDeliveryInfo(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
-                  placeholder="Seu nome"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={deliveryInfo.name}
+                    onChange={(e) => setDeliveryInfo(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                    placeholder="Seu nome"
+                    required
+                  />
+                  
+                  {customerSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 mt-1">
+                      {customerSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion.id}
+                          type="button"
+                          onClick={() => selectCustomerSuggestion(suggestion)}
+                          className="w-full text-left p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 first:rounded-t-lg last:rounded-b-lg"
+                        >
+                          <div className="font-medium text-gray-800">{suggestion.name}</div>
+                          <div className="text-sm text-gray-500">{formatPhone(suggestion.phone)}</div>
+                          {suggestion.email && (
+                            <div className="text-xs text-gray-400">{suggestion.email}</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Telefone *
                 </label>
-                <input
-                  type="tel"
-                  value={deliveryInfo.phone}
-                  onChange={(e) => setDeliveryInfo(prev => ({ ...prev, phone: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
-                  placeholder="(85) 99999-9999"
-                />
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={deliveryInfo.phone}
+                    onChange={handlePhoneChange}
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                    placeholder="(85) 99999-9999"
+                    required
+                  />
+                  {loadingCustomer && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {customer ? 
+                    '✅ Cliente reconhecido - dados preenchidos automaticamente' : 
+                    'Digite seu telefone para identificação automática'
+                  }
+                </p>
               </div>
 
-              {/* Exibir cashback se cliente identificado */}
               {customerBalance && (
                 <CashbackDisplay balance={customerBalance} className="my-6" />
               )}
@@ -630,7 +787,6 @@ const Cart: React.FC<CartProps> = ({
                 />
               </div>
 
-              {/* Botão de Cashback */}
               {customerBalance && customerBalance.available_balance > 0 && (
                 <CashbackButton
                   availableBalance={customerBalance.available_balance}
@@ -692,7 +848,6 @@ const Cart: React.FC<CartProps> = ({
                 </div>
               </div>
 
-              {/* Informações do PIX */}
               {deliveryInfo.paymentMethod === 'pix' && (
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 my-4">
                   <h4 className="font-medium text-blue-800 mb-4 flex items-center gap-2">
@@ -705,9 +860,17 @@ const Cart: React.FC<CartProps> = ({
                       <div className="mb-3">
                         <p className="text-sm font-medium text-blue-700 mb-2">QR Code PIX:</p>
                         <img 
-                          src="/WhatsApp Image 2025-07-22 at 14.53.40.jpeg" 
+                          src="/WhatsApp%20Image%202025-07-22%20at%2014.53.40.jpeg" 
                           alt="QR Code PIX" 
-                          className="w-32 h-32 mx-auto border border-gray-200 rounded-lg"
+                          className="w-32 h-32 mx-auto border border-gray-200 rounded-lg object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const fallback = document.createElement('div');
+                            fallback.className = 'w-32 h-32 mx-auto border border-gray-200 rounded-lg bg-gray-100 flex items-center justify-center';
+                            fallback.innerHTML = '<p class="text-gray-500 text-sm">QR Code<br/>Indisponível</p>';
+                            target.parentNode?.insertBefore(fallback, target);
+                          }}
                         />
                       </div>
                     </div>
@@ -722,7 +885,6 @@ const Cart: React.FC<CartProps> = ({
                               type="button"
                               onClick={() => {
                                 navigator.clipboard.writeText('85989041010');
-                                // Feedback visual
                                 const btn = event?.target as HTMLElement;
                                 const originalText = btn.textContent;
                                 btn.textContent = 'Copiado!';
@@ -763,6 +925,7 @@ const Cart: React.FC<CartProps> = ({
                   </div>
                 </div>
               )}
+
               {deliveryInfo.paymentMethod === 'money' && (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
@@ -859,7 +1022,6 @@ const Cart: React.FC<CartProps> = ({
         )}
       </div>
 
-      {/* Modal de Edição */}
       {editingItem && (
         <ProductModal
           product={editingItem.product}

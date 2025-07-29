@@ -279,18 +279,52 @@ export const useOrderChat = (orderId: string) => {
     try {
       setLoading(true);
       console.log('🔄 Buscando mensagens para o pedido:', orderId);
-      const { data, error } = await supabase
+      
+      // Check if Supabase is properly configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl === 'your_supabase_url_here' || 
+          supabaseKey === 'your_supabase_anon_key_here' ||
+          supabaseUrl.includes('placeholder')) {
+        console.warn('⚠️ Supabase não configurado - chat não disponível');
+        setMessages([]);
+        setLoading(false);
+        return;
+      }
+
+      // Add timeout to prevent hanging requests
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout: Conexão com Supabase demorou mais de 10 segundos')), 10000);
+      });
+      
+      const fetchPromise = supabase
         .from('chat_messages')
         .select('*')
         .eq('order_id', orderId)
         .order('created_at', { ascending: true });
+      
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (error) throw error;
       setMessages(data || []);
       console.log('✅ Mensagens carregadas:', data?.length || 0);
       setLastFetch(new Date());
     } catch (err) {
-      console.error('Erro ao carregar mensagens:', err);
+      console.error('❌ Erro ao carregar mensagens:', err);
+      
+      // Handle different types of errors gracefully
+      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+        console.warn('🌐 Erro de conectividade - modo offline para chat');
+        setMessages([]);
+      } else if (err instanceof Error && err.message.includes('Timeout')) {
+        console.warn('⏱️ Timeout na conexão - chat indisponível');
+        setMessages([]);
+      } else {
+        console.error('💥 Erro inesperado no chat:', err);
+        setMessages([]);
+      }
     } finally {
       setLoading(false);
       setLastFetch(new Date());
@@ -301,13 +335,36 @@ export const useOrderChat = (orderId: string) => {
   const refreshMessages = useCallback(async () => {
     try {
       console.log('🔄 Recarregando mensagens para o pedido:', orderId);
-      const { data, error } = await supabase
+      
+      // Check if Supabase is properly configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl === 'your_supabase_url_here' || 
+          supabaseKey === 'your_supabase_anon_key_here' ||
+          supabaseUrl.includes('placeholder')) {
+        console.warn('⚠️ Supabase não configurado - chat não disponível');
+        return;
+      }
+
+      // Add timeout for refresh as well
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout na atualização')), 8000);
+      });
+      
+      const fetchPromise = supabase
         .from('chat_messages')
         .select('*')
         .eq('order_id', orderId)
         .order('created_at', { ascending: true });
+      
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
-      if (error) throw error;
+      if (error) {
+        console.warn('⚠️ Erro ao recarregar mensagens:', error);
+        return;
+      }
       
       // Só atualizar se houver mudanças
       console.log('✅ Mensagens recarregadas:', data?.length || 0);
@@ -319,7 +376,8 @@ export const useOrderChat = (orderId: string) => {
         setLastFetch(new Date());
       }
     } catch (err) {
-      console.error('Erro ao recarregar mensagens:', err);
+      console.warn('⚠️ Erro ao recarregar mensagens (não crítico):', err);
+      // Don't throw error for refresh failures - just log and continue
     }
   }, [orderId, messages]);
 
@@ -335,6 +393,17 @@ export const useOrderChat = (orderId: string) => {
       if (!message.trim()) {
         console.warn('Tentativa de enviar mensagem vazia');
         return null;
+      }
+      
+      // Check if Supabase is properly configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl === 'your_supabase_url_here' || 
+          supabaseKey === 'your_supabase_anon_key_here' ||
+          supabaseUrl.includes('placeholder')) {
+        throw new Error('Chat não disponível - Supabase não configurado');
       }
       
       const { data, error } = await supabase
