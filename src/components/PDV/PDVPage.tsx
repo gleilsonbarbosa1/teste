@@ -11,6 +11,7 @@ import PDVProductsManager from './PDVProductsManager';
 import PDVReports from './PDVReports';
 import PDVSettings from './PDVSettings';
 import PDVSalesReport from './PDVSalesReport';
+import PDVDailyDeliveryReport from './PDVDailyDeliveryReport';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useScale } from '../../hooks/useScale';
 import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
@@ -28,7 +29,8 @@ import {
   Settings,
   Package,
   Calendar,
-  TrendingUp
+  TrendingUp,
+  Truck
 } from 'lucide-react';
 
 const PDVPage: React.FC = () => {
@@ -48,6 +50,7 @@ const PDVPage: React.FC = () => {
   });
 
   const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'daily_report' | 'detailed_report' | 'period_report' | 'operators' | 'products' | 'reports' | 'settings' | 'sales_report'>('sales');
+  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'daily_report' | 'detailed_report' | 'period_report' | 'daily_delivery_report' | 'operators' | 'products' | 'reports' | 'settings' | 'sales_report'>('sales');
   const { hasPermission } = usePermissions(loggedInOperator);
   const { storeSettings } = useStoreHours();
   const { isOpen: isCashRegisterOpen } = usePDVCashRegister();
@@ -168,6 +171,14 @@ const PDVPage: React.FC = () => {
       color: 'bg-purple-600',
       permission: 'can_view_cash_report',
       description: 'Análise por período'
+    },
+    {
+      id: 'daily_delivery_report' as const,
+      label: 'Relatório Delivery Diário',
+      icon: Truck,
+      color: 'bg-cyan-600',
+      permission: 'can_view_reports',
+      description: 'Relatório diário de delivery'
     }
   ].filter(tab => isAdmin || hasPermission(tab.permission as any));
 
@@ -193,6 +204,8 @@ const PDVPage: React.FC = () => {
         return <PDVCashReportWithDetails />;
       case 'period_report':
         return <PDVCashReportWithDateFilter />;
+      case 'daily_delivery_report':
+        return <PDVDailyDeliveryReport />;
       default:
         return <PDVSalesScreen operator={loggedInOperator} scaleHook={scale} storeSettings={storeSettings} />;
     }
