@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Plus, Minus, ShoppingCart, MessageCircle, Trash2, MapPin, ArrowLeft, Gift, ChevronRight, CreditCard, Banknote, QrCode, AlertCircle } from 'lucide-react';
 import { Edit3 } from 'lucide-react';
 import { CartItem } from '../../types/product';
@@ -61,36 +61,51 @@ const Cart: React.FC<CartProps> = ({
     getCustomerBalance, 
     createPurchaseTransaction, 
     createRedemptionTransaction,
-    validateCashbackAmount 
+    validateCashbackAmount,
+    getCustomerByPhone,
+    searchCustomersByName
   } = useCashback();
+
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    const limited = numbers.slice(0, 11);
+    
+    if (limited.length <= 2) {
+      return limited;
+    } else if (limited.length <= 7) {
+      return `(${limited.slice(0, 2)}) ${limited.slice(2)}`;
+    } else {
+      return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value);
+    setDeliveryInfo(prev => ({ ...prev, phone: formatted }));
+  };
 
   // Carregar dados do cliente quando o telefone for preenchido
   useEffect(() => {
     const loadCustomerData = async () => {
-      // Só buscar se o telefone tiver pelo menos 11 dígitos
       const phoneNumbers = deliveryInfo.phone.replace(/\D/g, '');
       if (phoneNumbers.length >= 11) {
         try {
           setLoadingCustomer(true);
           
-          // Primeiro, tentar encontrar cliente existente
           const existingCustomer = await getCustomerByPhone(phoneNumbers);
           
           if (existingCustomer) {
             console.log('✅ Cliente encontrado:', existingCustomer);
             setCustomer(existingCustomer);
             
-            // Preencher automaticamente os dados do cliente
             setDeliveryInfo(prev => ({
               ...prev,
               name: existingCustomer.name || prev.name
             }));
             
-            // Carregar saldo de cashback
             const balance = await getCustomerBalance(existingCustomer.id);
             setCustomerBalance(balance);
             
-            // Mostrar notificação de cliente reconhecido
             const notification = document.createElement('div');
             notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
             notification.innerHTML = `
@@ -107,7 +122,6 @@ const Cart: React.FC<CartProps> = ({
               }
             }, 3000);
           } else {
-            // Cliente não encontrado, limpar dados
             setCustomer(null);
             setCustomerBalance(null);
             setAppliedCashback(0);
@@ -121,19 +135,16 @@ const Cart: React.FC<CartProps> = ({
           setLoadingCustomer(false);
         }
       } else {
-        // Telefone incompleto, limpar dados
         setCustomer(null);
         setCustomerBalance(null);
         setAppliedCashback(0);
       }
     };
 
-    // Debounce para evitar muitas consultas
     const timeoutId = setTimeout(loadCustomerData, 500);
     return () => clearTimeout(timeoutId);
   }, [deliveryInfo.phone, getCustomerByPhone, getCustomerBalance]);
 
-  // Função para buscar sugestões de clientes por nome
   const searchCustomerSuggestions = useCallback(async (name: string) => {
     if (name.length < 3) {
       setCustomerSuggestions([]);
@@ -141,16 +152,14 @@ const Cart: React.FC<CartProps> = ({
     }
 
     try {
-      // Buscar clientes por nome (implementar no hook useCashback)
       const suggestions = await searchCustomersByName(name);
-      setCustomerSuggestions(suggestions.slice(0, 5)); // Máximo 5 sugestões
+      setCustomerSuggestions(suggestions.slice(0, 5));
     } catch (error) {
       console.error('Erro ao buscar sugestões:', error);
       setCustomerSuggestions([]);
     }
-  }, []);
+  }, [searchCustomersByName]);
 
-  // Debounce para busca de sugestões por nome
   useEffect(() => {
     if (deliveryInfo.name && !customer) {
       const timeoutId = setTimeout(() => {
@@ -162,7 +171,6 @@ const Cart: React.FC<CartProps> = ({
     }
   }, [deliveryInfo.name, customer, searchCustomerSuggestions]);
 
-  // Função para selecionar cliente das sugestões
   const selectCustomerSuggestion = async (selectedCustomer: Customer) => {
     setCustomer(selectedCustomer);
     setDeliveryInfo(prev => ({
@@ -172,7 +180,6 @@ const Cart: React.FC<CartProps> = ({
     }));
     setCustomerSuggestions([]);
     
-    // Carregar saldo de cashback
     try {
       const balance = await getCustomerBalance(selectedCustomer.id);
       setCustomerBalance(balance);
@@ -181,17 +188,15 @@ const Cart: React.FC<CartProps> = ({
     }
   };
 
-  // Função anterior modificada para criar cliente se não existir
   const ensureCustomerExists = async () => {
     if (!customer && deliveryInfo.phone && deliveryInfo.name) {
-          
       try {
         const phoneNumbers = deliveryInfo.phone.replace(/\D/g, '');
         const customerData = await getOrCreateCustomer(phoneNumbers, deliveryInfo.name);
         setCustomer(customerData);
         
         const balance = await getCustomerBalance(customerData.id);
-          setCustomerBalance(balance);
+        setCustomerBalance(balance);
         
         return customerData;
       } catch (error) {
@@ -200,18 +205,6 @@ const Cart: React.FC<CartProps> = ({
       }
     }
     return customer;
-  };
-
-  // Função para buscar clientes por nome (adicionar ao hook useCashback)
-  const searchCustomersByName = async (name: string): Promise<Customer[]> => {
-    try {
-      // Esta função precisa ser implementada no hook useCashback
-      // Por enquanto, retornar array vazio
-      return [];
-    } catch (error) {
-      console.error('Erro ao buscar clientes por nome:', error);
-      return [];
-    }
   };
 
   const formatPrice = (price: number) => {
@@ -273,10 +266,10 @@ const Cart: React.FC<CartProps> = ({
       setEditingItem(null);
     }
   };
+
   const generateWhatsAppMessage = (orderId?: string, cashbackEarned?: number) => {
     let message = `🥤 *PEDIDO ELITE AÇAÍ*\n\n`;
     
-    // Itens do pedido
     message += `📋 *ITENS:*\n`;
     items.forEach((item, index) => {
       message += `${index + 1}. ${item.product.name.replace(/[^\x00-\x7F]/g, "")}`;
@@ -285,7 +278,6 @@ const Cart: React.FC<CartProps> = ({
       }
       message += `\n   Qtd: ${item.quantity}x - ${formatPrice(item.totalPrice)}`;
       
-      // Complementos selecionados
       if (item.selectedComplements && item.selectedComplements.length > 0) {
         message += `\n   *Complementos:*`;
         item.selectedComplements.forEach(selected => {
@@ -302,7 +294,6 @@ const Cart: React.FC<CartProps> = ({
       message += `\n\n`;
     });
 
-    // Valores
     message += `💰 *VALORES:*\n`;
     message += `Subtotal: ${formatPrice(totalPrice)}\n`;
     if (getDeliveryFee() > 0) {
@@ -313,14 +304,12 @@ const Cart: React.FC<CartProps> = ({
     }
     message += `*TOTAL: ${formatPrice(getTotalWithCashback())}*\n\n`;
 
-    // Cashback ganho
     if (cashbackEarned && cashbackEarned > 0) {
       message += `🎁 *CASHBACK GANHO:*\n`;
       message += `Você ganhou ${formatPrice(cashbackEarned)} de cashback!\n`;
       message += `Use até o final deste mês.\n\n`;
     }
 
-    // Dados de entrega
     message += `📍 *DADOS DE ENTREGA:*\n`;
     message += `Nome: ${deliveryInfo.name.replace(/[^\x00-\x7F]/g, "")}\n`;
     message += `Telefone: ${deliveryInfo.phone}\n`;
@@ -337,7 +326,6 @@ const Cart: React.FC<CartProps> = ({
       message += `Complemento: ${deliveryInfo.complement.replace(/[^\x00-\x7F]/g, "")}\n`;
     }
     
-    // Forma de pagamento
     message += `\n💳 *PAGAMENTO:* `;
     switch (deliveryInfo.paymentMethod) {
       case 'money':
@@ -359,7 +347,6 @@ const Cart: React.FC<CartProps> = ({
         break;
     }
 
-    // Link de acompanhamento se o pedido foi criado
     if (orderId) {
       message += `\n\n🔗 *ACOMPANHAR PEDIDO:*\n`;
       message += `${window.location.origin}/pedido/${orderId}\n\n`;
@@ -373,7 +360,6 @@ const Cart: React.FC<CartProps> = ({
     try {
       const neighborhood = getSelectedNeighborhood();
       
-      // Criar pedido no sistema
       const orderData = {
         customer_name: deliveryInfo.name,
         customer_phone: deliveryInfo.phone,
@@ -409,45 +395,48 @@ const Cart: React.FC<CartProps> = ({
 
       let cashbackEarned = 0;
 
-      // Processar transações de cashback se cliente estiver identificado
       if (customer) {
-        // Cliente já existe, usar o existente
         let currentCustomer = customer;
-      } else {
-        // Criar novo cliente se não existir
-        let currentCustomer = await ensureCustomerExists();
-      }
-      
-      if (currentCustomer) {
-        // Aplicar resgate de cashback se houver
+        
         if (appliedCashback > 0) {
-          // Round to 2 decimal places to ensure precision consistency
           const roundedCashback = Math.round(appliedCashback * 100) / 100;
           await createRedemptionTransaction(currentCustomer.id, roundedCashback, newOrder.id);
         }
 
-        // Criar transação de compra para gerar cashback
         const purchaseTransaction = await createPurchaseTransaction(
           currentCustomer.id, 
           getTotalWithCashback(), 
           newOrder.id
         );
         cashbackEarned = purchaseTransaction.cashback_amount;
+      } else {
+        let currentCustomer = await ensureCustomerExists();
+        
+        if (currentCustomer) {
+          if (appliedCashback > 0) {
+            const roundedCashback = Math.round(appliedCashback * 100) / 100;
+            await createRedemptionTransaction(currentCustomer.id, roundedCashback, newOrder.id);
+          }
+
+          const purchaseTransaction = await createPurchaseTransaction(
+            currentCustomer.id, 
+            getTotalWithCashback(), 
+            newOrder.id
+          );
+          cashbackEarned = purchaseTransaction.cashback_amount;
+        }
       }
 
-      // Enviar para WhatsApp com informações de cashback
       const message = generateWhatsAppMessage(newOrder.id, cashbackEarned);
       const whatsappUrl = `https://wa.me/5585989041010?text=${message}`;
       window.open(whatsappUrl, '_blank');
 
-      // Limpar carrinho e mostrar tracking
       onClearCart();
       setShowCheckout(false);
       setShowOrderTracking(true);
       
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
-      // Fallback para WhatsApp apenas
       const message = generateWhatsAppMessage();
       const whatsappUrl = `https://wa.me/5585989041010?text=${message}`;
       window.open(whatsappUrl, '_blank');
@@ -470,7 +459,6 @@ const Cart: React.FC<CartProps> = ({
 
   if (!isOpen) return null;
 
-  // Mostrar tela de acompanhamento se pedido foi criado
   if (showOrderTracking && orderId) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -570,7 +558,6 @@ const Cart: React.FC<CartProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {!showCheckout ? (
-            // Carrinho
             <div>
               {items.length === 0 ? (
                 <div className="text-center py-12">
@@ -602,7 +589,6 @@ const Cart: React.FC<CartProps> = ({
                             <p className="text-sm text-gray-600 mt-1">{item.selectedSize.name}</p>
                           )}
                           
-                          {/* Complementos */}
                           {item.selectedComplements && item.selectedComplements.length > 0 && (
                             <div className="mt-3">
                               <p className="text-xs font-medium text-gray-700 mb-2">Complementos:</p>
@@ -675,7 +661,6 @@ const Cart: React.FC<CartProps> = ({
               )}
             </div>
           ) : (
-            // Checkout
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
@@ -691,7 +676,6 @@ const Cart: React.FC<CartProps> = ({
                     required
                   />
                   
-                  {/* Sugestões de clientes */}
                   {customerSuggestions.length > 0 && (
                     <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 mt-1">
                       {customerSuggestions.map((suggestion) => (
@@ -711,6 +695,7 @@ const Cart: React.FC<CartProps> = ({
                     </div>
                   )}
                 </div>
+              </div>
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
@@ -739,7 +724,6 @@ const Cart: React.FC<CartProps> = ({
                 </p>
               </div>
 
-              {/* Exibir cashback se cliente identificado */}
               {customerBalance && (
                 <CashbackDisplay balance={customerBalance} className="my-6" />
               )}
@@ -803,7 +787,6 @@ const Cart: React.FC<CartProps> = ({
                 />
               </div>
 
-              {/* Botão de Cashback */}
               {customerBalance && customerBalance.available_balance > 0 && (
                 <CashbackButton
                   availableBalance={customerBalance.available_balance}
@@ -865,7 +848,6 @@ const Cart: React.FC<CartProps> = ({
                 </div>
               </div>
 
-              {/* Informações do PIX */}
               {deliveryInfo.paymentMethod === 'pix' && (
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 my-4">
                   <h4 className="font-medium text-blue-800 mb-4 flex items-center gap-2">
@@ -895,7 +877,6 @@ const Cart: React.FC<CartProps> = ({
                               type="button"
                               onClick={() => {
                                 navigator.clipboard.writeText('85989041010');
-                                // Feedback visual
                                 const btn = event?.target as HTMLElement;
                                 const originalText = btn.textContent;
                                 btn.textContent = 'Copiado!';
@@ -936,6 +917,7 @@ const Cart: React.FC<CartProps> = ({
                   </div>
                 </div>
               )}
+
               {deliveryInfo.paymentMethod === 'money' && (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
@@ -1032,7 +1014,6 @@ const Cart: React.FC<CartProps> = ({
         )}
       </div>
 
-      {/* Modal de Edição */}
       {editingItem && (
         <ProductModal
           product={editingItem.product}
