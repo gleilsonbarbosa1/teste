@@ -1,8 +1,34 @@
-import React, { useState } from 'react';
-import { FileText, Download, Calendar, BarChart3, TrendingUp, Package } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileText, Download, Calendar, BarChart3, TrendingUp, Package, RefreshCw, AlertCircle } from 'lucide-react';
+import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
+import { supabase } from '../../lib/supabase';
+
+interface ReportData {
+  lowStockProducts: Array<{
+    id: string;
+    name: string;
+    code: string;
+    stock_quantity: number;
+    min_stock: number;
+  }>;
+  salesSummary: {
+    totalSales: number;
+    salesCount: number;
+    averageTicket: number;
+  };
+  operatorPerformance: Array<{
+    operator_name: string;
+    sales_count: number;
+    total_amount: number;
+  }>;
+}
 
 const PDVReports: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<string>('');
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { currentRegister } = usePDVCashRegister();
 
   const reportTypes = [
     {
@@ -28,17 +54,185 @@ const PDVReports: React.FC = () => {
     }
   ];
 
+  const loadReportData = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log('📊 Carregando dados dos relatórios...');
+
+      // Check if Supabase is configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
+        // Use mock data if Supabase is not configured
+        setReportData({
+          lowStockProducts: [
+            { id: '1', name: 'Açaí 300ml', code: 'ACAI300', stock_quantity: 5, min_stock: 10 },
+            { id: '2', name: 'Granola', code: 'GRAN001', stock_quantity: 2, min_stock: 5 }
+          ],
+          salesSummary: {
+            totalSales: 1250.80,
+            salesCount: 25,
+            averageTicket: 50.03
+          },
+          operatorPerformance: [
+            { operator_name: 'Administrador', sales_count: 15, total_amount: 750.50 },
+            { operator_name: 'Operador 1', sales_count: 10, total_amount: 500.30 }
+          ]
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Load low stock products
+      const { data: lowStockData, error: stockError } = await supabase
+        .from('pdv_low_stock_products')
+        .select('*')
+        .limit(10);
+
+      if (stockError) {
+        console.warn('Erro ao carregar produtos com baixo estoque:', stockError);
+      }
+
+      // Load sales summary for today
+      const today = new Date().toISOString().split('T')[0];
+      const { data: salesData, error: salesError } = await supabase
+        .from('pdv_sales')
+        .select('total_amount')
+        .gte('created_at', `${today}T00:00:00`)
+        .lte('created_at', `${today}T23:59:59`)
+        .eq('is_cancelled', false);
+
+      if (salesError) {
+        console.warn('Erro ao carregar resumo de vendas:', salesError);
+      }
+
+      const totalSales = salesData?.reduce((sum, sale) => sum + sale.total_amount, 0) || 0;
+      const salesCount = salesData?.length || 0;
+      const averageTicket = salesCount > 0 ? totalSales / salesCount : 0;
+
+      // Load operator performance
+      const { data: operatorData, error: operatorError } = await supabase
+        .from('pdv_sales_report')
+        .select('operator_name, total_amount')
+        .gte('created_at', `${today}T00:00:00`)
+        .lte('created_at', `${today}T23:59:59`)
+        .limit(10);
+
+      if (operatorError) {
+        console.warn('Erro ao carregar performance dos operadores:', operatorError);
+      }
+
+      // Process operator performance
+      const operatorMap = new Map();
+      operatorData?.forEach(sale => {
+        const existing = operatorMap.get(sale.operator_name) || { sales_count: 0, total_amount: 0 };
+        operatorMap.set(sale.operator_name, {
+          operator_name: sale.operator_name,
+          sales_count: existing.sales_count + 1,
+          total_amount: existing.total_amount + sale.total_amount
+        });
+      });
+
+      setReportData({
+        lowStockProducts: lowStockData || [],
+        salesSummary: {
+          totalSales,
+          salesCount,
+          averageTicket
+        },
+        operatorPerformance: Array.from(operatorMap.values())
+      });
+
+      console.log('✅ Dados dos relatórios carregados');
+
+    } catch (err) {
+      console.error('❌ Erro ao carregar dados dos relatórios:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const generateReport = (reportId: string) => {
     setSelectedReport(reportId);
     
-    // Simular geração de relatório
+    if (!reportData) {
+      loadReportData();
+      return;
+    }
+    
+    // Generate report based on type
+    let csvContent = '';
+    
+    switch (reportId) {
+      case 'inventory':
+        csvContent = [
+          ['Relatório de Estoque - Elite Açaí'],
+          ['Data', new Date().toLocaleDateString('pt-BR')],
+          [''],
+          ['Produtos com Baixo Estoque'],
+          ['Código', 'Nome', 'Estoque Atual', 'Estoque Mínimo', 'Diferença'],
+          ...reportData.lowStockProducts.map(product => [
+            product.code,
+            product.name,
+            product.stock_quantity.toString(),
+            product.min_stock.toString(),
+            (product.stock_quantity - product.min_stock).toString()
+          ]),
+          [''],
+          ['Gerado em', new Date().toLocaleString('pt-BR')]
+        ].map(row => row.join(',')).join('\n');
+        break;
+        
+      case 'performance':
+        csvContent = [
+          ['Relatório de Performance - Elite Açaí'],
+          ['Data', new Date().toLocaleDateString('pt-BR')],
+          [''],
+          ['Performance por Operador'],
+          ['Operador', 'Vendas', 'Total'],
+          ...reportData.operatorPerformance.map(op => [
+            op.operator_name,
+            op.sales_count.toString(),
+            formatPrice(op.total_amount)
+          ]),
+          [''],
+          ['Gerado em', new Date().toLocaleString('pt-BR')]
+        ].map(row => row.join(',')).join('\n');
+        break;
+        
+      case 'financial':
+        csvContent = [
+          ['Relatório Financeiro - Elite Açaí'],
+          ['Data', new Date().toLocaleDateString('pt-BR')],
+          [''],
+          ['Resumo Financeiro'],
+          ['Total de Vendas', formatPrice(reportData.salesSummary.totalSales)],
+          ['Número de Vendas', reportData.salesSummary.salesCount.toString()],
+          ['Ticket Médio', formatPrice(reportData.salesSummary.averageTicket)],
+          [''],
+          ['Gerado em', new Date().toLocaleString('pt-BR')]
+        ].map(row => row.join(',')).join('\n');
+        break;
+    }
+    
+    if (csvContent) {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `relatorio-${reportId}-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    }
+    
+    // Show success message
     const successMessage = document.createElement('div');
     successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
     successMessage.innerHTML = `
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
       </svg>
-      Relatório gerado com sucesso!
+      Relatório gerado e baixado com sucesso!
     `;
     document.body.appendChild(successMessage);
     
@@ -48,6 +242,17 @@ const PDVReports: React.FC = () => {
       }
     }, 3000);
   };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(price);
+  };
+
+  useEffect(() => {
+    loadReportData();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -59,7 +264,98 @@ const PDVReports: React.FC = () => {
           </h2>
           <p className="text-gray-600">Relatórios gerais e análises do sistema</p>
         </div>
+        <button
+          onClick={loadReportData}
+          disabled={loading}
+          className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+        >
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          Atualizar Dados
+        </button>
       </div>
+
+      {loading && (
+        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando dados dos relatórios...</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={20} className="text-red-600" />
+            <p className="text-red-600">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {reportData && !loading && (
+        <>
+          {/* Resumo Rápido */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Resumo do Dia</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm text-green-600 font-medium">Total de Vendas</p>
+                <p className="text-2xl font-bold text-green-700">
+                  {formatPrice(reportData.salesSummary.totalSales)}
+                </p>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-600 font-medium">Número de Vendas</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {reportData.salesSummary.salesCount}
+                </p>
+              </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <p className="text-sm text-purple-600 font-medium">Ticket Médio</p>
+                <p className="text-2xl font-bold text-purple-700">
+                  {formatPrice(reportData.salesSummary.averageTicket)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Produtos com Baixo Estoque */}
+          {reportData.lowStockProducts.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <AlertCircle size={20} className="text-orange-600" />
+                Produtos com Baixo Estoque
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Código</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Produto</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Estoque</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Mínimo</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {reportData.lowStockProducts.map((product) => (
+                      <tr key={product.id} className="hover:bg-gray-50">
+                        <td className="py-4 px-4 font-mono text-sm">{product.code}</td>
+                        <td className="py-4 px-4 font-medium">{product.name}</td>
+                        <td className="py-4 px-4">{product.stock_quantity}</td>
+                        <td className="py-4 px-4">{product.min_stock}</td>
+                        <td className="py-4 px-4">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            Baixo Estoque
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Tipos de Relatórios */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -78,10 +374,11 @@ const PDVReports: React.FC = () => {
               
               <button
                 onClick={() => generateReport(report.id)}
-                className={`w-full ${report.color} hover:opacity-90 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2`}
+                disabled={loading}
+                className={`w-full ${report.color} hover:opacity-90 disabled:opacity-50 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2`}
               >
                 <Download size={16} />
-                Gerar Relatório
+                {loading ? 'Carregando...' : 'Gerar Relatório'}
               </button>
             </div>
           );
@@ -101,22 +398,41 @@ const PDVReports: React.FC = () => {
               <p className="font-medium text-gray-800">Relatório de Vendas - Hoje</p>
               <p className="text-sm text-gray-600">Gerado em {new Date().toLocaleString('pt-BR')}</p>
             </div>
-            <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-              Visualizar
+            <button 
+              onClick={() => generateReport('financial')}
+              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+            >
+              Baixar Novamente
             </button>
           </div>
           
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div>
-              <p className="font-medium text-gray-800">Relatório de Caixa - Ontem</p>
-              <p className="text-sm text-gray-600">Gerado em {new Date(Date.now() - 86400000).toLocaleString('pt-BR')}</p>
+              <p className="font-medium text-gray-800">Relatório de Estoque - Hoje</p>
+              <p className="text-sm text-gray-600">Gerado em {new Date().toLocaleString('pt-BR')}</p>
             </div>
-            <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-              Visualizar
+            <button 
+              onClick={() => generateReport('inventory')}
+              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+            >
+              Baixar Novamente
             </button>
           </div>
         </div>
       </div>
+
+      {/* Status do Caixa */}
+      {currentRegister && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="flex items-center gap-2">
+            <DollarSign size={20} className="text-blue-600" />
+            <p className="text-blue-700">
+              <strong>Caixa Atual:</strong> #{currentRegister.id.slice(-8)} - 
+              Aberto em {new Date(currentRegister.opened_at).toLocaleString('pt-BR')}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Configurações de Relatórios */}
       <div className="bg-white rounded-xl shadow-sm p-6">
