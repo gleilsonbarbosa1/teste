@@ -72,6 +72,7 @@ const Router: React.FC = () => {
         <Route path="/acesso-negado" element={<AccessDeniedPage />} />
         <Route path="/pdv" element={loggedInOperator ? <PDVMain onBack={handlePDVLogout} operator={loggedInOperator} /> : <PDVLogin onLogin={handlePDVLogin} />} />
         <Route path="/pdv/app" element={loggedInOperator ? <PDVMain onBack={handlePDVLogout} operator={loggedInOperator} /> : <PDVLogin onLogin={handlePDVLogin} />} />
+        <Route path="/odv" element={loggedInOperator ? <PDVMain onBack={handlePDVLogout} operator={loggedInOperator} /> : <PDVLogin onLogin={handlePDVLogin} />} />
         <Route path="/login" element={<DeliveryLogin />} />
         <Route path="/entregas" element={
           <ProtectedRoute>
