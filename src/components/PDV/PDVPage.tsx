@@ -6,6 +6,11 @@ import CashRegisterMenu from './CashRegisterMenu';
 import PDVCashReportWithDetails from './PDVCashReportWithDetails';
 import PDVDailyCashReport from './PDVDailyCashReport';
 import PDVCashReportWithDateFilter from './PDVCashReportWithDateFilter';
+import PDVOperators from './PDVOperators';
+import PDVProductsManager from './PDVProductsManager';
+import PDVReports from './PDVReports';
+import PDVSettings from './PDVSettings';
+import PDVSalesReport from './PDVSalesReport';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useScale } from '../../hooks/useScale';
 import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
@@ -42,6 +47,7 @@ const PDVPage: React.FC = () => {
   });
 
   const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'daily_report' | 'detailed_report' | 'period_report'>('sales');
+  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'daily_report' | 'detailed_report' | 'period_report' | 'operators' | 'products' | 'reports' | 'settings' | 'sales_report'>('sales');
   const { hasPermission } = usePermissions(loggedInOperator);
   const { storeSettings } = useStoreHours();
   const { isOpen: isCashRegisterOpen } = usePDVCashRegister();
@@ -100,6 +106,46 @@ const PDVPage: React.FC = () => {
       description: 'Controle de caixa'
     },
     {
+      id: 'operators' as const,
+      label: 'Operadores',
+      icon: User,
+      color: 'bg-indigo-600',
+      permission: 'can_view_operators',
+      description: 'Gerenciar operadores'
+    },
+    {
+      id: 'products' as const,
+      label: 'Produtos',
+      icon: Package,
+      color: 'bg-orange-600',
+      permission: 'can_manage_products',
+      description: 'Gerenciar produtos'
+    },
+    {
+      id: 'settings' as const,
+      label: 'Configurações',
+      icon: Settings,
+      color: 'bg-gray-600',
+      permission: 'can_manage_settings',
+      description: 'Configurações do sistema'
+    },
+    {
+      id: 'sales_report' as const,
+      label: 'Relatório de Vendas',
+      icon: TrendingUp,
+      color: 'bg-emerald-600',
+      permission: 'can_view_sales_report',
+      description: 'Relatório de vendas'
+    },
+    {
+      id: 'reports' as const,
+      label: 'Outros Relatórios',
+      icon: FileText,
+      color: 'bg-pink-600',
+      permission: 'can_view_reports',
+      description: 'Relatórios gerais'
+    },
+    {
       id: 'daily_report' as const,
       label: 'Relatório Diário',
       icon: Calendar,
@@ -131,6 +177,16 @@ const PDVPage: React.FC = () => {
         return <PDVSalesScreen operator={loggedInOperator} scaleHook={scale} storeSettings={storeSettings} />;
       case 'cash':
         return <CashRegisterMenu operator={loggedInOperator} />;
+      case 'operators':
+        return <PDVOperators />;
+      case 'products':
+        return <PDVProductsManager />;
+      case 'settings':
+        return <PDVSettings />;
+      case 'sales_report':
+        return <PDVSalesReport />;
+      case 'reports':
+        return <PDVReports />;
       case 'daily_report':
         return <PDVDailyCashReport />;
       case 'detailed_report':
@@ -248,6 +304,7 @@ const PDVPage: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {availableTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
