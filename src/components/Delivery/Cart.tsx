@@ -955,7 +955,7 @@ const Cart: React.FC<CartProps> = ({
           )}
         </div>
 
-        /* Footer */
+        {/* Footer */}
         {items.length > 0 && (
           <div className="border-t p-5 space-y-4 bg-white sticky bottom-0 shadow-md">
             {showCheckout && (
