@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Order } from '../../types/order';
+import { usePDVSettings } from '../../hooks/usePDVSettings';
 
 interface OrderPrintViewProps {
   order: Order;
@@ -8,6 +9,52 @@ interface OrderPrintViewProps {
 }
 
 const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, onClose }) => {
+  const { settings: pdvSettings } = usePDVSettings();
+  const [printerSettings, setPrinterSettings] = useState({
+    paper_width: '80mm',
+    font_size: 14,
+    auto_adjust_font: true,
+    auto_adjust_paper: true
+  });
+
+  // Carregar configurações de impressora do localStorage ou PDVSettings
+  useEffect(() => {
+    if (pdvSettings) {
+      setPrinterSettings(prev => ({
+        ...prev,
+        paper_width: pdvSettings.printer_paper_width || '80mm',
+        font_size: pdvSettings.printer_font_size || 14,
+        auto_adjust_font: pdvSettings.printer_auto_adjust_font !== false,
+        auto_adjust_paper: pdvSettings.printer_auto_adjust_paper !== false
+      }));
+    }
+  }, [pdvSettings]);
+
+  // Calcular tamanhos responsivos baseado no papel
+  const getResponsiveSizes = () => {
+    let baseFontSize = printerSettings.font_size;
+    let width = printerSettings.paper_width === 'A4' ? '190mm' : (printerSettings.paper_width === '58mm' ? '54mm' : '76mm');
+    let padding = printerSettings.paper_width === 'A4' ? '5mm' : (printerSettings.paper_width === '58mm' ? '1mm' : '2mm');
+
+    if (printerSettings.auto_adjust_font) {
+      if (printerSettings.paper_width === '58mm') baseFontSize = 10;
+      else if (printerSettings.paper_width === '80mm') baseFontSize = 14;
+      else if (printerSettings.paper_width === 'A4') baseFontSize = 16;
+    }
+
+    return {
+      baseFontSize,
+      titleSize: baseFontSize + 4,
+      mediumSize: baseFontSize + 1,
+      largeSize: baseFontSize + 2,
+      smallSize: Math.max(8, baseFontSize - 4),
+      width,
+      padding
+    };
+  };
+
+  const sizes = getResponsiveSizes();
+
   const formatPrice = (price: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
   const getPaymentMethodLabel = (method: string) => method === 'money' ? 'Dinheiro' : method === 'pix' ? 'PIX' : method === 'card' ? 'Cartão' : method;
   const getStatusLabel = (status: string) => ({
@@ -32,7 +79,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         <title>Pedido #${order.id.slice(-8)}</title>
         <style>
           @page {
-            size: 80mm auto;
+            size: ${printerSettings.paper_width} auto; /* Ajusta o tamanho do papel */
             margin: 0;
           }
           
@@ -46,17 +93,20 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           
           body {
             font-family: 'Courier New', monospace;
-            font-size: 14px;
+            font-size: ${sizes.baseFontSize}px; /* Tamanho da fonte base */
             line-height: 1.3;
             color: black;
             background: white;
-            padding: 2mm;
-            width: 76mm;
+            padding: ${sizes.padding}; /* Preenchimento da página */
+            width: ${sizes.width}; /* Largura do conteúdo */
           }
           
           .center { text-align: center; }
           .bold { font-weight: bold; }
-          .small { font-size: 10px; }
+          .small { font-size: ${sizes.smallSize}px; } /* Tamanho da fonte pequena */
+          .title { font-size: ${sizes.titleSize}px; }
+          .medium { font-size: ${sizes.mediumSize}px; }
+          .large { font-size: ${sizes.largeSize}px; }
           .separator { 
             border-bottom: 1px dashed black; 
             margin: 5px 0; 
@@ -85,7 +135,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
       <body>
         <!-- Cabeçalho -->
         <div class="center mb-3 separator">
-          <div class="bold" style="font-size: 18px; color: #000;">ELITE AÇAÍ</div>
+          <div class="bold title" style="color: #000;">ELITE AÇAÍ</div>
           <div class="small">Delivery Premium</div>
           <div class="small">Rua Um, 1614-C</div>
           <div class="small">Residencial 1 - Cágado</div>
@@ -95,7 +145,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         
         <!-- Dados do Pedido -->
         <div class="mb-3 separator">
-          <div class="bold center mb-2">=== PEDIDO DE DELIVERY ===</div>
+          <div class="bold center mb-2 medium">=== PEDIDO DE DELIVERY ===</div>
           <div class="small">Pedido: #${order.id.slice(-8)}</div>
           <div class="small">Data: ${new Date(order.created_at).toLocaleDateString('pt-BR')}</div>
           <div class="small">Hora: ${new Date(order.created_at).toLocaleTimeString('pt-BR')}</div>
@@ -104,7 +154,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         
         <!-- Cliente -->
         <div class="mb-3 separator">
-          <div class="bold mb-1">DADOS DO CLIENTE:</div>
+          <div class="bold mb-1 medium">DADOS DO CLIENTE:</div>
           <div class="small">Nome: ${order.customer_name}</div>
           <div class="small">Telefone: ${order.customer_phone}</div>
           <div class="small">Endereço: ${order.customer_address}</div>
@@ -114,7 +164,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         
         <!-- Itens -->
         <div class="mb-3 separator">
-          <div class="bold mb-1">ITENS DO PEDIDO:</div>
+          <div class="bold mb-1 medium">ITENS DO PEDIDO:</div>
           ${order.items.map((item, index) => `
             <div class="mb-2">
               <div class="bold">${item.product_name}</div>
@@ -138,7 +188,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         
         <!-- Resumo -->
         <div class="mb-3 separator">
-          <div class="bold mb-1">RESUMO:</div>
+          <div class="bold mb-1 medium">RESUMO:</div>
           <div class="flex-between">
             <span class="small">Subtotal:</span>
             <span class="small">${formatPrice(order.total_price - (order.delivery_fee || 0))}</span>
@@ -151,15 +201,15 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           ` : ''}
           <div style="border-top: 1px solid black; padding-top: 3px; margin-top: 3px;">
             <div class="flex-between bold">
-              <span>TOTAL:</span>
-              <span>${formatPrice(order.total_price)}</span>
+              <span class="large">TOTAL:</span>
+              <span class="large">${formatPrice(order.total_price)}</span>
             </div>
           </div>
         </div>
         
         <!-- Pagamento -->
         <div class="mb-3 separator">
-          <div class="bold mb-1">PAGAMENTO:</div>
+          <div class="bold mb-1 medium">PAGAMENTO:</div>
           <div class="small">Forma: ${getPaymentMethodLabel(order.payment_method)}</div>
           ${order.change_for ? `<div class="small">Troco para: ${formatPrice(order.change_for)}</div>` : ''}
           ${order.payment_method === 'pix' ? `
@@ -173,12 +223,12 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         
         <!-- Rodapé -->
         <div class="center small" style="border-top: 1px solid black; padding-top: 5px;">
-          <div class="bold mb-2">Obrigado pela preferência!</div>
+          <div class="bold mb-2" style="font-size: ${sizes.baseFontSize}px;">Obrigado pela preferência!</div>
           <div>Elite Açaí - O melhor açaí da cidade!</div>
           <div>@eliteacai</div>
           <div>⭐⭐⭐⭐⭐ Avalie-nos no Google</div>
           <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid black;">
-            <div>Elite Açaí - CNPJ: ${storeSettings?.cnpj || '00.000.000/0001-00'}</div>
+            <div class="small">Elite Açaí - CNPJ: ${storeSettings?.cnpj || '00.000.000/0001-00'}</div>
             <div>Impresso: ${new Date().toLocaleString('pt-BR')}</div>
             <div>Este não é um documento fiscal</div>
           </div>
@@ -207,8 +257,13 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           {/* Controls */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-800">Imprimir Pedido</h2>
+              <h2 className="text-lg font-semibold text-gray-800">Imprimir Pedido ({printerSettings.paper_width})</h2>
               <div className="flex gap-2">
+                <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
+                  <span className="text-sm text-gray-600">Papel:</span>
+                  <span className="text-sm font-medium text-gray-800">{printerSettings.paper_width}</span>
+                  <span className="text-xs text-gray-500">({sizes.baseFontSize}px)</span>
+                </div>
                 <button
                   onClick={() => {
                     // Gerar mensagem do pedido para WhatsApp da loja
