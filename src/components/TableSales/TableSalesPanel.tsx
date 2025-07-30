@@ -1,37 +1,126 @@
 import React, { useState } from 'react';
-import { useTableSales } from '../../hooks/useTableSales';
-import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
-import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
-import { RestaurantTable, TableSale } from '../../types/table-sales';
-import TableGrid from './TableGrid';
-import TableSaleModal from './TableSaleModal';
-import TableDetailsModal from './TableDetailsModal';
-import { 
-  Users, 
-  DollarSign, 
-  Clock, 
-  CheckCircle,
-  AlertCircle,
-  RefreshCw
-} from 'lucide-react';
+import { X, AlertTriangle, DollarSign, CheckCircle, Printer, Plus, Minus } from 'lucide-react';
+import { PDVCashRegister, PDVCashRegisterSummary, PDVCashRegisterEntry } from '../../types/pdv';
+import { usePermissions } from '../../hooks/usePermissions';
 
-interface TableSalesPanelProps {
-  storeId: 1 | 2;
-  operatorName?: string;
+interface CashRegisterCloseConfirmationProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (closingAmount: number, justification?: string) => void;
+  register: PDVCashRegister | null;
+  summary: PDVCashRegisterSummary | null;
+  isProcessing: boolean;
 }
 
-const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
-  const { tables, loading, error, createTableSale, addItemToSale, closeSale, getSaleDetails, updateTableStatus, refetch } = useTableSales(storeId);
-  
-  // Verificar status do caixa
-  const store1CashRegister = usePDVCashRegister();
-  const store2CashRegister = useStore2PDVCashRegister();
-  const cashRegister = storeId === 1 ? store1CashRegister : store2CashRegister;
-  
-  const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
-  const [showSaleModal, setShowSaleModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [saleDetails, setSaleDetails] = useState<TableSale | null>(null);
+const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  register,
+  summary,
+  isProcessing
+}) => {
+  const { hasPermission } = usePermissions();
+  const canViewExpectedBalance = hasPermission('can_view_expected_balance');
+  const [closingAmount, setClosingAmount] = useState(0);
+  const [hasInformedAmount, setHasInformedAmount] = useState(false);
+  const [justification, setJustification] = useState('');
+  const [printMovements, setPrintMovements] = useState(true);
+  const [showBillCounting, setShowBillCounting] = useState(false);
+  const [billCounts, setBillCounts] = useState({
+    '200': 0,
+    '100': 0,
+    '50': 0,
+    '20': 0,
+    '10': 0,
+    '5': 0,
+    '2': 0,
+    '1': 0,
+    '0.50': 0,
+    '0.25': 0,
+    '0.10': 0,
+    '0.05': 0,
+    '0.01': 0
+  });
+
+  const billValues = [
+    { value: '200', label: 'R$ 200,00', color: 'bg-purple-100' },
+    { value: '100', label: 'R$ 100,00', color: 'bg-blue-100' },
+    { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
+    { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
+    { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
+  const [showBillCounting, setShowBillCounting] = useState(false);
+  const [billCounts, setBillCounts] = useState({
+    '200': 0,
+    '100': 0,
+    '50': 0,
+    '20': 0,
+    '10': 0,
+    '5': 0,
+    '2': 0,
+    '1': 0,
+    '0.50': 0,
+    '0.25': 0,
+    '0.10': 0,
+    '0.05': 0,
+    '0.01': 0
+  });
+
+  const billValues = [
+    { value: '200', label: 'R$ 200,00', color: 'bg-purple-100' },
+    { value: '100', label: 'R$ 100,00', color: 'bg-blue-100' },
+    { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
+    { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
+    { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
+    { value: '5', label: 'R$ 5,00', color: 'bg-green-100' },
+    { value: '2', label: 'R$ 2,00', color: 'bg-gray-100' },
+    { value: '1', label: 'R$ 1,00', color: 'bg-yellow-50' },
+    { value: '0.50', label: 'R$ 0,50', color: 'bg-gray-50' },
+    { value: '0.25', label: 'R$ 0,25', color: 'bg-gray-50' },
+    { value: '0.10', label: 'R$ 0,10', color: 'bg-gray-50' },
+    { value: '0.05', label: 'R$ 0,05', color: 'bg-gray-50' },
+    { value: '0.01', label: 'R$ 0,01', color: 'bg-gray-50' }
+  ];
+
+  const calculateBillTotal = () => {
+    return Object.entries(billCounts).reduce((total, [value, count]) => {
+      return total + (parseFloat(value) * count);
+    }, 0);
+  };
+
+  const updateBillCount = (value: string, increment: boolean) => {
+    setBillCounts(prev => ({
+      ...prev,
+      [value]: Math.max(0, prev[value] + (increment ? 1 : -1))
+    }));
+  };
+
+  const resetBillCounts = () => {
+    setBillCounts({
+      '200': 0,
+      '100': 0,
+      '50': 0,
+      '20': 0,
+      '10': 0,
+      '5': 0,
+      '2': 0,
+      '1': 0,
+      '0.50': 0,
+      '0.25': 0,
+      '0.10': 0,
+      '0.05': 0,
+      '0.01': 0
+    });
+  };
+
+  const applyBillTotal = () => {
+    const total = calculateBillTotal();
+    setClosingAmount(total);
+    setShowBillCounting(false);
+    resetBillCounts();
+  };
+
+  if (!isOpen) return null;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -40,262 +129,352 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     }).format(price);
   };
 
-  const getStatusStats = () => {
-    const stats = {
-      livre: tables.filter(t => t.status === 'livre').length,
-      ocupada: tables.filter(t => t.status === 'ocupada').length,
-      aguardando_conta: tables.filter(t => t.status === 'aguardando_conta').length,
-      limpeza: tables.filter(t => t.status === 'limpeza').length
-    };
-    return stats;
-  };
-
-  const handleTableClick = async (table: RestaurantTable) => {
-    setSelectedTable(table);
-
-    if (table.status === 'livre') {
-      // Mesa livre - abrir nova venda
-      setShowSaleModal(true);
-    } else if (table.status === 'ocupada' && table.current_sale_id) {
-      // Mesa ocupada - mostrar detalhes da venda
-      console.log('🔍 Buscando detalhes da venda:', table.current_sale_id);
-      const details = await getSaleDetails(table.current_sale_id);
-      if (details) {
-        console.log('✅ Detalhes da venda carregados:', details);
-        setSaleDetails(details);
-        setShowDetailsModal(true);
-      } else {
-        console.error('❌ Não foi possível carregar detalhes da venda');
-        alert('Erro ao carregar detalhes da venda. Tente novamente.');
-      }
-    } else if (table.status === 'aguardando_conta' && table.current_sale_id) {
-      // Mesa aguardando conta - mostrar detalhes para finalizar
-      console.log('💰 Mesa aguardando conta, carregando detalhes:', table.current_sale_id);
-      const details = await getSaleDetails(table.current_sale_id);
-      if (details) {
-        setSaleDetails(details);
-        setShowDetailsModal(true);
-      } else {
-        alert('Erro ao carregar detalhes da venda. Tente novamente.');
-      }
-    } else {
-      console.log('ℹ️ Mesa com status:', table.status, 'sem ação específica');
+  const handleAmountConfirm = () => {
+    if (closingAmount > 0) {
+      setHasInformedAmount(true);
     }
   };
 
-  const handleAddItemToSale = async (saleId: string, item: any) => {
-    try {
-      console.log('🔄 Adicionando item à venda:', { saleId, item });
-      
-      // Usar a função do hook
-      await addItemToSale(saleId, item);
-      
-      console.log('✅ Item adicionado com sucesso');
-      
-      // Recarregar detalhes da venda
-      if (saleDetails) {
-        const updatedDetails = await getSaleDetails(saleDetails.id);
-        if (updatedDetails) {
-          setSaleDetails(updatedDetails);
-        }
-        
-        // Recarregar lista de mesas
-        await refetch();
-      }
-      
-      return Promise.resolve();
-    } catch (error) {
-      console.error('❌ Erro ao adicionar item:', error);
-      throw error;
-    }
-  };
-  const handleCreateSale = async (customerName?: string, customerCount: number = 1) => {
-    if (!selectedTable) return;
+  const expectedBalance = summary?.expected_balance || 0;
+  const difference = closingAmount - expectedBalance;
+  const hasDifference = Math.abs(difference) > 0.01; // Tolerância de 1 centavo
+  const needsJustification = hasDifference && hasInformedAmount;
 
-    try {
-      await createTableSale(selectedTable.id, operatorName, customerName, customerCount);
-      setShowSaleModal(false);
-      setSelectedTable(null);
-      // Recarregar dados após criar venda
-      await refetch();
-    } catch (error) {
-      console.error('Erro ao criar venda:', error);
-      alert('Erro ao criar venda. Tente novamente.');
-    }
-  };
-
-  const handleCloseSale = async (
-    paymentType: TableSale['payment_type'],
-    changeAmount: number = 0,
-    discountAmount: number = 0
-  ) => {
-    if (!saleDetails) return;
-
-    try {
-      await closeSale(saleDetails.id, paymentType, changeAmount, discountAmount);
-      setShowDetailsModal(false);
-      setSaleDetails(null);
-      setSelectedTable(null);
-      // Recarregar dados após fechar venda
-      await refetch();
-    } catch (error) {
-      console.error('Erro ao fechar venda:', error);
-      alert('Erro ao fechar venda. Tente novamente.');
-    }
-  };
-
-  const stats = getStatusStats();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Carregando mesas da Loja {storeId}...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <div className="flex items-center gap-3">
-          <AlertCircle size={20} className="text-red-600" />
-          <div>
-            <h3 className="font-medium text-red-800">Erro ao carregar mesas</h3>
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const canProceed = hasInformedAmount && (!needsJustification || justification.trim().length > 0);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            Vendas por Mesa - Loja {storeId}
-          </h2>
-          <p className="text-gray-600">Gerencie vendas e status das mesas</p>
-          {!cashRegister.isOpen && (
-            <p className="text-yellow-600 text-sm font-medium">
-              ⚠️ Caixa fechado - vendas não serão registradas no caixa
+    <>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                <div className="bg-yellow-100 rounded-full p-2">
+                  <AlertTriangle size={24} className="text-yellow-600" />
+                </div>
+                Confirmar Fechamento de Caixa
+              </h2>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-gray-600">
+              {!hasInformedAmount 
+                ? 'Informe o valor contado no caixa para prosseguir com o fechamento.'
+                : 'Confirme os dados do fechamento de caixa.'
+              }
             </p>
-          )}
+          </div>
+
+          <div className="p-6 overflow-y-auto">
+            {!hasInformedAmount ? (
+              // ETAPA 1: Informar valor contado
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-lg font-bold text-blue-800 mb-2">Contagem do Caixa</h3>
+                      <p className="text-blue-700 text-sm">
+                        Conte todo o dinheiro físico presente no caixa e informe o valor total.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Valor contado no caixa *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={closingAmount}
+                    onChange={(e) => setClosingAmount(parseFloat(e.target.value) || 0)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0,00"
+                    autoFocus
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Informe o valor total em dinheiro presente no caixa
+                  </p>
+                  
+                  <button
+                    onClick={() => setShowBillCounting(true)}
+                    className="w-full mt-3 flex items-center justify-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors"
+                  >
+                    <DollarSign size={16} />
+                    Contar Cédulas
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // ETAPA 2: Mostrar comparação e solicitar justificativa se necessário
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                    <div className="w-full">
+                      <h3 className="text-lg font-bold text-blue-800 mb-3">Conferência do Fechamento</h3>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-blue-700">Valor informado (contado):</span>
+                          <span className="font-bold text-blue-800">{formatPrice(closingAmount)}</span>
+                        </div>
+                        
+                        {canViewExpectedBalance && (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">Saldo esperado (sistema):</span>
+                              <span className="font-medium text-blue-800">{formatPrice(expectedBalance)}</span>
+                            </div>
+                            
+                            <div className="pt-2 border-t border-blue-200">
+                              <div className="flex justify-between">
+                                <span className="font-medium text-blue-800">Diferença:</span>
+                                <span className={`font-bold ${
+                                  difference > 0 ? 'text-green-600' : difference < 0 ? 'text-red-600' : 'text-blue-800'
+                                }`}>
+                                  {difference === 0 ? 'Exato' : 
+                                   difference > 0 ? `+${formatPrice(difference)} (sobra)` : 
+                                   `${formatPrice(difference)} (falta)`}
+                                </span>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resumo das movimentações (sempre visível) */}
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                  <h4 className="font-medium text-gray-800 mb-2">Resumo das Movimentações</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Valor de abertura:</span>
+                      <span className="font-medium">{formatPrice(summary?.opening_amount || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Vendas PDV:</span>
+                      <span className="font-medium text-green-600">{formatPrice(summary?.sales_total || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Vendas Delivery:</span>
+                      <span className="font-medium text-green-600">{formatPrice(summary?.delivery_total || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Outras entradas:</span>
+                      <span className="font-medium text-green-600">{formatPrice(summary?.other_income_total || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Saídas:</span>
+                      <span className="font-medium text-red-600">{formatPrice(summary?.total_expense || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Justificativa obrigatória para diferenças */}
+                {needsJustification && (
+                  <div className={`border rounded-xl p-4 ${
+                    difference > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle size={20} className={
+                        difference > 0 ? 'text-yellow-600' : 'text-red-600'
+                      } className="mt-1 flex-shrink-0" />
+                      <div className="w-full">
+                        <h4 className={`font-medium mb-2 ${
+                          difference > 0 ? 'text-yellow-800' : 'text-red-800'
+                        }`}>
+                          Justificativa Obrigatória
+                        </h4>
+                        <p className={`text-sm mb-3 ${
+                          difference > 0 ? 'text-yellow-700' : 'text-red-700'
+                        }`}>
+                          Foi detectada uma diferença de {formatPrice(Math.abs(difference))}. 
+                          É obrigatório informar a justificativa para esta diferença.
+                        </p>
+                        <textarea
+                          value={justification}
+                          onChange={(e) => setJustification(e.target.value)}
+                          placeholder="Descreva o motivo da diferença encontrada..."
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          rows={3}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {hasInformedAmount && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Printer size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                  <div className="flex-1">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={printMovements}
+                        onChange={(e) => setPrintMovements(e.target.checked)}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <div>
+                        <span className="font-medium text-blue-800">
+                          Imprimir movimentações do caixa após fechamento
+                        </span>
+                        <p className="text-blue-700 text-sm mt-1">
+                          Gera um relatório térmico com todas as movimentações do caixa
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex gap-3">
+              {!hasInformedAmount ? (
+                <>
+                  <button
+                    onClick={onClose}
+                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleAmountConfirm}
+                    disabled={closingAmount <= 0}
+                    className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Confirmar Valor
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setHasInformedAmount(false);
+                      setJustification('');
+                    }}
+                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Voltar
+                  </button>
+                  <button
+                    onClick={() => onConfirm(closingAmount, justification || undefined)}
+                    disabled={isProcessing || !canProceed}
+                    className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={20} />
+                        Confirmar Fechamento
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
+            
+            {needsJustification && !justification.trim() && (
+              <div className="mt-2 text-center">
+                <p className="text-sm text-red-600">
+                  ⚠️ Justificativa obrigatória para diferenças no caixa
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-        
-        <button
-          onClick={refetch}
-          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          <RefreshCw size={16} />
-          Atualizar
-        </button>
       </div>
 
-      {/* Aviso sobre Caixa */}
-      {!cashRegister.isOpen && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-yellow-100 rounded-full p-2">
-              <AlertCircle size={20} className="text-yellow-600" />
+      {/* Bill Counting Modal */}
+      {showBillCounting && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Contagem de Cédulas</h3>
+              <button
+                onClick={() => setShowBillCounting(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
             </div>
-            <div>
-              <h3 className="font-medium text-yellow-800">Caixa Fechado - Loja {storeId}</h3>
-              <p className="text-yellow-700 text-sm">
-                As vendas das mesas podem ser realizadas, mas não serão registradas automaticamente no caixa. 
-                Para integração completa, abra um caixa na aba "Caixas".
-              </p>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {billValues.map((bill) => (
+                  <div key={bill.value} className={`flex items-center justify-between p-3 rounded-lg ${bill.color}`}>
+                    <span className="font-medium">{bill.label}</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => updateBillCount(bill.value, false)}
+                        className="p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="w-12 text-center font-semibold">
+                        {billCounts[bill.value]}
+                      </span>
+                      <button
+                        onClick={() => updateBillCount(bill.value, true)}
+                        className="p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t pt-4 mt-4">
+                <div className="flex justify-between items-center text-lg font-semibold">
+                  <span>Total:</span>
+                  <span>R$ {calculateBillTotal().toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={resetBillCounts}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Limpar
+                </button>
+                <button
+                  onClick={() => setShowBillCounting(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={applyBillTotal}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Aplicar
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600">Mesas Livres</p>
-              <p className="text-2xl font-bold text-green-700">{stats.livre}</p>
-            </div>
-            <CheckCircle className="w-8 h-8 text-green-500" />
-          </div>
-        </div>
-
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600">Mesas Ocupadas</p>
-              <p className="text-2xl font-bold text-blue-700">{stats.ocupada}</p>
-            </div>
-            <Users className="w-8 h-8 text-blue-500" />
-          </div>
-        </div>
-
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-yellow-600">Aguardando Conta</p>
-              <p className="text-2xl font-bold text-yellow-700">{stats.aguardando_conta}</p>
-            </div>
-            <DollarSign className="w-8 h-8 text-yellow-500" />
-          </div>
-        </div>
-
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-purple-600">Em Limpeza</p>
-              <p className="text-2xl font-bold text-purple-700">{stats.limpeza}</p>
-            </div>
-            <Clock className="w-8 h-8 text-purple-500" />
-          </div>
-        </div>
-      </div>
-
-      {/* Grid de Mesas */}
-      <TableGrid 
-        tables={tables} 
-        onTableClick={handleTableClick}
-        storeId={storeId}
-      />
-
-      {/* Modal para Nova Venda */}
-      {showSaleModal && selectedTable && (
-        <TableSaleModal
-          table={selectedTable}
-          storeId={storeId}
-          onClose={() => {
-            setShowSaleModal(false);
-            setSelectedTable(null);
-          }}
-          onCreateSale={handleCreateSale}
-        />
-      )}
-
-      {/* Modal para Detalhes da Venda */}
-      {showDetailsModal && saleDetails && selectedTable && (
-        <TableDetailsModal
-          table={selectedTable}
-          sale={saleDetails}
-          storeId={storeId}
-          onClose={() => {
-            setShowDetailsModal(false);
-            setSaleDetails(null);
-            setSelectedTable(null);
-          }}
-          onCloseSale={handleCloseSale}
-          onUpdateStatus={updateTableStatus}
-          onAddItem={handleAddItemToSale}
-        />
-      )}
-    </div>
+    </>
   );
 };
 
-export default TableSalesPanel;
+export default CashRegisterCloseConfirmation;
