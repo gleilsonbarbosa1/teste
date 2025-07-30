@@ -110,6 +110,12 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [selectedWeightProduct, setSelectedWeightProduct] = useState<PDVProduct | null>(null);
   const [productWeight, setProductWeight] = useState('');
+  const [formData, setFormData] = useState({
+    number: '',
+    name: '',
+    capacity: 4,
+    location: ''
+  });
   // Define table name based on store ID
   const tableNameForStore = storeId === 1 ? 'store1_tables' : 'store2_tables';
   const tableSalesNameForStore = storeId === 1 ? 'store1_table_sales' : 'store2_table_sales';
@@ -302,6 +308,12 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       setNewTableName('');
       setNewTableCapacity(4);
       setNewTableLocation('');
+      setFormData({
+        number: '',
+        name: '',
+        capacity: 4,
+        location: ''
+      });
       
       // Feedback de sucesso
       const successMessage = document.createElement('div');
@@ -1429,11 +1441,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                 <input
                   type="number"
                   min="1"
-                  value={newTableNumber}
-                  onChange={(e) => {
-                    setNewTableNumber(e.target.value);
-                    setNewTableName(`Mesa ${e.target.value}`);
-                  }}
+                  value={formData.number}
+                  onChange={(e) => setFormData(prev => ({ ...prev, number: parseInt(e.target.value) || 0 }))}
                   className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
                   placeholder="Ex: 7"
                 />
@@ -1464,8 +1473,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                 </label>
                 <input
                   type="text"
-                  value={newTableName}
-                  onChange={(e) => setNewTableName(e.target.value)}
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
                   placeholder="Ex: Mesa 7"
                 />
@@ -1476,8 +1485,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                   Capacidade
                 </label>
                 <select
-                  value={newTableCapacity}
-                  onChange={(e) => setNewTableCapacity(parseInt(e.target.value))}
+                  value={formData.capacity}
+                  onChange={(e) => setFormData(prev => ({ ...prev, capacity: parseInt(e.target.value) || 4 }))}
                   className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
                 >
                   <option value={2}>2 lugares</option>
@@ -1494,8 +1503,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                 </label>
                 <input
                   type="text"
-                  value={newTableLocation}
-                  onChange={(e) => setNewTableLocation(e.target.value)}
+                  value={formData.location}
+                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                   className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
                   placeholder="Ex: Varanda, Salão principal"
                 />
