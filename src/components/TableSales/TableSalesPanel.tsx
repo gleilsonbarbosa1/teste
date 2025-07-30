@@ -49,29 +49,6 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
     { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
     { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
     { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
-  const [showBillCounting, setShowBillCounting] = useState(false);
-  const [billCounts, setBillCounts] = useState({
-    '200': 0,
-    '100': 0,
-    '50': 0,
-    '20': 0,
-    '10': 0,
-    '5': 0,
-    '2': 0,
-    '1': 0,
-    '0.50': 0,
-    '0.25': 0,
-    '0.10': 0,
-    '0.05': 0,
-    '0.01': 0
-  });
-
-  const billValues = [
-    { value: '200', label: 'R$ 200,00', color: 'bg-purple-100' },
-    { value: '100', label: 'R$ 100,00', color: 'bg-blue-100' },
-    { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
-    { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
-    { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
     { value: '5', label: 'R$ 5,00', color: 'bg-green-100' },
     { value: '2', label: 'R$ 2,00', color: 'bg-gray-100' },
     { value: '1', label: 'R$ 1,00', color: 'bg-yellow-50' },
@@ -286,9 +263,9 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
                     difference > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
                   }`}>
                     <div className="flex items-start gap-3">
-                      <AlertTriangle size={20} className={
+                      <AlertTriangle size={20} className={`${
                         difference > 0 ? 'text-yellow-600' : 'text-red-600'
-                      } className="mt-1 flex-shrink-0" />
+                      } mt-1 flex-shrink-0`} />
                       <div className="w-full">
                         <h4 className={`font-medium mb-2 ${
                           difference > 0 ? 'text-yellow-800' : 'text-red-800'
