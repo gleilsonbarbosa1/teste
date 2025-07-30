@@ -1,351 +1,406 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
-import { RestaurantTable, TableSale, TableSaleItem, TableCartItem } from '../types/table-sales';
-import { usePDVCashRegister } from './usePDVCashRegister';
-import { useStore2PDVCashRegister } from './useStore2PDVCashRegister';
+import React, { useState } from 'react';
+import { X, AlertTriangle, DollarSign, CheckCircle, Printer, Plus, Minus } from 'lucide-react';
+import { PDVCashRegister, PDVCashRegisterSummary, PDVCashRegisterEntry } from '../../types/pdv';
+import { usePermissions } from '../../hooks/usePermissions';
 
-export const useTableSales = (storeId: 1 | 2) => {
-  const [tables, setTables] = useState<RestaurantTable[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Hooks de caixa baseado na loja
-  const store1CashRegister = usePDVCashRegister();
-  const store2CashRegister = useStore2PDVCashRegister();
-  
-  const cashRegister = storeId === 1 ? store1CashRegister : store2CashRegister;
+interface CashRegisterCloseConfirmationProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (closingAmount: number, justification?: string) => void;
+  register: PDVCashRegister | null;
+  summary: PDVCashRegisterSummary | null;
+  isProcessing: boolean;
+}
 
-  // Definir nomes das tabelas baseado na loja
-  const tablesTable = storeId === 1 ? 'store1_tables' : 'store2_tables';
-  const salesTable = storeId === 1 ? 'store1_table_sales' : 'store2_table_sales';
-  const itemsTable = storeId === 1 ? 'store1_table_sale_items' : 'store2_table_sale_items';
-  const cashEntriesTable = storeId === 1 ? 'pdv_cash_entries' : 'pdv2_cash_entries';
+const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  register,
+  summary,
+  isProcessing
+}) => {
+  const { hasPermission } = usePermissions();
+  const canViewExpectedBalance = hasPermission('can_view_expected_balance');
+  const [closingAmount, setClosingAmount] = useState(0);
+  const [hasInformedAmount, setHasInformedAmount] = useState(false);
+  const [justification, setJustification] = useState('');
+  const [printMovements, setPrintMovements] = useState(true);
+  const [showBillCounting, setShowBillCounting] = useState(false);
+  const [billCounts, setBillCounts] = useState({
+    '200': 0,
+    '100': 0,
+    '50': 0,
+    '20': 0,
+    '10': 0,
+    '5': 0,
+    '2': 0,
+    '1': 0,
+    '0.50': 0,
+    '0.25': 0,
+    '0.10': 0,
+    '0.05': 0,
+    '0.01': 0
+  });
 
-  const fetchTables = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const billValues = [
+    { value: '200', label: 'R$ 200,00', color: 'bg-purple-100' },
+    { value: '100', label: 'R$ 100,00', color: 'bg-blue-100' },
+    { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
+    { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
+    { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
+  const [showBillCounting, setShowBillCounting] = useState(false);
+  const [billCounts, setBillCounts] = useState({
+    '200': 0,
+    '100': 0,
+    '50': 0,
+    '20': 0,
+    '10': 0,
+    '5': 0,
+    '2': 0,
+    '1': 0,
+    '0.50': 0,
+    '0.25': 0,
+    '0.10': 0,
+    '0.05': 0,
+    '0.01': 0
+  });
 
-      console.log(`🔄 Carregando mesas da Loja ${storeId}...`);
+  const billValues = [
+    { value: '200', label: 'R$ 200,00', color: 'bg-purple-100' },
+    { value: '100', label: 'R$ 100,00', color: 'bg-blue-100' },
+    { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
+    { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
+    { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
+    { value: '5', label: 'R$ 5,00', color: 'bg-green-100' },
+    { value: '2', label: 'R$ 2,00', color: 'bg-gray-100' },
+    { value: '1', label: 'R$ 1,00', color: 'bg-yellow-50' },
+    { value: '0.50', label: 'R$ 0,50', color: 'bg-gray-50' },
+    { value: '0.25', label: 'R$ 0,25', color: 'bg-gray-50' },
+    { value: '0.10', label: 'R$ 0,10', color: 'bg-gray-50' },
+    { value: '0.05', label: 'R$ 0,05', color: 'bg-gray-50' },
+    { value: '0.01', label: 'R$ 0,01', color: 'bg-gray-50' }
+  ];
 
-      const { data, error } = await supabase
-        .from(tablesTable)
-        .select(`
-          *,
-          current_sale:${salesTable}!current_sale_id(*)
-        `)
-        .eq('is_active', true)
-        .order('number');
-
-      if (error) throw error;
-
-      console.log(`📊 Dados das mesas carregados:`, data);
-      setTables(data || []);
-      console.log(`✅ ${data?.length || 0} mesas carregadas da Loja ${storeId}`);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar mesas';
-      console.error(`❌ Erro ao carregar mesas da Loja ${storeId}:`, errorMessage);
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [storeId, tablesTable, salesTable]);
-
-  const updateSaleTotal = useCallback(async (saleId: string) => {
-    try {
-      console.log(`🧮 Calculando total da venda ${saleId}...`);
-      
-      // Calcular total dos itens
-      const { data: items, error: itemsError } = await supabase
-        .from(itemsTable)
-        .select('subtotal')
-        .eq('sale_id', saleId);
-
-      if (itemsError) throw itemsError;
-
-      const subtotal = items?.reduce((sum, item) => sum + Number(item.subtotal), 0) || 0;
-
-      console.log(`💰 Novo subtotal calculado: R$ ${subtotal.toFixed(2)}`);
-      // Atualizar venda
-      const { error: updateError } = await supabase
-        .from(salesTable)
-        .update({
-          subtotal: subtotal,
-          total_amount: subtotal,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', saleId);
-
-      if (updateError) throw updateError;
-
-      console.log(`✅ Total da venda atualizado na Loja ${storeId}: R$ ${subtotal.toFixed(2)}`);
-      
-      // Não recarregar todas as mesas, apenas retornar sucesso
-      console.log(`✅ Total atualizado sem recarregar mesas`);
-    } catch (err) {
-      console.error(`❌ Erro ao atualizar total da venda na Loja ${storeId}:`, err);
-      throw err;
-    }
-  }, [storeId, itemsTable, salesTable]);
-
-  const createTableSale = useCallback(async (
-    tableId: string,
-    operatorName: string,
-    customerName?: string,
-    customerCount: number = 1
-  ): Promise<TableSale> => {
-    try {
-      console.log(`🚀 Criando venda para mesa da Loja ${storeId}:`, { tableId, operatorName });
-
-      const { data, error } = await supabase
-        .from(salesTable)
-        .insert([{
-          table_id: tableId,
-          operator_name: operatorName,
-          customer_name: customerName,
-          customer_count: customerCount,
-          status: 'aberta'
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      console.log(`✅ Venda criada na Loja ${storeId}:`, data);
-      await fetchTables(); // Recarregar mesas
-      return data;
-    } catch (err) {
-      console.error(`❌ Erro ao criar venda na Loja ${storeId}:`, err);
-      throw new Error(err instanceof Error ? err.message : 'Erro ao criar venda');
-    }
-  }, [storeId, salesTable, fetchTables]);
-
-  const addItemToSale = useCallback(async (
-    saleId: string,
-    item: TableCartItem
-  ): Promise<TableSaleItem> => {
-    try {
-      console.log(`➕ Adicionando item à venda da Loja ${storeId}:`, { saleId, item });
-
-      // Validar dados do item
-      if (!item.product_code || !item.product_name || !item.subtotal) {
-        throw new Error('Dados do item inválidos');
-      }
-
-      // Verificar se a venda existe
-      const { data: saleExists, error: saleError } = await supabase
-        .from(salesTable)
-        .select('id')
-        .eq('id', saleId)
-        .single();
-
-      if (saleError || !saleExists) {
-        throw new Error('Venda não encontrada');
-      }
-
-      const { data, error } = await supabase
-        .from(itemsTable)
-        .insert([{
-          sale_id: saleId,
-          product_code: item.product_code,
-          product_name: item.product_name,
-          quantity: item.quantity,
-          weight_kg: item.weight,
-          unit_price: item.unit_price,
-          price_per_gram: item.price_per_gram,
-          discount_amount: 0,
-          subtotal: item.subtotal,
-          notes: item.notes
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      console.log(`✅ Item inserido no banco:`, data);
-
-      // Atualizar total da venda
-      await updateSaleTotal(saleId);
-      
-
-      console.log(`✅ Item adicionado à venda da Loja ${storeId}`);
-      return data;
-    } catch (err) {
-      console.error(`❌ Erro ao adicionar item na Loja ${storeId}:`, err);
-      throw new Error(err instanceof Error ? err.message : 'Erro ao adicionar item');
-    }
-  }, [storeId, itemsTable, salesTable, updateSaleTotal, fetchTables]);
-
-  const closeSale = useCallback(async (
-    saleId: string,
-    paymentType: TableSale['payment_type'],
-    changeAmount: number = 0,
-    discountAmount: number = 0
-  ): Promise<void> => {
-    try {
-      console.log(`🔒 Fechando venda da Loja ${storeId}:`, { saleId, paymentType });
-
-      // Buscar venda atual
-      const { data: sale, error: saleError } = await supabase
-        .from(salesTable)
-        .select('subtotal')
-        .eq('id', saleId)
-        .single();
-
-      if (saleError) throw saleError;
-
-      const totalAmount = Number(sale.subtotal) - discountAmount;
-
-      const { error } = await supabase
-        .from(salesTable)
-        .update({
-          status: 'fechada',
-          payment_type: paymentType,
-          change_amount: changeAmount,
-          discount_amount: discountAmount,
-          total_amount: totalAmount,
-          closed_at: new Date().toISOString()
-        })
-        .eq('id', saleId);
-
-      if (error) throw error;
-
-      // Adicionar entrada no caixa se houver caixa aberto
-      if (cashRegister.currentRegister && cashRegister.isOpen) {
-        try {
-          console.log(`💰 Adicionando venda de mesa ao caixa da Loja ${storeId}:`, {
-            registerId: cashRegister.currentRegister.id,
-            amount: totalAmount,
-            paymentType
-          });
-          
-          const paymentMethodName = getPaymentMethodName(paymentType);
-          
-          await supabase
-            .from(cashEntriesTable)
-            .insert([{
-              register_id: cashRegister.currentRegister.id,
-              type: 'income',
-              amount: totalAmount,
-              description: `Venda Mesa - Loja ${storeId} (${paymentMethodName})`,
-              payment_method: paymentType
-            }]);
-            
-          console.log(`✅ Entrada de caixa criada para venda de mesa da Loja ${storeId}`);
-          
-          // Atualizar dados do caixa
-          await cashRegister.refreshData();
-        } catch (cashError) {
-          console.error(`⚠️ Erro ao adicionar entrada no caixa da Loja ${storeId} (venda salva):`, cashError);
-          // Não falhar a venda se houver erro no caixa
-        }
-      } else {
-        console.warn(`⚠️ Nenhum caixa aberto na Loja ${storeId} - venda não registrada no caixa`);
-      }
-      console.log(`✅ Venda fechada na Loja ${storeId}`);
-      await fetchTables(); // Recarregar mesas
-    } catch (err) {
-      console.error(`❌ Erro ao fechar venda na Loja ${storeId}:`, err);
-      throw new Error(err instanceof Error ? err.message : 'Erro ao fechar venda');
-    }
-  }, [storeId, salesTable, fetchTables, cashRegister, cashEntriesTable]);
-
-  const getSaleDetails = useCallback(async (saleId: string): Promise<TableSale | null> => {
-    try {
-      console.log(`🔍 Buscando detalhes da venda ${saleId} na Loja ${storeId}...`);
-      
-      const { data, error } = await supabase
-        .from(salesTable)
-        .select(`
-          *,
-          items:${itemsTable}(*)
-        `)
-        .eq('id', saleId)
-        .single();
-
-      if (error) {
-        console.error(`❌ Erro ao buscar venda ${saleId}:`, error);
-        throw error;
-      }
-      
-      console.log(`✅ Detalhes da venda carregados:`, data);
-      return data;
-    } catch (err) {
-      console.error(`❌ Erro ao buscar detalhes da venda na Loja ${storeId}:`, err);
-      return null;
-    }
-  }, [storeId, salesTable, itemsTable]);
-
-  const updateTableStatus = useCallback(async (
-    tableId: string,
-    status: RestaurantTable['status']
-  ): Promise<void> => {
-    try {
-      const { error } = await supabase
-        .from(tablesTable)
-        .update({ status })
-        .eq('id', tableId);
-
-      if (error) throw error;
-
-      console.log(`✅ Status da mesa atualizado na Loja ${storeId}: ${status}`);
-      await fetchTables();
-    } catch (err) {
-      console.error(`❌ Erro ao atualizar status da mesa na Loja ${storeId}:`, err);
-      throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar status da mesa');
-    }
-  }, [storeId, tablesTable, fetchTables]);
-
-  // Configurar realtime para atualizações automáticas
-  useEffect(() => {
-    fetchTables();
-
-    const channel = supabase
-      .channel(`table_sales_store${storeId}`)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: tablesTable },
-        () => {
-          console.log(`🔄 Mesas da Loja ${storeId} atualizadas via realtime`);
-          fetchTables();
-        }
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: salesTable },
-        () => {
-          console.log(`🔄 Vendas da Loja ${storeId} atualizadas via realtime`);
-          fetchTables();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [storeId, fetchTables, tablesTable, salesTable]);
-
-  return {
-    tables,
-    loading,
-    error,
-    createTableSale,
-    addItemToSale,
-    closeSale,
-    getSaleDetails,
-    updateTableStatus,
-    refetch: fetchTables,
-    addItemToSale
+  const calculateBillTotal = () => {
+    return Object.entries(billCounts).reduce((total, [value, count]) => {
+      return total + (parseFloat(value) * count);
+    }, 0);
   };
+
+  const updateBillCount = (value: string, increment: boolean) => {
+    setBillCounts(prev => ({
+      ...prev,
+      [value]: Math.max(0, prev[value] + (increment ? 1 : -1))
+    }));
+  };
+
+  const resetBillCounts = () => {
+    setBillCounts({
+      '200': 0,
+      '100': 0,
+      '50': 0,
+      '20': 0,
+      '10': 0,
+      '5': 0,
+      '2': 0,
+      '1': 0,
+      '0.50': 0,
+      '0.25': 0,
+      '0.10': 0,
+      '0.05': 0,
+      '0.01': 0
+    });
+  };
+
+  const applyBillTotal = () => {
+    const total = calculateBillTotal();
+    setClosingAmount(total);
+    setShowBillCounting(false);
+    resetBillCounts();
+  };
+
+  if (!isOpen) return null;
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(price);
+  };
+
+  const handleAmountConfirm = () => {
+    if (closingAmount > 0) {
+      setHasInformedAmount(true);
+    }
+  };
+
+  const expectedBalance = summary?.expected_balance || 0;
+  const difference = closingAmount - expectedBalance;
+  const hasDifference = Math.abs(difference) > 0.01; // Tolerância de 1 centavo
+  const needsJustification = hasDifference && hasInformedAmount;
+
+  const canProceed = hasInformedAmount && (!needsJustification || justification.trim().length > 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+              <div className="bg-yellow-100 rounded-full p-2">
+                <AlertTriangle size={24} className="text-yellow-600" />
+              </div>
+              Confirmar Fechamento de Caixa
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <p className="text-gray-600">
+            {!hasInformedAmount 
+              ? 'Informe o valor contado no caixa para prosseguir com o fechamento.'
+              : 'Confirme os dados do fechamento de caixa.'
+            }
+          </p>
+        </div>
+
+        <div className="p-6 overflow-y-auto">
+          {!hasInformedAmount ? (
+            // ETAPA 1: Informar valor contado
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-lg font-bold text-blue-800 mb-2">Contagem do Caixa</h3>
+                    <p className="text-blue-700 text-sm">
+                      Conte todo o dinheiro físico presente no caixa e informe o valor total.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Valor contado no caixa *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={closingAmount}
+                  onChange={(e) => setClosingAmount(parseFloat(e.target.value) || 0)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0,00"
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Informe o valor total em dinheiro presente no caixa
+                </p>
+                
+                <button
+                  onClick={() => setShowBillCounting(true)}
+                  className="w-full mt-3 flex items-center justify-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors"
+                >
+                  <DollarSign size={16} />
+                  Contar Cédulas
+                </button>
+              </div>
+            </div>
+          ) : (
+            // ETAPA 2: Mostrar comparação e solicitar justificativa se necessário
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                  <div className="w-full">
+                    <h3 className="text-lg font-bold text-blue-800 mb-3">Conferência do Fechamento</h3>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Valor informado (contado):</span>
+                        <span className="font-bold text-blue-800">{formatPrice(closingAmount)}</span>
+                      </div>
+                      
+                      {canViewExpectedBalance && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-blue-700">Saldo esperado (sistema):</span>
+                            <span className="font-medium text-blue-800">{formatPrice(expectedBalance)}</span>
+                          </div>
+                          
+                          <div className="pt-2 border-t border-blue-200">
+                            <div className="flex justify-between">
+                              <span className="font-medium text-blue-800">Diferença:</span>
+                              <span className={`font-bold ${
+                                difference > 0 ? 'text-green-600' : difference < 0 ? 'text-red-600' : 'text-blue-800'
+                              }`}>
+                                {difference === 0 ? 'Exato' : 
+                                 difference > 0 ? `+${formatPrice(difference)} (sobra)` : 
+                                 `${formatPrice(difference)} (falta)`}
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resumo das movimentações (sempre visível) */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <h4 className="font-medium text-gray-800 mb-2">Resumo das Movimentações</h4>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Valor de abertura:</span>
+                    <span className="font-medium">{formatPrice(summary?.opening_amount || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Vendas PDV:</span>
+                    <span className="font-medium text-green-600">{formatPrice(summary?.sales_total || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Vendas Delivery:</span>
+                    <span className="font-medium text-green-600">{formatPrice(summary?.delivery_total || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Outras entradas:</span>
+                    <span className="font-medium text-green-600">{formatPrice(summary?.other_income_total || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Saídas:</span>
+                    <span className="font-medium text-red-600">{formatPrice(summary?.total_expense || 0)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Justificativa obrigatória para diferenças */}
+              {needsJustification && (
+                <div className={`border rounded-xl p-4 ${
+                  difference > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={20} className={
+                      difference > 0 ? 'text-yellow-600' : 'text-red-600'
+                    } className="mt-1 flex-shrink-0" />
+                    <div className="w-full">
+                      <h4 className={`font-medium mb-2 ${
+                        difference > 0 ? 'text-yellow-800' : 'text-red-800'
+                      }`}>
+                        Justificativa Obrigatória
+                      </h4>
+                      <p className={`text-sm mb-3 ${
+                        difference > 0 ? 'text-yellow-700' : 'text-red-700'
+                      }`}>
+                        Foi detectada uma diferença de {formatPrice(Math.abs(difference))}. 
+                        É obrigatório informar a justificativa para esta diferença.
+                      </p>
+                      <textarea
+                        value={justification}
+                        onChange={(e) => setJustification(e.target.value)}
+                        placeholder="Descreva o motivo da diferença encontrada..."
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        rows={3}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {hasInformedAmount && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Printer size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                <div className="flex-1">
+                  <label className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={printMovements}
+                      onChange={(e) => setPrintMovements(e.target.checked)}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <div>
+                      <span className="font-medium text-blue-800">
+                        Imprimir movimentações do caixa após fechamento
+                      </span>
+                      <p className="text-blue-700 text-sm mt-1">
+                        Gera um relatório térmico com todas as movimentações do caixa
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6 flex gap-3">
+            {!hasInformedAmount ? (
+              <>
+                <button
+                  onClick={onClose}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAmountConfirm}
+                  disabled={closingAmount <= 0}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors"
+                >
+                  Confirmar Valor
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    setHasInformedAmount(false);
+                    setJustification('');
+                  }}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
+                >
+                  Voltar
+                </button>
+                <button
+                  onClick={() => onConfirm(closingAmount, justification || undefined)}
+                  disabled={isProcessing || !canProceed}
+                  className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={20} />
+                      Confirmar Fechamento
+                    </>
+                  )}
+                </button>
+              </>
+            )}
+          </div>
+          
+          {needsJustification && !justification.trim() && (
+            <div className="mt-2 text-center">
+              <p className="text-sm text-red-600">
+                ⚠️ Justificativa obrigatória para diferenças no caixa
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
-// Helper function to get payment method display name
-const getPaymentMethodName = (method: string): string => {
-  const methodNames: Record<string, string> = {
-    'dinheiro': 'Dinheiro',
-    'pix': 'PIX',
-    'cartao_credito': 'Cartão de Crédito',
-    'cartao_debito': 'Cartão de Débito',
-    'voucher': 'Voucher',
-    'misto': 'Pagamento Misto'
-  };
-  return methodNames[method] || method;
-};
+export default CashRegisterCloseConfirmation;
