@@ -464,18 +464,21 @@ const Cart: React.FC<CartProps> = ({
       
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
+      
+      // Mesmo em caso de erro no banco, mostrar sucesso pois o WhatsApp foi enviado
       const message = generateWhatsAppMessage();
       const whatsappUrl = `https://wa.me/5585989041010?text=${message}`;
       window.open(whatsappUrl, '_blank');
       onClearCart();
       setShowCheckout(false);
       
-      // Mostrar mensagem de sucesso mesmo em caso de erro no banco
+      // Mostrar mensagem de sucesso
       setShowSuccessMessage(true);
       setTimeout(() => {
         setShowSuccessMessage(false);
       }, 3000);
       
+      // Criar notificação de sucesso
       const successNotification = document.createElement('div');
       successNotification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3';
       successNotification.innerHTML = `
@@ -483,7 +486,7 @@ const Cart: React.FC<CartProps> = ({
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
         </svg>
         <div>
-          <p class="font-semibold">Venda realizada com sucesso!</p>
+          <p class="font-semibold">Pedido enviado com sucesso!</p>
           <p class="text-sm opacity-90">Pedido enviado para o WhatsApp</p>
         </div>
       `;
@@ -494,8 +497,6 @@ const Cart: React.FC<CartProps> = ({
           document.body.removeChild(successNotification);
         }
       }, 4000);
-      
-      onClose();
     }
   };
 
