@@ -103,10 +103,10 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           
           .center { text-align: center; }
           .bold { font-weight: bold; }
-          .small { font-size: ${sizes.smallSize}px; } /* Tamanho da fonte pequena */
+          .small { font-size: ${sizes.smallSize}px; font-weight: 600; } /* Tamanho da fonte pequena com peso maior */
           .title { font-size: ${sizes.titleSize}px; }
-          .medium { font-size: ${sizes.mediumSize}px; }
-          .large { font-size: ${sizes.largeSize}px; }
+          .medium { font-size: ${sizes.mediumSize}px; font-weight: 600; }
+          .large { font-size: ${sizes.largeSize}px; font-weight: 600; }
           .separator { 
             border-bottom: 1px dashed black; 
             margin: 5px 0; 
@@ -116,6 +116,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
             display: flex; 
             justify-content: space-between; 
             align-items: center;
+            font-weight: 600;
           }
           .mb-1 { margin-bottom: 2px; }
           .mb-2 { margin-bottom: 5px; }
@@ -129,6 +130,15 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
             height: auto;
             display: block;
             margin: 5px auto;
+          }
+          
+          /* Melhorar legibilidade do texto */
+          p, div, span {
+            font-weight: 500;
+          }
+          
+          .small {
+            font-weight: 600 !important;
           }
         </style>
       </head>
@@ -147,19 +157,19 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         <div class="mb-3 separator">
           <div class="bold center mb-2 medium">=== PEDIDO DE DELIVERY ===</div>
           <div class="small">Pedido: #${order.id.slice(-8)}</div>
-          <div class="small">Data: ${new Date(order.created_at).toLocaleDateString('pt-BR')}</div>
-          <div class="small">Hora: ${new Date(order.created_at).toLocaleTimeString('pt-BR')}</div>
-          <div class="small">Status: ${getStatusLabel(order.status)}</div>
+          <div class="small" style="font-weight: 600;">Data: ${new Date(order.created_at).toLocaleDateString('pt-BR')}</div>
+          <div class="small" style="font-weight: 600;">Hora: ${new Date(order.created_at).toLocaleTimeString('pt-BR')}</div>
+          <div class="small" style="font-weight: 600;">Status: ${getStatusLabel(order.status)}</div>
         </div>
         
         <!-- Cliente -->
         <div class="mb-3 separator">
           <div class="bold mb-1 medium">DADOS DO CLIENTE:</div>
-          <div class="small">Nome: ${order.customer_name}</div>
-          <div class="small">Telefone: ${order.customer_phone}</div>
-          <div class="small">Endereço: ${order.customer_address}</div>
-          <div class="small">Bairro: ${order.customer_neighborhood}</div>
-          ${order.customer_complement ? `<div class="small">Complemento: ${order.customer_complement}</div>` : ''}
+          <div class="small" style="font-weight: 600;">Nome: ${order.customer_name}</div>
+          <div class="small" style="font-weight: 600;">Telefone: ${order.customer_phone}</div>
+          <div class="small" style="font-weight: 600;">Endereço: ${order.customer_address}</div>
+          <div class="small" style="font-weight: 600;">Bairro: ${order.customer_neighborhood}</div>
+          ${order.customer_complement ? `<div class="small" style="font-weight: 600;">Complemento: ${order.customer_complement}</div>` : ''}
         </div>
         
         <!-- Itens -->
@@ -170,18 +180,18 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
               <div class="bold">${item.product_name}</div>
               ${item.selected_size ? `<div class="small">Tamanho: ${item.selected_size}</div>` : ''}
               <div class="flex-between">
-                <span class="small">${item.quantity}x ${formatPrice(item.unit_price)}</span>
-                <span class="small">${formatPrice(item.total_price)}</span>
+                <span class="small" style="font-weight: 600;">${item.quantity}x ${formatPrice(item.unit_price)}</span>
+                <span class="small" style="font-weight: 600;">${formatPrice(item.total_price)}</span>
               </div>
               ${item.complements && item.complements.length > 0 ? `
                 <div class="ml-2 mt-1">
-                  <div class="small">Complementos:</div>
+                  <div class="small" style="font-weight: 600;">Complementos:</div>
                   ${item.complements.map(comp => `
-                    <div class="small ml-2">• ${comp.name}${comp.price > 0 ? ` (+${formatPrice(comp.price)})` : ''}</div>
+                    <div class="small ml-2" style="font-weight: 600;">• ${comp.name}${comp.price > 0 ? ` (+${formatPrice(comp.price)})` : ''}</div>
                   `).join('')}
                 </div>
               ` : ''}
-              ${item.observations ? `<div class="small ml-2 mt-1">Obs: ${item.observations}</div>` : ''}
+              ${item.observations ? `<div class="small ml-2 mt-1" style="font-weight: 600;">Obs: ${item.observations}</div>` : ''}
             </div>
           `).join('')}
         </div>
@@ -190,13 +200,13 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         <div class="mb-3 separator">
           <div class="bold mb-1 medium">RESUMO:</div>
           <div class="flex-between">
-            <span class="small">Subtotal:</span>
-            <span class="small">${formatPrice(order.total_price - (order.delivery_fee || 0))}</span>
+            <span class="small" style="font-weight: 600;">Subtotal:</span>
+            <span class="small" style="font-weight: 600;">${formatPrice(order.total_price - (order.delivery_fee || 0))}</span>
           </div>
           ${order.delivery_fee && order.delivery_fee > 0 ? `
           <div class="flex-between">
-            <span class="small">Taxa de Entrega:</span>
-            <span class="small">${formatPrice(order.delivery_fee)}</span>
+            <span class="small" style="font-weight: 600;">Taxa de Entrega:</span>
+            <span class="small" style="font-weight: 600;">${formatPrice(order.delivery_fee)}</span>
           </div>
           ` : ''}
           <div style="border-top: 1px solid black; padding-top: 3px; margin-top: 3px;">
@@ -210,8 +220,6 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         <!-- Pagamento -->
         <div class="mb-3 separator">
           <div class="bold mb-1 medium">PAGAMENTO:</div>
-          <div class="small">Forma: ${getPaymentMethodLabel(order.payment_method)}</div>
-          ${order.change_for ? `<div class="small">Troco para: ${formatPrice(order.change_for)}</div>` : ''}
           ${order.payment_method === 'pix' ? `
           <div class="mt-2">
             <div class="small">⚠️ IMPORTANTE:</div>
