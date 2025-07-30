@@ -227,7 +227,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       
       const { error } = await supabase
         .from(tableNameDb)
-        .update({ is_active: false })
+        .delete()
         .eq('id', tableId);
 
       if (error) throw error;
