@@ -150,13 +150,9 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       return;
     }
 
-    const existingTable = tables.find(t => t.number === parseInt(newTable.number));
-    if (existingTable) {
-      setCreateTableError(`Mesa número ${newTable.number} já existe. Escolha um número diferente.`);
-      return;
-    }
-
     try {
+      console.log(`🚀 Tentando criar mesa ${newTable.number} na ${getStoreName()}`);
+      
       const tableName = getTableName();
       
       const { data, error } = await supabase
@@ -174,18 +170,23 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
       if (error) {
         if (error.code === '23505') {
+          console.log(`❌ Mesa ${newTable.number} já existe no banco da ${getStoreName()}`);
           setCreateTableError(`Mesa número ${newTable.number} já existe. Escolha um número diferente.`);
           return;
         }
+        console.error(`❌ Erro ao criar mesa na ${getStoreName()}:`, error);
         throw error;
       }
 
-      setTables(prev => [...prev, data]);
+      console.log(`✅ Mesa criada com sucesso na ${getStoreName()}:`, data);
+      
+      // Recarregar todas as mesas do banco para garantir sincronização
+      await fetchTables();
+      
       setShowCreateModal(false);
       setNewTable({ number: '', name: '', capacity: 4, location: '' });
       setCreateTableError(null);
       
-      console.log(`✅ Mesa criada na ${getStoreName()}:`, data);
     } catch (err) {
       console.error(`❌ Erro ao criar mesa na ${getStoreName()}:`, err);
       setCreateTableError(`Erro ao criar mesa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
