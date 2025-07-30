@@ -271,7 +271,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
                     // Gerar mensagem do pedido para WhatsApp da loja
                     let message =  `🆕 *NOVO PEDIDO RECEBIDO - ELITE AÇAÍ*\n\n`;
                     message += `📋 *Pedido #${order.id.slice(-8)}*\n`;
-                    message += \`🕐 Recebido: ${new Date(order.created_at).toLocaleString('pt-BR')}\n`;
+                    message += `🕐 Recebido: ${new Date(order.created_at).toLocaleString('pt-BR')}\n`;
                     message += \`📊 Status: ${getStatusLabel(order.status)}\n\n`;
                     
                     message += \`👤 *CLIENTE:*\n`;
