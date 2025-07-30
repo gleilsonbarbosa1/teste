@@ -1,3 +1,17 @@
+export interface RestaurantTable {
+  id: string;
+  number: number;
+  name: string;
+  capacity: number;
+  status: 'livre' | 'ocupada' | 'aguardando_conta' | 'limpeza';
+  location?: string;
+  is_active: boolean;
+  current_sale_id?: string;
+  current_sale?: TableSale;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TableSale {
   id: string;
   table_id: string;
@@ -32,20 +46,6 @@ export interface TableSaleItem {
   subtotal: number;
   notes?: string;
   created_at: string;
-}
-
-export interface RestaurantTable {
-  id: string;
-  number: number;
-  name: string;
-  capacity: number;
-  status: 'livre' | 'ocupada' | 'aguardando_conta' | 'limpeza';
-  current_sale_id?: string;
-  location?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  current_sale?: TableSale;
 }
 
 export interface TableCartItem {
