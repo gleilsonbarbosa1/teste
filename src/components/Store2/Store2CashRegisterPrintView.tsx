@@ -274,13 +274,13 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
                     message += `🕐 Recebido: ${new Date(order.created_at).toLocaleString('pt-BR')}\n`;
                     message += `📊 Status: ${getStatusLabel(order.status)}\n\n`;
                     
-                    message += \`👤 *CLIENTE:*\n`;
-                    message += \`Nome: ${order.customer_name}\n`;
-                    message += \`📱 Telefone: ${order.customer_phone}\n`;
-                    message += \`📍 Endereço: ${order.customer_address}\n`;
-                    message += \`🏘️ Bairro: ${order.customer_neighborhood}\n`;
-                    if (order.customer_complement) {
-                      message += \`🏠 Complemento: ${order.customer_complement}\n`;
+                    message += `👤 *CLIENTE:*\n`;
+    message += `Nome: ${order.customer_name}\n`;
+    message += `📱 Telefone: ${order.customer_phone}\n`;
+    message += `📍 Endereço: ${order.customer_address}\n`;
+    message += `🏘️ Bairro: ${order.customer_neighborhood}\n`;
+    if (order.customer_complement) {
+      message += `🏠 Complemento: ${order.customer_complement}\n`;
                     }
                     
                     // Adicionar link do Google Maps para localização
