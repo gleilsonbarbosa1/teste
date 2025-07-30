@@ -168,7 +168,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   };
 
   const deleteTable = async (tableId: string, tableName: string) => {
-    if (!confirm(`Tem certeza que deseja excluir a ${tableName}?`)) {
+    if (!confirm(\`Tem certeza que deseja excluir a ${tableName}?`)) {
       return;
     }
 
@@ -446,7 +446,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         {tables.map((table) => (
           <div
             key={table.id}
-            className={`bg-white rounded-xl shadow-md border-2 cursor-pointer transition-all duration-200 hover:shadow-lg
+            className={\`bg-white rounded-xl shadow-md border-2 cursor-pointer transition-all duration-200 hover:shadow-lg
               ${getStatusColor(table.status)}`}
             onClick={() => {
               setSelectedTable(table);
@@ -460,7 +460,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
             <div className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-2xl font-bold text-gray-800">Mesa {table.number}</h3>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(table.status)}`}>
+                <span className={\`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(table.status)}`}>
                   {getStatusLabel(table.status)}
                 </span>
               </div>
