@@ -258,7 +258,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         .eq('is_active', true)
         .maybeSingle();
 
-      if (existingTable && existingTable.length > 0) {
+      if (existingTable) {
         alert(`Mesa número ${newTableNumber} já existe. Escolha outro número.`);
         return;
       }
