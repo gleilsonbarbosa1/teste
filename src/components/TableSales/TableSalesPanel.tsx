@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Plus, Trash2, RefreshCw, AlertCircle, Clock, CheckCircle, 
   Utensils, Sparkles, ShoppingCart, X, Minus, Calculator, DollarSign,
-  Save, Package, Search
+  Save, Package, Search, Eye, Edit3, User, MapPin, Settings
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { RestaurantTable, TableSale, TableCartItem } from '../../types/table-sales';
@@ -36,7 +36,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     capacity: 4,
     location: ''
   });
-  const [createTableError, setCreateTableError] = useState<string | null>(null);
 
   const { products: pdvProducts, loading: productsLoading } = usePDVProducts();
   const loja1CashRegister = usePDVCashRegister();
@@ -75,33 +74,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
         console.warn(`⚠️ Supabase não configurado - usando dados de demonstração para ${getStoreName()}`);
-        
-        const demoTables: RestaurantTable[] = [
-          {
-            id: '1',
-            number: 1,
-            name: `Mesa 1 - ${getStoreName()}`,
-            capacity: 4,
-            status: 'livre',
-            location: 'Área Central',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          },
-          {
-            id: '2',
-            number: 2,
-            name: `Mesa 2 - ${getStoreName()}`,
-            capacity: 6,
-            status: 'ocupada',
-            location: 'Área VIP',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        ];
-        
-        setTables(demoTables);
+        setTables([]);
         setLoading(false);
         return;
       }
@@ -122,37 +95,19 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     } catch (err) {
       console.error(`❌ Erro ao carregar mesas da ${getStoreName()}:`, err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar mesas');
-      
-      const demoTables: RestaurantTable[] = [
-        {
-          id: 'demo-1',
-          number: 1,
-          name: `Mesa 1 - ${getStoreName()}`,
-          capacity: 4,
-          status: 'livre',
-          location: 'Demonstração',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ];
-      setTables(demoTables);
+      setTables([]);
     } finally {
       setLoading(false);
     }
   };
 
   const createTable = async () => {
-    setCreateTableError(null);
-    
     if (!newTable.number || !newTable.name) {
-      setCreateTableError('Número e nome da mesa são obrigatórios');
+      alert('Número e nome da mesa são obrigatórios');
       return;
     }
 
     try {
-      console.log(`🚀 Tentando criar mesa ${newTable.number} na ${getStoreName()}`);
-      
       const tableName = getTableName();
       
       const { data, error } = await supabase
@@ -170,26 +125,19 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
       if (error) {
         if (error.code === '23505') {
-          console.log(`❌ Mesa ${newTable.number} já existe no banco da ${getStoreName()}`);
-          setCreateTableError(`Mesa número ${newTable.number} já existe. Escolha um número diferente.`);
+          alert(`Mesa número ${newTable.number} já existe. Escolha um número diferente.`);
           return;
         }
-        console.error(`❌ Erro ao criar mesa na ${getStoreName()}:`, error);
         throw error;
       }
 
-      console.log(`✅ Mesa criada com sucesso na ${getStoreName()}:`, data);
-      
-      // Recarregar todas as mesas do banco para garantir sincronização
       await fetchTables();
-      
       setShowCreateModal(false);
       setNewTable({ number: '', name: '', capacity: 4, location: '' });
-      setCreateTableError(null);
       
     } catch (err) {
       console.error(`❌ Erro ao criar mesa na ${getStoreName()}:`, err);
-      setCreateTableError(`Erro ao criar mesa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      alert(`Erro ao criar mesa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   };
 
@@ -197,23 +145,18 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     try {
       const tableName = getTableName();
       
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from(tableName)
         .update({ 
           status: newStatus,
           updated_at: new Date().toISOString()
         })
-        .eq('id', tableId)
-        .select()
-        .single();
+        .eq('id', tableId);
 
       if (error) throw error;
 
-      setTables(prev => prev.map(table => 
-        table.id === tableId ? { ...table, status: newStatus } : table
-      ));
+      await fetchTables();
       
-      console.log(`✅ Status da mesa atualizado na ${getStoreName()}`);
     } catch (err) {
       console.error(`❌ Erro ao atualizar status da mesa na ${getStoreName()}:`, err);
       alert('Erro ao atualizar status da mesa');
@@ -233,8 +176,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
       if (error) throw error;
 
-      setTables(prev => prev.filter(table => table.id !== tableId));
-      console.log(`✅ Mesa excluída da ${getStoreName()}`);
+      await fetchTables();
+      
     } catch (err) {
       console.error(`❌ Erro ao excluir mesa da ${getStoreName()}:`, err);
       alert('Erro ao excluir mesa');
@@ -249,7 +192,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       setCustomerName(table.current_sale.customer_name || '');
       setCustomerCount(table.current_sale.customer_count || 1);
       setNotes(table.current_sale.notes || '');
-      // Carregar itens da venda se houver
     } else {
       setCustomerName('');
       setCustomerCount(1);
@@ -409,9 +351,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
       if (itemsError) throw itemsError;
 
-      console.log(`✅ Venda ${currentSale ? 'atualizada' : 'criada'} na ${getStoreName()}`);
-      
-      // Recarregar mesas
       await fetchTables();
       setShowSaleModal(false);
       setCart([]);
@@ -462,9 +401,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         });
       }
 
-      console.log(`✅ Venda finalizada na ${getStoreName()}`);
-      
-      // Recarregar mesas
       await fetchTables();
       setShowSaleModal(false);
       setCurrentSale(null);
@@ -492,37 +428,47 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       case 'livre':
         return {
           label: 'Livre',
-          color: 'bg-green-100 border-green-300 text-green-800',
+          color: 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200',
+          textColor: 'text-green-800',
           icon: CheckCircle,
-          buttonColor: 'bg-green-500 hover:bg-green-600'
+          iconColor: 'text-green-600',
+          badge: 'bg-green-100 text-green-800'
         };
       case 'ocupada':
         return {
           label: 'Ocupada',
-          color: 'bg-red-100 border-red-300 text-red-800',
+          color: 'bg-gradient-to-br from-red-50 to-rose-50 border-red-200',
+          textColor: 'text-red-800',
           icon: Users,
-          buttonColor: 'bg-red-500 hover:bg-red-600'
+          iconColor: 'text-red-600',
+          badge: 'bg-red-100 text-red-800'
         };
       case 'aguardando_conta':
         return {
           label: 'Aguardando Conta',
-          color: 'bg-yellow-100 border-yellow-300 text-yellow-800',
+          color: 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200',
+          textColor: 'text-yellow-800',
           icon: Clock,
-          buttonColor: 'bg-yellow-500 hover:bg-yellow-600'
+          iconColor: 'text-yellow-600',
+          badge: 'bg-yellow-100 text-yellow-800'
         };
       case 'limpeza':
         return {
           label: 'Limpeza',
-          color: 'bg-blue-100 border-blue-300 text-blue-800',
+          color: 'bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200',
+          textColor: 'text-blue-800',
           icon: Sparkles,
-          buttonColor: 'bg-blue-500 hover:bg-blue-600'
+          iconColor: 'text-blue-600',
+          badge: 'bg-blue-100 text-blue-800'
         };
       default:
         return {
           label: 'Desconhecido',
-          color: 'bg-gray-100 border-gray-300 text-gray-800',
+          color: 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200',
+          textColor: 'text-gray-800',
           icon: AlertCircle,
-          buttonColor: 'bg-gray-500 hover:bg-gray-600'
+          iconColor: 'text-gray-600',
+          badge: 'bg-gray-100 text-gray-800'
         };
     }
   };
@@ -538,273 +484,311 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="min-h-[400px] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando mesas da {getStoreName()}...</p>
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600 mx-auto mb-4"></div>
+            <Utensils size={24} className="absolute inset-0 m-auto text-indigo-600" />
+          </div>
+          <p className="text-gray-600 font-medium">Carregando mesas da {getStoreName()}...</p>
+          <p className="text-sm text-gray-500">Aguarde um momento</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Caixa Status Warning */}
       {!isCashRegisterOpen && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center gap-2">
-            <AlertCircle size={20} className="text-yellow-600" />
-            <p className="text-yellow-800 font-medium">
-              Caixa da {getStoreName()} está fechado - não é possível processar vendas
-            </p>
+        <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-400 p-6 rounded-lg shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-yellow-100 p-2 rounded-full">
+              <AlertCircle size={24} className="text-yellow-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-yellow-800">Caixa Fechado</h3>
+              <p className="text-yellow-700">Caixa da {getStoreName()} está fechado - não é possível processar vendas</p>
+            </div>
           </div>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-            <Utensils size={24} className="text-indigo-600" />
-            Vendas de Mesas - {getStoreName()}
-          </h2>
-          <p className="text-gray-600">Gerencie mesas e atendimento presencial</p>
-          {operatorName && (
-            <p className="text-sm text-indigo-600">Operador: {operatorName}</p>
-          )}
-        </div>
-        
-        <div className="flex gap-2">
-          <button
-            onClick={fetchTables}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            <RefreshCw size={16} />
-            Atualizar
-          </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            <Plus size={16} />
-            Nova Mesa
-          </button>
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-4 rounded-xl shadow-lg">
+              <Utensils size={32} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Vendas de Mesas
+              </h1>
+              <p className="text-gray-600 text-lg">{getStoreName()} • Atendimento Presencial</p>
+              {operatorName && (
+                <div className="flex items-center gap-2 mt-2">
+                  <User size={16} className="text-indigo-600" />
+                  <span className="text-sm font-medium text-indigo-700">Operador: {operatorName}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2">
+              <span className="text-sm font-semibold text-indigo-700">{tables.length} Mesa(s)</span>
+            </div>
+            <button
+              onClick={fetchTables}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+            >
+              <RefreshCw size={18} />
+              Atualizar
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+            >
+              <Plus size={18} />
+              Nova Mesa
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center gap-2">
-            <AlertCircle size={20} className="text-red-600" />
-            <p className="text-red-600">{error}</p>
+        <div className="bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-400 p-6 rounded-lg shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-red-100 p-2 rounded-full">
+              <AlertCircle size={24} className="text-red-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-red-800">Erro ao Carregar Mesas</h3>
+              <p className="text-red-700">{error}</p>
+              <p className="text-red-600 text-sm mt-1">Sistema funcionando em modo demonstração</p>
+            </div>
           </div>
-          <p className="text-red-500 text-sm mt-1">
-            Exibindo dados de demonstração devido ao erro
-          </p>
         </div>
       )}
 
       {/* Tables Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {tables.map((table) => {
-          const statusConfig = getStatusConfig(table.status);
-          const StatusIcon = statusConfig.icon;
-          
-          return (
-            <div
-              key={table.id}
-              className={`border-2 rounded-lg p-6 transition-all hover:shadow-md ${statusConfig.color}`}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <StatusIcon size={20} />
-                  <h3 className="text-lg font-semibold">Mesa {table.number}</h3>
-                </div>
-                <button
-                  onClick={() => deleteTable(table.id, table.name)}
-                  className="text-red-500 hover:text-red-700 p-1"
-                  title="Excluir mesa"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-              
-              <div className="space-y-2 mb-4">
-                <p className="font-medium">{table.name}</p>
-                <p className="text-sm opacity-75">
-                  Capacidade: {table.capacity} pessoas
-                </p>
-                {table.location && (
-                  <p className="text-sm opacity-75">
-                    Local: {table.location}
-                  </p>
-                )}
-                <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium">
-                  <StatusIcon size={12} className="mr-1" />
-                  {statusConfig.label}
-                </div>
-              </div>
-              
-              {/* Sale Actions */}
-              <div className="space-y-2 mb-4">
-                <button
-                  onClick={() => openSaleModal(table)}
-                  disabled={!isCashRegisterOpen}
-                  className="w-full flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white px-3 py-2 rounded-lg transition-colors"
-                >
-                  <ShoppingCart size={16} />
-                  {table.current_sale ? 'Gerenciar Venda' : 'Nova Venda'}
-                </button>
-              </div>
-              
-              {/* Status Actions */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium opacity-75">Mudar Status:</p>
-                <div className="flex flex-wrap gap-1">
-                  {getStatusOptions(table.status).map((status) => {
-                    const config = getStatusConfig(status);
-                    return (
-                      <button
-                        key={status}
-                        onClick={() => updateTableStatus(table.id, status)}
-                        className={`text-xs px-2 py-1 rounded text-white transition-colors ${config.buttonColor}`}
-                      >
-                        {config.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              
-              {table.current_sale && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <p className="text-xs font-medium">Venda Ativa:</p>
-                  <p className="text-sm">#{table.current_sale.sale_number}</p>
-                  <p className="text-sm font-semibold text-green-600">
-                    {formatPrice(table.current_sale.total_amount)}
-                  </p>
-                </div>
-              )}
+      {tables.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+          <div className="relative mb-6">
+            <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full p-8 w-32 h-32 mx-auto flex items-center justify-center">
+              <Utensils size={48} className="text-gray-400" />
             </div>
-          );
-        })}
-      </div>
-
-      {tables.length === 0 && (
-        <div className="text-center py-12">
-          <Utensils size={48} className="mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-600 mb-2">
-            Nenhuma mesa encontrada
-          </h3>
-          <p className="text-gray-500 mb-4">
+            <div className="absolute -bottom-2 -right-2 bg-indigo-500 rounded-full p-2">
+              <Plus size={20} className="text-white" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold text-gray-800 mb-3">Nenhuma Mesa Encontrada</h3>
+          <p className="text-gray-600 text-lg mb-6">
             Comece criando sua primeira mesa para a {getStoreName()}
           </p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg transition-colors"
+            className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             Criar Primeira Mesa
           </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {tables.map((table) => {
+            const statusConfig = getStatusConfig(table.status);
+            const StatusIcon = statusConfig.icon;
+            
+            return (
+              <div
+                key={table.id}
+                className={`${statusConfig.color} border-2 rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl hover:scale-105 transform cursor-pointer group`}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full bg-white/80 backdrop-blur-sm`}>
+                      <StatusIcon size={24} className={statusConfig.iconColor} />
+                    </div>
+                    <div>
+                      <h3 className={`text-xl font-bold ${statusConfig.textColor}`}>
+                        Mesa {table.number}
+                      </h3>
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${statusConfig.badge}`}>
+                        {statusConfig.label}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => deleteTable(table.id, table.name)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-full"
+                    title="Excluir mesa"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                
+                {/* Info */}
+                <div className="space-y-3 mb-6">
+                  <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
+                    <p className={`font-semibold ${statusConfig.textColor}`}>{table.name}</p>
+                    <div className="flex items-center gap-4 mt-2 text-sm">
+                      <div className="flex items-center gap-1">
+                        <Users size={14} className={statusConfig.iconColor} />
+                        <span className={statusConfig.textColor}>{table.capacity} pessoas</span>
+                      </div>
+                      {table.location && (
+                        <div className="flex items-center gap-1">
+                          <MapPin size={14} className={statusConfig.iconColor} />
+                          <span className={statusConfig.textColor}>{table.location}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Current Sale Info */}
+                {table.current_sale && (
+                  <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 mb-4 border border-white/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calculator size={16} className="text-green-600" />
+                      <span className="font-semibold text-green-800">Venda Ativa</span>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-gray-700">#{table.current_sale.sale_number}</p>
+                      <p className="text-lg font-bold text-green-700">
+                        {formatPrice(table.current_sale.total_amount)}
+                      </p>
+                      {table.current_sale.customer_name && (
+                        <p className="text-sm text-gray-600">{table.current_sale.customer_name}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Actions */}
+                <div className="space-y-3">
+                  <button
+                    onClick={() => openSaleModal(table)}
+                    disabled={!isCashRegisterOpen}
+                    className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                  >
+                    <ShoppingCart size={18} />
+                    {table.current_sale ? 'Gerenciar Venda' : 'Nova Venda'}
+                  </button>
+                  
+                  {/* Status Quick Actions */}
+                  <div className="flex gap-2">
+                    {getStatusOptions(table.status).slice(0, 2).map((status) => {
+                      const config = getStatusConfig(status);
+                      return (
+                        <button
+                          key={status}
+                          onClick={() => updateTableStatus(table.id, status)}
+                          className="flex-1 bg-white/60 hover:bg-white/80 backdrop-blur-sm border border-white/50 text-gray-700 hover:text-gray-900 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+                        >
+                          {config.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* Create Table Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Nova Mesa - {getStoreName()}</h3>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setCreateTableError(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X size={20} />
-              </button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-lg">
+                    <Plus size={24} className="text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800">Nova Mesa - {getStoreName()}</h3>
+                </div>
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
-            {/* Error Display */}
-            {createTableError && (
-              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <AlertCircle size={16} className="text-red-600" />
-                  <p className="text-red-600 text-sm">{createTableError}</p>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Número *
+                  </label>
+                  <input
+                    type="number"
+                    value={newTable.number}
+                    onChange={(e) => setNewTable(prev => ({ ...prev, number: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    placeholder="1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Capacidade
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={newTable.capacity}
+                    onChange={(e) => setNewTable(prev => ({ ...prev, capacity: parseInt(e.target.value) || 4 }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  />
                 </div>
               </div>
-            )}
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Número da Mesa *
-                </label>
-                <input
-                  type="number"
-                  value={newTable.number}
-                  onChange={(e) => setNewTable(prev => ({ ...prev, number: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  placeholder="1"
-                />
-              </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Nome da Mesa *
                 </label>
                 <input
                   type="text"
                   value={newTable.name}
                   onChange={(e) => setNewTable(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   placeholder="Mesa VIP"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Capacidade
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={newTable.capacity}
-                  onChange={(e) => setNewTable(prev => ({ ...prev, capacity: parseInt(e.target.value) || 4 }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Localização
                 </label>
                 <input
                   type="text"
                   value={newTable.location}
                   onChange={(e) => setNewTable(prev => ({ ...prev, location: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   placeholder="Área Central"
                 />
               </div>
             </div>
 
-            <div className="flex gap-2 mt-6">
+            <div className="p-6 border-t border-gray-100 flex gap-3">
               <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setCreateTableError(null);
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                onClick={() => setShowCreateModal(false)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={createTable}
                 disabled={!newTable.number || !newTable.name}
-                className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg"
+                className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200"
               >
                 Criar Mesa
               </button>
@@ -815,67 +799,81 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
       {/* Sale Modal */}
       {showSaleModal && selectedTable && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-indigo-50">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">
-                    Venda - Mesa {selectedTable.number} ({getStoreName()})
-                  </h3>
-                  <p className="text-gray-600">{selectedTable.name}</p>
+                <div className="flex items-center gap-4">
+                  <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-3 rounded-xl">
+                    <Utensils size={24} className="text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-800">
+                      Mesa {selectedTable.number} - {getStoreName()}
+                    </h3>
+                    <p className="text-gray-600">{selectedTable.name}</p>
+                    {currentSale && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">
+                          Venda #{currentSale.sale_number}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowSaleModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
                 >
-                  <X size={20} />
+                  <X size={24} />
                 </button>
               </div>
             </div>
 
             <div className="flex flex-1 overflow-hidden">
               {/* Products Section */}
-              <div className="w-1/2 border-r border-gray-200 p-6 overflow-y-auto">
-                <h4 className="text-lg font-medium mb-4">Produtos</h4>
-                
-                {/* Search */}
-                <div className="relative mb-4">
-                  <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Buscar produtos..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  />
+              <div className="w-1/2 border-r border-gray-200 p-6 overflow-y-auto bg-gray-50">
+                <div className="mb-6">
+                  <h4 className="text-xl font-bold text-gray-800 mb-4">Produtos Disponíveis</h4>
+                  
+                  {/* Search */}
+                  <div className="relative">
+                    <Search size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Buscar produtos..."
+                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
+                    />
+                  </div>
                 </div>
 
                 {/* Products List */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {filteredProducts.map((product) => (
                     <div
                       key={product.id}
-                      className="border border-gray-200 rounded-lg p-3 hover:border-purple-300 transition-colors"
+                      className="bg-white border border-gray-200 rounded-xl p-4 hover:border-purple-300 hover:shadow-lg transition-all duration-200 group cursor-pointer"
+                      onClick={() => addToCart(product)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h5 className="font-medium">{product.name}</h5>
-                          <p className="text-sm text-gray-600">{product.code}</p>
-                          <p className="text-sm font-semibold text-green-600">
+                          <h5 className="font-bold text-gray-800 group-hover:text-purple-700 transition-colors">
+                            {product.name}
+                          </h5>
+                          <p className="text-sm text-gray-500 font-mono">{product.code}</p>
+                          <p className="text-lg font-bold text-green-600 mt-1">
                             {product.is_weighable 
                               ? `${formatPrice((product.price_per_gram || 0) * 1000)}/kg`
                               : formatPrice(product.unit_price || 0)
                             }
                           </p>
                         </div>
-                        <button
-                          onClick={() => addToCart(product)}
-                          className="bg-purple-500 hover:bg-purple-600 text-white p-2 rounded-lg"
-                        >
-                          <Plus size={16} />
-                        </button>
+                        <div className="bg-gradient-to-br from-purple-500 to-indigo-600 group-hover:from-purple-600 group-hover:to-indigo-700 text-white p-3 rounded-xl shadow-lg group-hover:shadow-xl transition-all duration-200">
+                          <Plus size={20} />
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -883,77 +881,81 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               </div>
 
               {/* Cart Section */}
-              <div className="w-1/2 p-6 flex flex-col">
-                <h4 className="text-lg font-medium mb-4">Carrinho</h4>
+              <div className="w-1/2 p-6 flex flex-col bg-white">
+                <h4 className="text-xl font-bold text-gray-800 mb-6">Carrinho da Venda</h4>
                 
                 {/* Customer Info */}
-                <div className="space-y-3 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome do Cliente
-                    </label>
-                    <input
-                      type="text"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      placeholder="Nome do cliente"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Número de Pessoas
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={customerCount}
-                      onChange={(e) => setCustomerCount(parseInt(e.target.value) || 1)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    />
+                <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Nome do Cliente
+                      </label>
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
+                        placeholder="Nome do cliente"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Pessoas na Mesa
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={customerCount}
+                        onChange={(e) => setCustomerCount(parseInt(e.target.value) || 1)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Cart Items */}
-                <div className="flex-1 overflow-y-auto mb-4">
+                <div className="flex-1 overflow-y-auto mb-6">
                   {cart.length === 0 ? (
-                    <div className="text-center text-gray-500 py-8">
-                      <ShoppingCart size={48} className="mx-auto mb-2 opacity-30" />
-                      <p>Carrinho vazio</p>
-                      <p className="text-sm">Adicione produtos para começar</p>
+                    <div className="text-center text-gray-500 py-12">
+                      <div className="bg-gray-100 rounded-full p-8 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+                        <ShoppingCart size={32} className="text-gray-400" />
+                      </div>
+                      <h4 className="text-lg font-semibold mb-2">Carrinho Vazio</h4>
+                      <p className="text-sm">Clique nos produtos para adicionar</p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {cart.map((item, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <h5 className="font-medium">{item.product_name}</h5>
+                        <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="font-bold text-gray-800">{item.product_name}</h5>
                             <button
                               onClick={() => setCart(prev => prev.filter((_, i) => i !== index))}
-                              className="text-red-500 hover:text-red-700"
+                              className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors"
                             >
                               <Trash2 size={16} />
                             </button>
                           </div>
                           
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3 bg-white rounded-lg p-2 border border-gray-200">
                               <button
                                 onClick={() => updateCartItemQuantity(index, item.quantity - 1)}
-                                className="bg-gray-100 hover:bg-gray-200 rounded-full p-1"
+                                className="bg-red-100 hover:bg-red-200 text-red-600 rounded-full p-1 transition-colors"
                               >
-                                <Minus size={14} />
+                                <Minus size={16} />
                               </button>
-                              <span className="w-8 text-center">{item.quantity}</span>
+                              <span className="w-8 text-center font-bold">{item.quantity}</span>
                               <button
                                 onClick={() => updateCartItemQuantity(index, item.quantity + 1)}
-                                className="bg-gray-100 hover:bg-gray-200 rounded-full p-1"
+                                className="bg-green-100 hover:bg-green-200 text-green-600 rounded-full p-1 transition-colors"
                               >
-                                <Plus size={14} />
+                                <Plus size={16} />
                               </button>
                             </div>
-                            <span className="font-semibold text-green-600">
+                            <span className="text-xl font-bold text-green-600">
                               {formatPrice(item.subtotal)}
                             </span>
                           </div>
@@ -965,26 +967,26 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
                 {/* Payment Method */}
                 {currentSale && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
                       Forma de Pagamento
                     </label>
                     <select
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value as any)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
                     >
-                      <option value="dinheiro">Dinheiro</option>
-                      <option value="pix">PIX</option>
-                      <option value="cartao_credito">Cartão de Crédito</option>
-                      <option value="cartao_debito">Cartão de Débito</option>
-                      <option value="voucher">Voucher</option>
-                      <option value="misto">Misto</option>
+                      <option value="dinheiro">💵 Dinheiro</option>
+                      <option value="pix">📱 PIX</option>
+                      <option value="cartao_credito">💳 Cartão de Crédito</option>
+                      <option value="cartao_debito">💳 Cartão de Débito</option>
+                      <option value="voucher">🎫 Voucher</option>
+                      <option value="misto">🔀 Misto</option>
                     </select>
 
                     {paymentMethod === 'dinheiro' && (
-                      <div className="mt-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <div className="mt-3">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Troco para
                         </label>
                         <input
@@ -992,7 +994,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                           step="0.01"
                           value={changeFor || ''}
                           onChange={(e) => setChangeFor(parseFloat(e.target.value) || undefined)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
                           placeholder="Valor para troco"
                         />
                       </div>
@@ -1001,18 +1003,20 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                 )}
 
                 {/* Total */}
-                <div className="border-t border-gray-200 pt-4">
-                  <div className="flex justify-between items-center text-lg font-semibold">
-                    <span>Total:</span>
-                    <span className="text-green-600">{formatPrice(calculateCartTotal())}</span>
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 mb-6">
+                  <div className="flex justify-between items-center">
+                    <span className="text-2xl font-bold text-gray-800">Total:</span>
+                    <span className="text-3xl font-bold text-green-600">
+                      {formatPrice(calculateCartTotal())}
+                    </span>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2 mt-4">
+                <div className="flex gap-3">
                   <button
                     onClick={() => setShowSaleModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-4 rounded-xl font-semibold transition-colors"
                   >
                     Cancelar
                   </button>
@@ -1021,9 +1025,9 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                     <button
                       onClick={createOrUpdateSale}
                       disabled={cart.length === 0 || !isCashRegisterOpen}
-                      className="flex-1 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2"
+                      className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
                     >
-                      <Save size={16} />
+                      <Save size={20} />
                       Criar Venda
                     </button>
                   ) : (
@@ -1031,17 +1035,17 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                       <button
                         onClick={createOrUpdateSale}
                         disabled={cart.length === 0}
-                        className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2"
+                        className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
                       >
-                        <Save size={16} />
+                        <Save size={20} />
                         Salvar
                       </button>
                       <button
                         onClick={finalizeSale}
                         disabled={!paymentMethod}
-                        className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2"
+                        className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
                       >
-                        <CheckCircle size={16} />
+                        <CheckCircle size={20} />
                         Finalizar
                       </button>
                     </>
