@@ -242,22 +242,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   }, [storeId]);
 
   const createTable = async () => {
-    // Convert and validate form data
-    const tableNumber = parseInt(formData.number.toString());
-    const tableCapacity = parseInt(formData.capacity.toString());
-    
-    if (!formData.number || isNaN(tableNumber) || tableNumber <= 0) {
-      alert('Digite um número válido para a mesa (maior que 0)');
-      return;
-    }
-    
-    if (!formData.name.trim()) {
-      alert('Digite um nome para a mesa');
-      return;
-    }
-    
-    if (!formData.capacity || isNaN(tableCapacity) || tableCapacity <= 0) {
-      alert('Preencha todos os campos obrigatórios');
+    if (!newTableNumber || !newTableName) {
+      alert('Preencha número e nome da mesa');
       return;
     }
 
@@ -267,7 +253,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       const { data: existingTable, error: checkError } = await supabase
         .from(tableNameForStore)
         .select('number')
-        .eq('number', tableNumber)
+        .eq('number', formData.number)
         .maybeSingle();
 
       if (checkError && checkError.code !== 'PGRST116') {
@@ -275,7 +261,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       }
 
       if (existingTable) {
-        alert(`Mesa número ${tableNumber} já existe. Escolha outro número.`);
+        alert(`Mesa número ${formData.number} já existe. Escolha outro número.`);
         setCreating(false);
         return;
       }
@@ -302,10 +288,10 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         const { data, error } = await supabase
           .from(tablesTable)
           .insert([{
-            number: tableNumber,
-            name: formData.name.trim(),
-            capacity: tableCapacity,
-            location: formData.location.trim() || null,
+            number: parseInt(newTableNumber),
+            name: newTableName,
+            capacity: newTableCapacity,
+            location: newTableLocation || null,
             status: 'livre',
             is_active: true
           }])
@@ -1457,7 +1443,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                   type="number"
                   min="1"
                   value={formData.number}
-                  onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, number: parseInt(e.target.value) || 0 }))}
                   className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
                   placeholder="Ex: 7"
                 />
@@ -1501,7 +1487,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                 </label>
                 <select
                   value={formData.capacity}
-                  onChange={(e) => setFormData(prev => ({ ...prev, capacity: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, capacity: parseInt(e.target.value) || 4 }))}
                   className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
                 >
                   <option value={2}>2 lugares</option>
