@@ -286,8 +286,8 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
                     // Adicionar link do Google Maps para localização
                     const fullAddress = \`${order.customer_address}, ${order.customer_neighborhood}`;
                     const encodedAddress = encodeURIComponent(fullAddress);
-                    message += \`📍 *LOCALIZAÇÃO:*\n`;
-                    message += \`https://www.google.com/maps/search/?api=1&query=${encodedAddress}\n`;
+                    message += `📍 *LOCALIZAÇÃO:*\n`;
+                    message += `https://www.google.com/maps/search/?api=1&query=${encodedAddress}\n`;
                     message += \`\n`;
                     
                     message += \`🛒 *ITENS DO PEDIDO:*\n`;
