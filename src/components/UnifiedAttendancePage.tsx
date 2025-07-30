@@ -34,6 +34,7 @@ interface UnifiedAttendancePanelProps {
 
 const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator, storeSettings, scaleHook, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'sales' | 'orders' | 'cash' | 'tables'>('sales');
+  const [activeTab, setActiveTab] = useState<'sales' | 'orders' | 'cash' | 'tables' | 'history'>('sales');
   const { hasPermission } = usePermissions(operator);
   const { storeSettings: localStoreSettings } = useStoreHours();
   const { isOpen: isCashRegisterOpen, currentRegister, previousDayOpenRegister } = usePDVCashRegister();
@@ -242,11 +243,20 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                 Vendas Mesas
               </button>
             )}
+            
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                activeTab === 'history'
+                  ? 'bg-orange-500 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Clock size={20} />
+              Histórico de Vendas
+            </button>
           </div>
         </div>
-
-        {/* Histórico de Vendas */}
-        <SalesHistory storeId={1} />
 
         {/* Content */}
         <div className="transition-all duration-300 print:hidden">
@@ -254,6 +264,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
           {activeTab === 'orders' && <AttendantPanel storeSettings={settings} />}
           {activeTab === 'cash' && <CashRegisterMenu />}
           {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && <TableSalesPanel storeId={1} operatorName={operator?.name} />}
+          {activeTab === 'history' && <SalesHistory storeId={1} />}
         </div>
       </div>
     </div>

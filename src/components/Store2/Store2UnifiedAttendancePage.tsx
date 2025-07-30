@@ -27,6 +27,7 @@ interface Store2UnifiedAttendancePageProps {
 
 const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = ({ operator, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'tables'>('sales');
+  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'tables' | 'history'>('sales');
   const { isOpen: isCashRegisterOpen, previousDayOpenRegister } = useStore2PDVCashRegister();
   const scale = useScale();
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
@@ -198,17 +199,27 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
               <Users size={20} />
               Vendas Mesas
             </button>
+            
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                activeTab === 'history'
+                  ? 'bg-orange-500 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Clock size={20} />
+              Histórico de Vendas
+            </button>
           </div>
         </div>
-
-        {/* Histórico de Vendas */}
-        <SalesHistory storeId={2} />
 
         {/* Content */}
         <div className="transition-all duration-300 print:hidden">
           {activeTab === 'sales' && <Store2PDVSalesScreen operator={operator} scaleHook={scale} />}
           {activeTab === 'cash' && <Store2CashRegisterMenu />}
           {activeTab === 'tables' && <TableSalesPanel storeId={2} operatorName={operator?.name} />}
+          {activeTab === 'history' && <SalesHistory storeId={2} />}
         </div>
       </div>
     </div>
