@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Plus, Trash2, RefreshCw, AlertCircle, Clock, CheckCircle, 
   Utensils, Sparkles, ShoppingCart, X, Minus, Calculator, DollarSign,
@@ -30,6 +30,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto'>('dinheiro');
   const [changeFor, setChangeFor] = useState<number | undefined>();
   const [notes, setNotes] = useState('');
+  const [isSavingSale, setIsSavingSale] = useState(false);
+  const [isFinalizingSale, setIsFinalizingSale] = useState(false);
   const [newTable, setNewTable] = useState({
     number: '',
     name: '',
@@ -269,6 +271,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     }
 
     try {
+      setIsSavingSale(true);
       const salesTableName = getSalesTableName();
       const saleItemsTableName = getSaleItemsTableName();
       const tableName = getTableName();
@@ -359,6 +362,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     } catch (err) {
       console.error(`❌ Erro ao salvar venda na ${getStoreName()}:`, err);
       alert(`Erro ao salvar venda: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+    } finally {
+      setIsSavingSale(false);
     }
   };
 
@@ -366,6 +371,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     if (!currentSale || !selectedTable || !isCashRegisterOpen) return;
 
     try {
+      setIsFinalizingSale(true);
       const salesTableName = getSalesTableName();
       const tableName = getTableName();
       
@@ -408,6 +414,54 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     } catch (err) {
       console.error(`❌ Erro ao finalizar venda na ${getStoreName()}:`, err);
       alert(`Erro ao finalizar venda: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+    } finally {
+      setIsFinalizingSale(false);
+    }
+  };
+
+  const handleFinalizeSale = async () => {
+    await finalizeSale();
+  };
+
+  const handleCancelSale = async () => {
+    if (!currentSale || !selectedTable) return;
+
+    if (!confirm('Tem certeza que deseja cancelar esta venda?')) return;
+
+    try {
+      const salesTableName = getSalesTableName();
+      const saleItemsTableName = getSaleItemsTableName();
+      const tableName = getTableName();
+
+      // Deletar itens da venda
+      await supabase
+        .from(saleItemsTableName)
+        .delete()
+        .eq('sale_id', currentSale.id);
+
+      // Deletar venda
+      await supabase
+        .from(salesTableName)
+        .delete()
+        .eq('id', currentSale.id);
+
+      // Liberar mesa
+      await supabase
+        .from(tableName)
+        .update({ 
+          current_sale_id: null,
+          status: 'livre'
+        })
+        .eq('id', selectedTable.id);
+
+      await fetchTables();
+      setShowSaleModal(false);
+      setCurrentSale(null);
+      setCart([]);
+      
+    } catch (err) {
+      console.error(`❌ Erro ao cancelar venda na ${getStoreName()}:`, err);
+      alert(`Erro ao cancelar venda: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   };
 
@@ -668,62 +722,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                   </div>
                 )}
                 
-                {/* Warning if cash register is closed */}
-                {!cashRegisterHook.isOpen && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm flex items-center gap-2 mb-3">
-                    <AlertCircle size={16} />
-                    <span>Caixa fechado. Abra o caixa para finalizar a venda.</span>
-                  </div>
-                )}
-
-                {/* Calculate disabled state and title for finalize button */}
-                {useMemo(() => {
-                  const isFinalizeButtonDisabled = !paymentMethod || isFinalizingSale || !cashRegisterHook.isOpen;
-                  const finalizeButtonTitle = isFinalizingSale
-                    ? 'Finalizando venda...'
-                    : !cashRegisterHook.isOpen
-                    ? 'Caixa fechado. Abra o caixa para finalizar a venda.'
-                    : !paymentMethod
-                    ? 'Selecione uma forma de pagamento.'
-                    : '';
-                  
-                  return (
-                    <button
-                      onClick={handleFinalizeSale}
-                      disabled={isFinalizeButtonDisabled}
-                      title={finalizeButtonTitle}
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                    >
-                      <CheckCircle size={20} />
-                      {isFinalizingSale ? 'Finalizando...' : 'Finalizar Venda'}
-                    </button>
-                  );
-                }, [paymentMethod, isFinalizingSale, cashRegisterHook.isOpen, handleFinalizeSale])}
-
-                <button
-                  onClick={handleCancelSale}
-                  disabled={isSavingSale || isFinalizingSale}
-                  className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-6 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
-                >
-                  <X size={20} />
-                  Cancelar Venda
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => setShowSaleModal(false)}
-              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-colors"
-            >
-              Voltar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default TableSalesPanel;
                 {/* Actions */}
                 <div className="space-y-3">
                   <button
@@ -1070,42 +1068,74 @@ export default TableSalesPanel;
 
                 {/* Actions */}
                 <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowSaleModal(false)}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-4 rounded-xl font-semibold transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  
                   {!currentSale ? (
-                    <button
-                      onClick={createOrUpdateSale}
-                      disabled={cart.length === 0 || !isCashRegisterOpen}
-                      className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
-                    >
-                      <Save size={20} />
-                      Criar Venda
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setShowSaleModal(false)}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-4 rounded-xl font-semibold transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={createOrUpdateSale}
+                        disabled={cart.length === 0 || !isCashRegisterOpen || isSavingSale}
+                        className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                      >
+                        <Save size={20} />
+                        {isSavingSale ? 'Criando...' : 'Criar Venda'}
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button
                         onClick={createOrUpdateSale}
-                        disabled={cart.length === 0}
-                        className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                        disabled={cart.length === 0 || isSavingSale || isFinalizingSale}
+                        className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
                       >
                         <Save size={20} />
-                        Salvar
+                        {isSavingSale ? 'Salvando...' : 'Salvar Alterações'}
                       </button>
+
+                      {/* Calculate disabled state and title for finalize button */}
+                      {useMemo(() => {
+                        const isFinalizeButtonDisabled = !paymentMethod || isFinalizingSale || !cashRegisterHook.isOpen;
+                        const finalizeButtonTitle = isFinalizingSale
+                          ? 'Finalizando venda...'
+                          : !cashRegisterHook.isOpen
+                          ? 'Caixa fechado. Abra o caixa para finalizar a venda.'
+                          : !paymentMethod
+                          ? 'Selecione uma forma de pagamento.'
+                          : '';
+                        
+                        return (
+                          <button
+                            onClick={handleFinalizeSale}
+                            disabled={isFinalizeButtonDisabled}
+                            title={finalizeButtonTitle}
+                            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                          >
+                            <CheckCircle size={20} />
+                            {isFinalizingSale ? 'Finalizando...' : 'Finalizar Venda'}
+                          </button>
+                        );
+                      }, [paymentMethod, isFinalizingSale, cashRegisterHook.isOpen, handleFinalizeSale])}
+
                       <button
-                        onClick={finalizeSale}
-                        disabled={!paymentMethod}
-                        className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                        onClick={handleCancelSale}
+                        disabled={isSavingSale || isFinalizingSale}
+                        className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-6 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
                       >
-                        <CheckCircle size={20} />
-                        Finalizar
+                        <X size={20} />
+                        Cancelar Venda
                       </button>
                     </>
                   )}
+                  <button
+                    onClick={() => setShowSaleModal(false)}
+                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-colors"
+                  >
+                    Voltar
+                  </button>
                 </div>
               </div>
             </div>
