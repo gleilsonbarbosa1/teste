@@ -36,6 +36,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     capacity: 4,
     location: ''
   });
+  const [createTableError, setCreateTableError] = useState<string | null>(null);
 
   const { products: pdvProducts, loading: productsLoading } = usePDVProducts();
   const loja1CashRegister = usePDVCashRegister();
@@ -142,14 +143,16 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   };
 
   const createTable = async () => {
+    setCreateTableError(null);
+    
     if (!newTable.number || !newTable.name) {
-      alert('Número e nome da mesa são obrigatórios');
+      setCreateTableError('Número e nome da mesa são obrigatórios');
       return;
     }
 
     const existingTable = tables.find(t => t.number === parseInt(newTable.number));
     if (existingTable) {
-      alert(`Mesa número ${newTable.number} já existe. Escolha um número diferente.`);
+      setCreateTableError(`Mesa número ${newTable.number} já existe. Escolha um número diferente.`);
       return;
     }
 
@@ -171,7 +174,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
       if (error) {
         if (error.code === '23505') {
-          alert(`Mesa número ${newTable.number} já existe. Escolha um número diferente.`);
+          setCreateTableError(`Mesa número ${newTable.number} já existe. Escolha um número diferente.`);
           return;
         }
         throw error;
@@ -180,11 +183,12 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       setTables(prev => [...prev, data]);
       setShowCreateModal(false);
       setNewTable({ number: '', name: '', capacity: 4, location: '' });
+      setCreateTableError(null);
       
       console.log(`✅ Mesa criada na ${getStoreName()}:`, data);
     } catch (err) {
       console.error(`❌ Erro ao criar mesa na ${getStoreName()}:`, err);
-      alert(`Erro ao criar mesa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      setCreateTableError(`Erro ao criar mesa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   };
 
@@ -711,12 +715,25 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Nova Mesa - {getStoreName()}</h3>
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCreateTableError(null);
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X size={20} />
               </button>
             </div>
+
+            {/* Error Display */}
+            {createTableError && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={16} className="text-red-600" />
+                  <p className="text-red-600 text-sm">{createTableError}</p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>
@@ -775,7 +792,10 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
             <div className="flex gap-2 mt-6">
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCreateTableError(null);
+                }}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
               >
                 Cancelar
