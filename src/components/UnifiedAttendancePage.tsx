@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
 import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
 import { 
