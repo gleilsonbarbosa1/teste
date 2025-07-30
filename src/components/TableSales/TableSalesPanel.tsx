@@ -255,7 +255,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         .from(tablesTable)
         .select('number')
         .eq('number', parseInt(newTableNumber))
-        .eq('is_active', true)
         .maybeSingle();
 
       if (existingTable) {
