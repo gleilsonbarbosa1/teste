@@ -542,15 +542,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Carregando mesas da {getStoreName()}...</p>
         </div>
-    // Handle duplicate key constraint error gracefully without console logging
-    if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
-      setCreateTableError(`Mesa número ${newTable.number} já existe. Escolha um número diferente.`);
-      return;
-    }
-    
-    // Log other unexpected errors to console
-    console.error(`❌ Erro ao criar mesa na ${getStoreName()}:`, err);
-    setCreateTableError(`Erro ao criar mesa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      </div>
+    );
   }
 
   return (
