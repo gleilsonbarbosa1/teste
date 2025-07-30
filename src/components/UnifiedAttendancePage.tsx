@@ -34,7 +34,7 @@ interface UnifiedAttendancePanelProps {
 
 const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator, storeSettings, scaleHook, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'sales' | 'orders' | 'cash' | 'tables'>('sales');
-  const [activeTab, setActiveTab] = useState<'sales' | 'orders' | 'cash' | 'tables' | 'history'>('sales');
+
   const { hasPermission } = usePermissions(operator);
   const { storeSettings: localStoreSettings } = useStoreHours();
   const { isOpen: isCashRegisterOpen, currentRegister, previousDayOpenRegister } = usePDVCashRegister();
