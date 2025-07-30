@@ -18,7 +18,7 @@ interface SalesItem {
 const SalesHistory: React.FC<SalesHistoryProps> = ({ storeId }) => {
   const [salesItems, setSalesItems] = useState<SalesItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState<'today' | 'week'>('today');
+  const [timeFilter, setTimeFilter] = useState<'today'>('today');
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -71,10 +71,9 @@ const SalesHistory: React.FC<SalesHistoryProps> = ({ storeId }) => {
         return;
       }
 
+      // Sempre buscar apenas do dia atual
       const now = new Date();
-      const startDate = timeFilter === 'today' 
-        ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        : new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+      const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
       const items: SalesItem[] = [];
 
@@ -172,7 +171,7 @@ const SalesHistory: React.FC<SalesHistoryProps> = ({ storeId }) => {
       // Ordenar por horário mais recente
       items.sort((a, b) => new Date(b.sale_time).getTime() - new Date(a.sale_time).getTime());
       
-      setSalesItems(items.slice(0, 10)); // Mostrar apenas os 10 mais recentes
+      setSalesItems(items.slice(0, 8)); // Mostrar apenas os 8 mais recentes
 
     } catch (error) {
       console.error('Erro ao carregar histórico de vendas:', error);
@@ -184,79 +183,125 @@ const SalesHistory: React.FC<SalesHistoryProps> = ({ storeId }) => {
 
   useEffect(() => {
     fetchSalesHistory();
-  }, [storeId, timeFilter]);
+  }, [storeId]);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-          <TrendingUp size={20} className="text-green-600" />
-          Histórico de Vendas
-        </h3>
+    <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-full p-3 shadow-lg">
+            <TrendingUp size={24} className="text-white" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-gray-800">Histórico de Vendas do Dia</h3>
+            <p className="text-sm text-gray-600">Produtos vendidos hoje</p>
+          </div>
+        </div>
         
-        <div className="flex items-center gap-2">
-          <select
-            value={timeFilter}
-            onChange={(e) => setTimeFilter(e.target.value as 'today' | 'week')}
-            className="text-sm px-2 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="today">Hoje</option>
-            <option value="week">7 dias</option>
-          </select>
-          
+        <div className="flex items-center gap-3">
+          <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
+            <span className="text-sm font-medium text-green-700">📅 Hoje</span>
+          </div>
           <button
             onClick={fetchSalesHistory}
             disabled={loading}
-            className="p-1 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            className="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 hover:text-blue-800 p-2 rounded-lg transition-all duration-200 hover:shadow-md"
             title="Atualizar histórico"
           >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
-          <p className="text-sm text-gray-500">Carregando histórico...</p>
+        <div className="text-center py-12">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-200 border-t-green-600 mx-auto mb-4"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Package size={20} className="text-green-600" />
+            </div>
+          </div>
+          <p className="text-gray-600 font-medium">Carregando histórico...</p>
+          <p className="text-sm text-gray-500">Buscando vendas do dia</p>
         </div>
       ) : salesItems.length === 0 ? (
-        <div className="text-center py-4">
-          <Package size={32} className="mx-auto text-gray-300 mb-2" />
-          <p className="text-sm text-gray-500">Nenhuma venda encontrada</p>
+        <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+          <div className="relative mb-4">
+            <div className="bg-gradient-to-br from-gray-200 to-gray-300 rounded-full p-4 w-20 h-20 mx-auto flex items-center justify-center">
+              <Package size={32} className="text-gray-500" />
+            </div>
+          </div>
+          <h4 className="text-lg font-semibold text-gray-700 mb-2">Nenhuma venda hoje</h4>
+          <p className="text-gray-500">Quando houver vendas, elas aparecerão aqui</p>
         </div>
       ) : (
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {salesItems.map((item, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-medium text-gray-800 text-sm">{item.product_name}</h4>
-                  <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
-                    {getChannelLabel(item.channel)}
-                  </span>
+            <div
+              key={index}
+              className="group bg-white border border-gray-200 rounded-xl p-4 hover:border-green-300 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className="font-bold text-gray-800 text-base group-hover:text-green-700 transition-colors">
+                      {item.product_name}
+                    </h4>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200">
+                      {getChannelLabel(item.channel)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2 py-1">
+                      <Package size={14} className="text-gray-500" />
+                      <span className="font-medium">Qtd: {item.quantity}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-blue-50 rounded-lg px-2 py-1">
+                      <Clock size={14} className="text-blue-500" />
+                      <span className="font-medium">{formatTime(item.sale_time)}</span>
+                    </div>
+                    {item.sale_number && (
+                      <div className="bg-purple-50 rounded-lg px-2 py-1">
+                        <span className="text-purple-700 font-mono text-xs">#{item.sale_number}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <Package size={12} />
-                    Qtd: {item.quantity}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock size={12} />
-                    {formatTime(item.sale_time)}
-                  </span>
-                  {item.sale_number && (
-                    <span>#{item.sale_number}</span>
-                  )}
+                
+                <div className="text-right ml-4">
+                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-lg px-3 py-2 shadow-md">
+                    <p className="font-bold text-lg leading-none">
+                      {formatPrice(item.total_amount)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="text-right">
-                <p className="font-semibold text-green-600 text-sm">
-                  {formatPrice(item.total_amount)}
-                </p>
               </div>
             </div>
           ))}
+        </div>
+      )}
+      
+      {/* Summary Footer */}
+      {salesItems.length > 0 && (
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+            <div className="flex items-center gap-3">
+              <div className="bg-green-100 rounded-full p-2">
+                <TrendingUp size={20} className="text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-green-800">Resumo do Dia</p>
+                <p className="text-xs text-green-600">{salesItems.length} produto(s) vendido(s)</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-bold text-green-700">
+                {formatPrice(salesItems.reduce((sum, item) => sum + item.total_amount, 0))}
+              </p>
+              <p className="text-xs text-green-600">Total em vendas</p>
+            </div>
+          </div>
         </div>
       )}
     </div>
