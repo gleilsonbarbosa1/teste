@@ -378,7 +378,14 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
           customer_name: 'Cliente Exemplo',
           customer_count: 2,
           subtotal: 45.80,
-        }]);
+          discount_amount: 0,
+          total_amount: 45.80,
+          change_amount: 0,
+          status: 'aberta',
+          opened_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
         return;
       }
 
@@ -423,12 +430,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       
       setCart(cartItems);
       
-      // Handle specific unique constraint violation error
-      if (err?.code === '23505' || err?.message?.includes('duplicate key value')) {
-        alert(`Mesa número ${tableNumber} já existe. Escolha outro número.`);
-      } else {
-        alert('Erro ao criar mesa. Tente novamente.');
-      }
+      console.log('✅ Venda carregada:', sale);
     } catch (err) {
       console.error('❌ Erro ao carregar venda:', err);
       setError('Erro ao carregar dados da venda');
@@ -1433,7 +1435,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                   type="number"
                   min="1"
                   value={formData.number}
-                  onChange={(e) => setFormData(prev => ({ ...prev, number: parseInt(e.target.value) || 0 }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
                   className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
                   placeholder="Ex: 7"
                 />
@@ -1511,7 +1513,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               </button>
               <button
                 onClick={createTable}
-                disabled={!newTableNumber || !newTableName || saving}
+                disabled={!formData.number || !formData.name || saving}
                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white py-4 rounded-2xl font-semibold text-lg transition-colors"
               >
                 {saving ? 'Criando...' : 'Criar Mesa'}
@@ -1519,7 +1521,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
             </div>
           </div>
         </div>
-        {activeTab === 'history' && (isAdmin || hasPermission('can_view_sales') || hasPermission('can_view_orders')) && <SalesHistory storeId={1} />}
       )}
     </div>
   );
