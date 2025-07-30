@@ -395,14 +395,15 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
 
           {/* Preview */}
           <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-4">
-              <div className="text-center mb-4">
-                <p className="font-bold text-lg">ELITE AÇAÍ</p>
-                <p className="text-sm">Delivery Premium</p>
-                <p className="text-xs">Rua Um, 1614-C</p>
-                <p className="text-xs">Residencial 1 - Cágado</p>
-                <p className="text-xs">Tel: (85) 98904-1010</p>
-                <p className="text-xs">CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
-                      <p>Complementos:</p>
+            <div className="text-center mb-4">
+              <p className="font-bold text-lg">ELITE AÇAÍ</p>
+              <p className="text-sm">Delivery Premium</p>
+              <p className="text-xs">Rua Um, 1614-C</p>
+              <p className="text-xs">Residencial 1 - Cágado</p>
+              <p className="text-xs">Tel: (85) 98904-1010</p>
+              <p className="text-xs">CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
+              <p className="text-xs">--------------------------</p>
+            </div>
               
             <div className="mb-3">
               <p className="text-xs font-bold text-center">=== PEDIDO DE DELIVERY ===</p>
@@ -459,7 +460,8 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
               {order.change_for && <p className="text-xs">Troco para: {formatPrice(order.change_for)}</p>}
               {order.payment_method === 'pix' && (
                 <div className="mt-2">
-                        <p key={idx} className="ml-2">• {comp.name}{comp.price > 0 && ` (+${formatPrice(comp.price)})`}</p>
+                  <p className="text-xs">⚠️ IMPORTANTE:</p>
+                  <p className="text-xs">Envie o comprovante do PIX</p>
                   <p className="text-xs">para confirmar o pedido!</p>
                 </div>
               )}
@@ -473,7 +475,6 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           </div>
         </div>
       </div>
-    </div>
 
       {/* Print Content - Only visible when printing */}
       <div className="hidden print:block print:w-full print:h-full print:bg-white print:text-black thermal-print-content">
@@ -530,6 +531,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
                 
                 {item.observations && <p style={{ fontSize: '12px', marginLeft: '8px', marginTop: '5px' }}>Obs: {item.observations}</p>}
               </div>
+            ))}
           </div>
 
           {/* Summary */}
