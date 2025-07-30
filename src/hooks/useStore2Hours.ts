@@ -18,6 +18,10 @@ export interface Store2Settings {
   cnpj?: string;
   address: string;
   is_open_now: boolean;
+  printer_paper_width: string;
+  printer_font_size: number;
+  printer_auto_adjust_font: boolean;
+  printer_auto_adjust_paper: boolean;
   created_at: string;
   updated_at: string;
 }
