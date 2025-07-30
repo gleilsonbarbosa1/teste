@@ -46,6 +46,7 @@ const CashRegisterMenu: React.FC = () => {
   const [showBillCounting, setShowBillCounting] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('');
   const [closingAmount, setClosingAmount] = useState('');
+  const [closingAmount, setClosingAmount] = useState('');
   const [entryType, setEntryType] = useState<'income' | 'expense'>('income');
   const [entryAmount, setEntryAmount] = useState('');
   const [entryDescription, setEntryDescription] = useState('');
@@ -55,6 +56,7 @@ const CashRegisterMenu: React.FC = () => {
   const [showPrintView, setShowPrintView] = useState(false);
   const [closedRegister, setClosedRegister] = useState<any>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [billCountingMode, setBillCountingMode] = useState<'open' | 'close' | null>(null);
   
   // Check Supabase configuration on mount
   React.useEffect(() => {
@@ -212,12 +214,13 @@ const CashRegisterMenu: React.FC = () => {
 
   const applyBillTotal = () => {
     const total = calculateBillTotal();
-    if (showCloseRegister) {
-      setClosingAmount(total.toFixed(2));
-    } else if (showOpenRegister) {
+    if (billCountingMode === 'open') {
       setOpeningAmount(total.toFixed(2));
+    } else if (billCountingMode === 'close') {
+      setClosingAmount(total.toFixed(2));
     }
     setShowBillCounting(false);
+    setBillCountingMode(null);
     resetBillCounts();
   };
 
@@ -514,7 +517,10 @@ const CashRegisterMenu: React.FC = () => {
               </div>
 
               <button
-                onClick={() => setShowBillCounting(true)}
+                onClick={() => {
+                  setBillCountingMode('open');
+                  setShowBillCounting(true);
+                }}
                 className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
               >
                 <DollarSign size={16} />

@@ -26,6 +26,76 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
   const [hasInformedAmount, setHasInformedAmount] = useState(false);
   const [justification, setJustification] = useState('');
   const [printMovements, setPrintMovements] = useState(true);
+  const [showBillCounting, setShowBillCounting] = useState(false);
+  const [billCounts, setBillCounts] = useState({
+    '200': 0,
+    '100': 0,
+    '50': 0,
+    '20': 0,
+    '10': 0,
+    '5': 0,
+    '2': 0,
+    '1': 0,
+    '0.50': 0,
+    '0.25': 0,
+    '0.10': 0,
+    '0.05': 0,
+    '0.01': 0
+  });
+
+  const billValues = [
+    { value: '200', label: 'R$ 200,00', color: 'bg-purple-100' },
+    { value: '100', label: 'R$ 100,00', color: 'bg-blue-100' },
+    { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
+    { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
+    { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
+    { value: '5', label: 'R$ 5,00', color: 'bg-green-100' },
+    { value: '2', label: 'R$ 2,00', color: 'bg-gray-100' },
+    { value: '1', label: 'R$ 1,00', color: 'bg-yellow-50' },
+    { value: '0.50', label: 'R$ 0,50', color: 'bg-gray-50' },
+    { value: '0.25', label: 'R$ 0,25', color: 'bg-gray-50' },
+    { value: '0.10', label: 'R$ 0,10', color: 'bg-gray-50' },
+    { value: '0.05', label: 'R$ 0,05', color: 'bg-gray-50' },
+    { value: '0.01', label: 'R$ 0,01', color: 'bg-gray-50' }
+  ];
+
+  const calculateBillTotal = () => {
+    return Object.entries(billCounts).reduce((total, [value, count]) => {
+      return total + (parseFloat(value) * count);
+    }, 0);
+  };
+
+  const updateBillCount = (value: string, increment: boolean) => {
+    setBillCounts(prev => ({
+      ...prev,
+      [value]: Math.max(0, prev[value] + (increment ? 1 : -1))
+    }));
+  };
+
+  const resetBillCounts = () => {
+    setBillCounts({
+      '200': 0,
+      '100': 0,
+      '50': 0,
+      '20': 0,
+      '10': 0,
+      '5': 0,
+      '2': 0,
+      '1': 0,
+      '0.50': 0,
+      '0.25': 0,
+      '0.10': 0,
+      '0.05': 0,
+      '0.01': 0
+    });
+  };
+
+  const applyBillTotal = () => {
+    const total = calculateBillTotal();
+    setClosingAmount(total);
+    setShowBillCounting(false);
+    resetBillCounts();
+  };
 
   if (!isOpen) return null;
 
@@ -108,6 +178,14 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
                 <p className="text-xs text-gray-500 mt-1">
                   Informe o valor total em dinheiro presente no caixa
                 </p>
+                
+                <button
+                  onClick={() => setShowBillCounting(true)}
+                  className="w-full mt-3 flex items-center justify-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors"
+                >
+                  <DollarSign size={16} />
+                  Contar Cédulas
+                </button>
               </div>
             </div>
           ) : (

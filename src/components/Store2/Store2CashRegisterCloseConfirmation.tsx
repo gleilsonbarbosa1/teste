@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, AlertTriangle, DollarSign, CheckCircle, Printer } from 'lucide-react';
-import { PDVCashRegister, PDVCashRegisterSummary } from '../../types/pdv';
+import { X, AlertTriangle, DollarSign, CheckCircle, Printer, Plus, Minus } from 'lucide-react';
+import { PDVCashRegister, PDVCashRegisterSummary, PDVCashRegisterEntry } from '../../types/pdv';
+import { usePermissions } from '../../hooks/usePermissions';
 
-interface Store2CashRegisterCloseConfirmationProps {
+interface CashRegisterCloseConfirmationProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (closingAmount: number, justification?: string) => void;
@@ -11,7 +12,7 @@ interface Store2CashRegisterCloseConfirmationProps {
   isProcessing: boolean;
 }
 
-const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfirmationProps> = ({
+const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps> = ({
   isOpen,
   onClose,
   onConfirm,
@@ -19,10 +20,153 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
   summary,
   isProcessing
 }) => {
+  const { hasPermission } = usePermissions();
+  const canViewExpectedBalance = hasPermission('can_view_expected_balance');
   const [closingAmount, setClosingAmount] = useState(0);
   const [hasInformedAmount, setHasInformedAmount] = useState(false);
   const [justification, setJustification] = useState('');
   const [printMovements, setPrintMovements] = useState(true);
+  const [showBillCounting, setShowBillCounting] = useState(false);
+  const [billCounts, setBillCounts] = useState({
+    '200': 0,
+    '100': 0,
+    '50': 0,
+    '20': 0,
+    '10': 0,
+    '5': 0,
+    '2': 0,
+    '1': 0,
+    '0.50': 0,
+    '0.25': 0,
+    '0.10': 0,
+    '0.05': 0,
+    '0.01': 0
+  });
+
+  const billValues = [
+    { value: '200', label: 'R$ 200,00', color: 'bg-purple-100' },
+    { value: '100', label: 'R$ 100,00', color: 'bg-blue-100' },
+    { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
+    { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
+    { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
+    { value: '5', label: 'R$ 5,00', color: 'bg-green-100' },
+    { value: '2', label: 'R$ 2,00', color: 'bg-gray-100' },
+    { value: '1', label: 'R$ 1,00', color: 'bg-yellow-50' },
+    { value: '0.50', label: 'R$ 0,50', color: 'bg-gray-50' },
+    { value: '0.25', label: 'R$ 0,25', color: 'bg-gray-50' },
+    { value: '0.10', label: 'R$ 0,10', color: 'bg-gray-50' },
+    { value: '0.05', label: 'R$ 0,05', color: 'bg-gray-50' },
+    { value: '0.01', label: 'R$ 0,01', color: 'bg-gray-50' }
+  ];
+
+  const calculateBillTotal = () => {
+    return Object.entries(billCounts).reduce((total, [value, count]) => {
+      return total + (parseFloat(value) * count);
+    }, 0);
+  };
+
+  const updateBillCount = (value: string, increment: boolean) => {
+    setBillCounts(prev => ({
+      ...prev,
+      [value]: Math.max(0, prev[value] + (increment ? 1 : -1))
+    }));
+  };
+
+  const resetBillCounts = () => {
+    setBillCounts({
+      '200': 0,
+      '100': 0,
+      '50': 0,
+      '20': 0,
+      '10': 0,
+      '5': 0,
+      '2': 0,
+      '1': 0,
+      '0.50': 0,
+      '0.25': 0,
+      '0.10': 0,
+      '0.05': 0,
+      '0.01': 0
+    });
+  };
+
+  const applyBillTotal = () => {
+    const total = calculateBillTotal();
+    setClosingAmount(total);
+    setShowBillCounting(false);
+    resetBillCounts();
+  };
+
+  const [showBillCounting, setShowBillCounting] = useState(false);
+  const [billCounts, setBillCounts] = useState({
+    '200': 0,
+    '100': 0,
+    '50': 0,
+    '20': 0,
+    '10': 0,
+    '5': 0,
+    '2': 0,
+    '1': 0,
+    '0.50': 0,
+    '0.25': 0,
+    '0.10': 0,
+    '0.05': 0,
+    '0.01': 0
+  });
+
+  const billValues = [
+    { value: '200', label: 'R$ 200,00', color: 'bg-purple-100' },
+    { value: '100', label: 'R$ 100,00', color: 'bg-blue-100' },
+    { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
+    { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
+    { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
+    { value: '5', label: 'R$ 5,00', color: 'bg-green-100' },
+    { value: '2', label: 'R$ 2,00', color: 'bg-gray-100' },
+    { value: '1', label: 'R$ 1,00', color: 'bg-yellow-50' },
+    { value: '0.50', label: 'R$ 0,50', color: 'bg-gray-50' },
+    { value: '0.25', label: 'R$ 0,25', color: 'bg-gray-50' },
+    { value: '0.10', label: 'R$ 0,10', color: 'bg-gray-50' },
+    { value: '0.05', label: 'R$ 0,05', color: 'bg-gray-50' },
+    { value: '0.01', label: 'R$ 0,01', color: 'bg-gray-50' }
+  ];
+
+  const calculateBillTotal = () => {
+    return Object.entries(billCounts).reduce((total, [value, count]) => {
+      return total + (parseFloat(value) * count);
+    }, 0);
+  };
+
+  const updateBillCount = (value: string, increment: boolean) => {
+    setBillCounts(prev => ({
+      ...prev,
+      [value]: Math.max(0, prev[value] + (increment ? 1 : -1))
+    }));
+  };
+
+  const resetBillCounts = () => {
+    setBillCounts({
+      '200': 0,
+      '100': 0,
+      '50': 0,
+      '20': 0,
+      '10': 0,
+      '5': 0,
+      '2': 0,
+      '1': 0,
+      '0.50': 0,
+      '0.25': 0,
+      '0.10': 0,
+      '0.05': 0,
+      '0.01': 0
+    });
+  };
+
+  const applyBillTotal = () => {
+    const total = calculateBillTotal();
+    setClosingAmount(total);
+    setShowBillCounting(false);
+    resetBillCounts();
+  };
 
   if (!isOpen) return null;
 
@@ -55,7 +199,7 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
               <div className="bg-yellow-100 rounded-full p-2">
                 <AlertTriangle size={24} className="text-yellow-600" />
               </div>
-              Confirmar Fechamento de Caixa - Loja 2
+              Confirmar Fechamento de Caixa
             </h2>
             <button
               onClick={onClose}
@@ -66,8 +210,8 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
           </div>
           <p className="text-gray-600">
             {!hasInformedAmount 
-              ? 'Informe o valor contado no caixa da Loja 2 para prosseguir com o fechamento.'
-              : 'Confirme os dados do fechamento de caixa da Loja 2.'
+              ? 'Informe o valor contado no caixa para prosseguir com o fechamento.'
+              : 'Confirme os dados do fechamento de caixa.'
             }
           </p>
         </div>
@@ -80,9 +224,9 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
                 <div className="flex items-start gap-3">
                   <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
                   <div>
-                    <h3 className="text-lg font-bold text-blue-800 mb-2">Contagem do Caixa - Loja 2</h3>
+                    <h3 className="text-lg font-bold text-blue-800 mb-2">Contagem do Caixa</h3>
                     <p className="text-blue-700 text-sm">
-                      Conte todo o dinheiro físico presente no caixa da Loja 2 e informe o valor total.
+                      Conte todo o dinheiro físico presente no caixa e informe o valor total.
                     </p>
                   </div>
                 </div>
@@ -105,6 +249,25 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
                 <p className="text-xs text-gray-500 mt-1">
                   Informe o valor total em dinheiro presente no caixa da Loja 2
                 </p>
+                
+                <button
+                  onClick={() => setShowBillCounting(true)}
+                  className="w-full mt-3 flex items-center justify-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors"
+                >
+                  <DollarSign size={16} />
+                  Contar Cédulas
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Informe o valor total em dinheiro presente no caixa
+                </p>
+                
+                <button
+                  onClick={() => setShowBillCounting(true)}
+                  className="w-full mt-3 flex items-center justify-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors"
+                >
+                  <DollarSign size={16} />
+                  Contar Cédulas
+                </button>
               </div>
             </div>
           ) : (
@@ -114,7 +277,7 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
                 <div className="flex items-start gap-3">
                   <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
                   <div className="w-full">
-                    <h3 className="text-lg font-bold text-blue-800 mb-3">Conferência do Fechamento - Loja 2</h3>
+                    <h3 className="text-lg font-bold text-blue-800 mb-3">Conferência do Fechamento</h3>
                     
                     <div className="space-y-2">
                       <div className="flex justify-between">
@@ -122,23 +285,27 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
                         <span className="font-bold text-blue-800">{formatPrice(closingAmount)}</span>
                       </div>
                       
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Saldo esperado (sistema):</span>
-                        <span className="font-medium text-blue-800">{formatPrice(expectedBalance)}</span>
-                      </div>
-                      
-                      <div className="pt-2 border-t border-blue-200">
-                        <div className="flex justify-between">
-                          <span className="font-medium text-blue-800">Diferença:</span>
-                          <span className={`font-bold ${
-                            difference > 0 ? 'text-green-600' : difference < 0 ? 'text-red-600' : 'text-blue-800'
-                          }`}>
-                            {difference === 0 ? 'Exato' : 
-                             difference > 0 ? `+${formatPrice(difference)} (sobra)` : 
-                             `${formatPrice(difference)} (falta)`}
-                          </span>
-                        </div>
-                      </div>
+                      {canViewExpectedBalance && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-blue-700">Saldo esperado (sistema):</span>
+                            <span className="font-medium text-blue-800">{formatPrice(expectedBalance)}</span>
+                          </div>
+                          
+                          <div className="pt-2 border-t border-blue-200">
+                            <div className="flex justify-between">
+                              <span className="font-medium text-blue-800">Diferença:</span>
+                              <span className={`font-bold ${
+                                difference > 0 ? 'text-green-600' : difference < 0 ? 'text-red-600' : 'text-blue-800'
+                              }`}>
+                                {difference === 0 ? 'Exato' : 
+                                 difference > 0 ? `+${formatPrice(difference)} (sobra)` : 
+                                 `${formatPrice(difference)} (falta)`}
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -146,15 +313,19 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
 
               {/* Resumo das movimentações (sempre visível) */}
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                <h4 className="font-medium text-gray-800 mb-2">Resumo das Movimentações - Loja 2</h4>
+                <h4 className="font-medium text-gray-800 mb-2">Resumo das Movimentações</h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Valor de abertura:</span>
                     <span className="font-medium">{formatPrice(summary?.opening_amount || 0)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Vendas Loja 2:</span>
+                    <span className="text-gray-600">Vendas PDV:</span>
                     <span className="font-medium text-green-600">{formatPrice(summary?.sales_total || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Vendas Delivery:</span>
+                    <span className="font-medium text-green-600">{formatPrice(summary?.delivery_total || 0)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Outras entradas:</span>
@@ -173,9 +344,9 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
                   difference > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
                 }`}>
                   <div className="flex items-start gap-3">
-                    <AlertTriangle size={20} className={`mt-1 flex-shrink-0 ${
+                    <AlertTriangle size={20} className={
                       difference > 0 ? 'text-yellow-600' : 'text-red-600'
-                    }`} />
+                    } className="mt-1 flex-shrink-0" />
                     <div className="w-full">
                       <h4 className={`font-medium mb-2 ${
                         difference > 0 ? 'text-yellow-800' : 'text-red-800'
@@ -200,26 +371,30 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
                   </div>
                 </div>
               )}
+            </div>
+          )}
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Printer size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                  <div className="flex-1">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={printMovements}
-                        onChange={(e) => setPrintMovements(e.target.checked)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-blue-800 font-medium">
-                        Imprimir relatório de movimentações da Loja 2
+          {hasInformedAmount && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Printer size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                <div className="flex-1">
+                  <label className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={printMovements}
+                      onChange={(e) => setPrintMovements(e.target.checked)}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <div>
+                      <span className="font-medium text-blue-800">
+                        Imprimir movimentações do caixa após fechamento
                       </span>
-                    </label>
-                    <p className="text-xs text-blue-600 mt-1 ml-6">
-                      Imprime um resumo detalhado de todas as movimentações do caixa da Loja 2
-                    </p>
-                  </div>
+                      <p className="text-blue-700 text-sm mt-1">
+                        Gera um relatório térmico com todas as movimentações do caixa
+                      </p>
+                    </div>
+                  </label>
                 </div>
               </div>
             </div>
@@ -274,6 +449,77 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
             )}
           </div>
           
+          {/* Bill Counting Modal */}
+          {showBillCounting && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+              <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Contagem de Cédulas - Loja 2</h3>
+                  <button
+                    onClick={() => setShowBillCounting(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {billValues.map((bill) => (
+                      <div key={bill.value} className={`flex items-center justify-between p-3 rounded-lg ${bill.color}`}>
+                        <span className="font-medium">{bill.label}</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => updateBillCount(bill.value, false)}
+                            className="p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <span className="w-12 text-center font-semibold">
+                            {billCounts[bill.value]}
+                          </span>
+                          <button
+                            onClick={() => updateBillCount(bill.value, true)}
+                            className="p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="border-t pt-4 mt-4">
+                    <div className="flex justify-between items-center text-lg font-semibold">
+                      <span>Total:</span>
+                      <span>R$ {calculateBillTotal().toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={resetBillCounts}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Limpar
+                    </button>
+                    <button
+                      onClick={() => setShowBillCounting(false)}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={applyBillTotal}
+                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {needsJustification && !justification.trim() && (
             <div className="mt-2 text-center">
               <p className="text-sm text-red-600">
@@ -287,4 +533,4 @@ const Store2CashRegisterCloseConfirmation: React.FC<Store2CashRegisterCloseConfi
   );
 };
 
-export default Store2CashRegisterCloseConfirmation;
+export default CashRegisterCloseConfirmation;
