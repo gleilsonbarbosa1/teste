@@ -1,103 +1,60 @@
-import React, { useState } from 'react';
-import { X, AlertTriangle, DollarSign, CheckCircle, Printer, Plus, Minus } from 'lucide-react';
-import { PDVCashRegister, PDVCashRegisterSummary, PDVCashRegisterEntry } from '../../types/pdv';
-import { usePermissions } from '../../hooks/usePermissions';
+import React, { useState, useEffect } from 'react';
+import { 
+  Users, 
+  Plus, 
+  Minus, 
+  Save, 
+  Trash2, 
+  Package, 
+  Scale,
+  X,
+  ShoppingCart,
+  AlertCircle
+} from 'lucide-react';
+import { usePDVProducts } from '../../hooks/usePDV';
+import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
+import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
 
-interface CashRegisterCloseConfirmationProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (closingAmount: number, justification?: string) => void;
-  register: PDVCashRegister | null;
-  summary: PDVCashRegisterSummary | null;
-  isProcessing: boolean;
+interface TableSalesPanelProps {
+  storeId: number;
+  operatorName?: string;
 }
 
-const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps> = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  register,
-  summary,
-  isProcessing
-}) => {
-  const { hasPermission } = usePermissions();
-  const canViewExpectedBalance = hasPermission('can_view_expected_balance');
-  const [closingAmount, setClosingAmount] = useState(0);
-  const [hasInformedAmount, setHasInformedAmount] = useState(false);
-  const [justification, setJustification] = useState('');
-  const [printMovements, setPrintMovements] = useState(true);
-  const [showBillCounting, setShowBillCounting] = useState(false);
-  const [billCounts, setBillCounts] = useState({
-    '200': 0,
-    '100': 0,
-    '50': 0,
-    '20': 0,
-    '10': 0,
-    '5': 0,
-    '2': 0,
-    '1': 0,
-    '0.50': 0,
-    '0.25': 0,
-    '0.10': 0,
-    '0.05': 0,
-    '0.01': 0
-  });
+interface CartItem {
+  id: string;
+  product_code: string;
+  product_name: string;
+  quantity: number;
+  weight?: number;
+  unit_price?: number;
+  price_per_gram?: number;
+  subtotal: number;
+}
 
-  const billValues = [
-    { value: '200', label: 'R$ 200,00', color: 'bg-purple-100' },
-    { value: '100', label: 'R$ 100,00', color: 'bg-blue-100' },
-    { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
-    { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
-    { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
-    { value: '5', label: 'R$ 5,00', color: 'bg-green-100' },
-    { value: '2', label: 'R$ 2,00', color: 'bg-gray-100' },
-    { value: '1', label: 'R$ 1,00', color: 'bg-yellow-50' },
-    { value: '0.50', label: 'R$ 0,50', color: 'bg-gray-50' },
-    { value: '0.25', label: 'R$ 0,25', color: 'bg-gray-50' },
-    { value: '0.10', label: 'R$ 0,10', color: 'bg-gray-50' },
-    { value: '0.05', label: 'R$ 0,05', color: 'bg-gray-50' },
-    { value: '0.01', label: 'R$ 0,01', color: 'bg-gray-50' }
+const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName }) => {
+  const [selectedTable, setSelectedTable] = useState<any>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [customerName, setCustomerName] = useState('');
+  const [customerCount, setCustomerCount] = useState(1);
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [productWeight, setProductWeight] = useState('');
+
+  // Hooks
+  const { products } = usePDVProducts();
+  const loja1Cash = usePDVCashRegister();
+  const loja2Cash = useStore2PDVCashRegister();
+  
+  const cashHook = storeId === 1 ? loja1Cash : loja2Cash;
+  const { isOpen: isCashRegisterOpen } = cashHook;
+
+  // Mesas fixas para demonstração
+  const tables = [
+    { id: 1, number: 1, name: 'Mesa 1', capacity: 4, status: 'livre' },
+    { id: 2, number: 2, name: 'Mesa 2', capacity: 6, status: 'livre' },
+    { id: 3, number: 3, name: 'Mesa 3', capacity: 2, status: 'livre' },
+    { id: 4, number: 4, name: 'Mesa 4', capacity: 8, status: 'livre' }
   ];
-
-  const calculateBillTotal = () => {
-    return Object.entries(billCounts).reduce((total, [value, count]) => {
-      return total + (parseFloat(value) * count);
-    }, 0);
-  };
-
-  const updateBillCount = (value: string, increment: boolean) => {
-    setBillCounts(prev => ({
-      ...prev,
-      [value]: Math.max(0, prev[value] + (increment ? 1 : -1))
-    }));
-  };
-
-  const resetBillCounts = () => {
-    setBillCounts({
-      '200': 0,
-      '100': 0,
-      '50': 0,
-      '20': 0,
-      '10': 0,
-      '5': 0,
-      '2': 0,
-      '1': 0,
-      '0.50': 0,
-      '0.25': 0,
-      '0.10': 0,
-      '0.05': 0,
-      '0.01': 0
-    });
-  };
-
-  const applyBillTotal = () => {
-    const total = calculateBillTotal();
-    setClosingAmount(total);
-    setShowBillCounting(false);
-    resetBillCounts();
-  };
-
-  if (!isOpen) return null;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -106,352 +63,397 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
     }).format(price);
   };
 
-  const handleAmountConfirm = () => {
-    if (closingAmount > 0) {
-      setHasInformedAmount(true);
+  const addToCart = (product: any, weight?: number) => {
+    if (product.is_weighable && !weight) {
+      setSelectedProduct(product);
+      setShowWeightModal(true);
+      return;
     }
+
+    const unitPrice = product.is_weighable 
+      ? (product.price_per_gram || 0) * (weight || 0) * 1000
+      : product.unit_price || 0;
+
+    const newItem: CartItem = {
+      id: Date.now().toString(),
+      product_code: product.code,
+      product_name: product.name,
+      quantity: 1,
+      weight: product.is_weighable ? weight : undefined,
+      unit_price: product.is_weighable ? product.price_per_gram : product.unit_price,
+      price_per_gram: product.is_weighable ? product.price_per_gram : undefined,
+      subtotal: unitPrice
+    };
+
+    setCart(prev => [...prev, newItem]);
   };
 
-  const expectedBalance = summary?.expected_balance || 0;
-  const difference = closingAmount - expectedBalance;
-  const hasDifference = Math.abs(difference) > 0.01; // Tolerância de 1 centavo
-  const needsJustification = hasDifference && hasInformedAmount;
+  const removeFromCart = (itemId: string) => {
+    setCart(prev => prev.filter(item => item.id !== itemId));
+  };
 
-  const canProceed = hasInformedAmount && (!needsJustification || justification.trim().length > 0);
+  const confirmWeight = () => {
+    if (!selectedProduct || !productWeight) return;
+    
+    const weight = parseFloat(productWeight);
+    if (weight <= 0) {
+      alert('Peso deve ser maior que zero');
+      return;
+    }
+
+    addToCart(selectedProduct, weight);
+    setShowWeightModal(false);
+    setSelectedProduct(null);
+    setProductWeight('');
+  };
+
+  const getCartTotal = () => {
+    return cart.reduce((total, item) => total + item.subtotal, 0);
+  };
+
+  const saveSale = async () => {
+    if (!selectedTable || cart.length === 0 || !customerName.trim()) {
+      alert('Preencha todos os dados obrigatórios');
+      return;
+    }
+
+    if (!isCashRegisterOpen) {
+      alert('Não é possível realizar vendas sem um caixa aberto');
+      return;
+    }
+
+    // Simular salvamento
+    const saleData = {
+      table: selectedTable,
+      customer: customerName,
+      items: cart,
+      total: getCartTotal(),
+      store: storeId
+    };
+
+    console.log('Salvando venda:', saleData);
+    alert('Venda salva com sucesso!');
+    
+    // Limpar após salvar
+    setCart([]);
+    setCustomerName('');
+    setCustomerCount(1);
+  };
+
+  const canSave = cart.length > 0 && customerName.trim().length > 0 && isCashRegisterOpen;
 
   return (
-    <>
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-        <div className="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
-                <div className="bg-yellow-100 rounded-full p-2">
-                  <AlertTriangle size={24} className="text-yellow-600" />
-                </div>
-                Confirmar Fechamento de Caixa
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+            <Users size={28} className="text-indigo-600" />
+            Vendas por Mesa - Loja {storeId}
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Gerencie vendas presenciais por mesa
+            {operatorName && ` - Operador: ${operatorName}`}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Sidebar - Mesas e Produtos */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Mesas */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Users size={20} className="text-indigo-600" />
+                Mesas
               </h2>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <p className="text-gray-600">
-              {!hasInformedAmount 
-                ? 'Informe o valor contado no caixa para prosseguir com o fechamento.'
-                : 'Confirme os dados do fechamento de caixa.'
-              }
-            </p>
-          </div>
-
-          <div className="p-6 overflow-y-auto">
-            {!hasInformedAmount ? (
-              // ETAPA 1: Informar valor contado
-              <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                    <div>
-                      <h3 className="text-lg font-bold text-blue-800 mb-2">Contagem do Caixa</h3>
-                      <p className="text-blue-700 text-sm">
-                        Conte todo o dinheiro físico presente no caixa e informe o valor total.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Valor contado no caixa *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={closingAmount}
-                    onChange={(e) => setClosingAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0,00"
-                    autoFocus
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Informe o valor total em dinheiro presente no caixa
-                  </p>
-                  
+              <div className="grid grid-cols-2 gap-3">
+                {tables.map((table) => (
                   <button
-                    onClick={() => setShowBillCounting(true)}
-                    className="w-full mt-3 flex items-center justify-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors"
+                    key={table.id}
+                    onClick={() => setSelectedTable(table)}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      selectedTable?.id === table.id
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
                   >
-                    <DollarSign size={16} />
-                    Contar Cédulas
+                    <div className="font-semibold">{table.name}</div>
+                    <div className="text-sm opacity-75">{table.capacity} pessoas</div>
                   </button>
-                </div>
+                ))}
               </div>
-            ) : (
-              // ETAPA 2: Mostrar comparação e solicitar justificativa se necessário
-              <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <DollarSign size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                    <div className="w-full">
-                      <h3 className="text-lg font-bold text-blue-800 mb-3">Conferência do Fechamento</h3>
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-blue-700">Valor informado (contado):</span>
-                          <span className="font-bold text-blue-800">{formatPrice(closingAmount)}</span>
-                        </div>
-                        
-                        {canViewExpectedBalance && (
-                          <>
-                            <div className="flex justify-between">
-                              <span className="text-blue-700">Saldo esperado (sistema):</span>
-                              <span className="font-medium text-blue-800">{formatPrice(expectedBalance)}</span>
-                            </div>
-                            
-                            <div className="pt-2 border-t border-blue-200">
-                              <div className="flex justify-between">
-                                <span className="font-medium text-blue-800">Diferença:</span>
-                                <span className={`font-bold ${
-                                  difference > 0 ? 'text-green-600' : difference < 0 ? 'text-red-600' : 'text-blue-800'
-                                }`}>
-                                  {difference === 0 ? 'Exato' : 
-                                   difference > 0 ? `+${formatPrice(difference)} (sobra)` : 
-                                   `${formatPrice(difference)} (falta)`}
-                                </span>
-                              </div>
-                            </div>
-                          </>
+            </div>
+
+            {/* Produtos */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Package size={20} className="text-green-600" />
+                Produtos
+              </h2>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {products.slice(0, 10).map((product) => (
+                  <div key={product.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-800">{product.name}</div>
+                      <div className="text-sm text-gray-600">
+                        {product.is_weighable ? (
+                          <div className="flex items-center gap-1">
+                            <Scale size={14} />
+                            {formatPrice((product.price_per_gram || 0) * 1000)}/kg
+                          </div>
+                        ) : (
+                          formatPrice(product.unit_price || 0)
                         )}
                       </div>
                     </div>
+                    <button
+                      onClick={() => addToCart(product)}
+                      disabled={!selectedTable}
+                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors"
+                    >
+                      <Plus size={16} />
+                    </button>
                   </div>
-                </div>
+                ))}
+              </div>
+            </div>
+          </div>
 
-                {/* Resumo das movimentações (sempre visível) */}
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                  <h4 className="font-medium text-gray-800 mb-2">Resumo das Movimentações</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Valor de abertura:</span>
-                      <span className="font-medium">{formatPrice(summary?.opening_amount || 0)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Vendas PDV:</span>
-                      <span className="font-medium text-green-600">{formatPrice(summary?.sales_total || 0)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Vendas Delivery:</span>
-                      <span className="font-medium text-green-600">{formatPrice(summary?.delivery_total || 0)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Outras entradas:</span>
-                      <span className="font-medium text-green-600">{formatPrice(summary?.other_income_total || 0)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Saídas:</span>
-                      <span className="font-medium text-red-600">{formatPrice(summary?.total_expense || 0)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Justificativa obrigatória para diferenças */}
-                {needsJustification && (
-                  <div className={`border rounded-xl p-4 ${
-                    difference > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
-                  }`}>
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle size={20} className={
-                        difference > 0 ? 'text-yellow-600' : 'text-red-600'
-                      } className="mt-1 flex-shrink-0" />
-                      <div className="w-full">
-                        <h4 className={`font-medium mb-2 ${
-                          difference > 0 ? 'text-yellow-800' : 'text-red-800'
-                        }`}>
-                          Justificativa Obrigatória
-                        </h4>
-                        <p className={`text-sm mb-3 ${
-                          difference > 0 ? 'text-yellow-700' : 'text-red-700'
-                        }`}>
-                          Foi detectada uma diferença de {formatPrice(Math.abs(difference))}. 
-                          É obrigatório informar a justificativa para esta diferença.
-                        </p>
-                        <textarea
-                          value={justification}
-                          onChange={(e) => setJustification(e.target.value)}
-                          placeholder="Descreva o motivo da diferença encontrada..."
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                          rows={3}
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
+          {/* Main - Carrinho */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <ShoppingCart size={20} className="text-purple-600" />
+                  Carrinho de Vendas
+                  {selectedTable && (
+                    <span className="text-purple-600">- {selectedTable.name}</span>
+                  )}
+                </h2>
+                {cart.length > 0 && (
+                  <button
+                    onClick={() => setCart([])}
+                    className="text-red-500 hover:text-red-700 transition-colors"
+                  >
+                    <Trash2 size={20} />
+                  </button>
                 )}
               </div>
-            )}
 
-            {hasInformedAmount && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Printer size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                  <div className="flex-1">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={printMovements}
-                        onChange={(e) => setPrintMovements(e.target.checked)}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <div>
-                        <span className="font-medium text-blue-800">
-                          Imprimir movimentações do caixa após fechamento
-                        </span>
-                        <p className="text-blue-700 text-sm mt-1">
-                          Gera um relatório térmico com todas as movimentações do caixa
-                        </p>
-                      </div>
-                    </label>
-                  </div>
+              {!selectedTable ? (
+                <div className="text-center py-12">
+                  <Users size={48} className="mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500">Selecione uma mesa para iniciar a venda</p>
                 </div>
-              </div>
-            )}
-
-            <div className="mt-6 flex gap-3">
-              {!hasInformedAmount ? (
-                <>
-                  <button
-                    onClick={onClose}
-                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleAmountConfirm}
-                    disabled={closingAmount <= 0}
-                    className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors"
-                  >
-                    Confirmar Valor
-                  </button>
-                </>
               ) : (
-                <>
-                  <button
-                    onClick={() => {
-                      setHasInformedAmount(false);
-                      setJustification('');
-                    }}
-                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
-                  >
-                    Voltar
-                  </button>
-                  <button
-                    onClick={() => onConfirm(closingAmount, justification || undefined)}
-                    disabled={isProcessing || !canProceed}
-                    className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                        Processando...
-                      </>
+                <div className="space-y-6">
+                  {/* Dados do Cliente */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nome do Cliente *
+                      </label>
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Nome do cliente"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Número de Pessoas
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={customerCount}
+                        onChange={(e) => setCustomerCount(parseInt(e.target.value) || 1)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Itens do Carrinho */}
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-800 mb-4">
+                      Itens da Venda ({cart.length})
+                    </h3>
+                    
+                    {cart.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Package size={48} className="mx-auto text-gray-300 mb-4" />
+                        <p className="text-gray-500">Adicione produtos ao carrinho</p>
+                      </div>
                     ) : (
-                      <>
-                        <CheckCircle size={20} />
-                        Confirmar Fechamento
-                      </>
+                      <div className="space-y-3">
+                        {cart.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-800">{item.product_name}</div>
+                              <div className="text-sm text-gray-600">
+                                Qtd: {item.quantity}
+                                {item.weight && ` | Peso: ${item.weight}kg`}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-semibold text-green-600">
+                                {formatPrice(item.subtotal)}
+                              </span>
+                              <button
+                                onClick={() => removeFromCart(item.id)}
+                                className="text-red-500 hover:text-red-700 transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
-                  </button>
-                </>
+                  </div>
+
+                  {/* Total e Salvar */}
+                  {cart.length > 0 && (
+                    <div className="border-t pt-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-xl font-semibold">Total:</span>
+                        <span className="text-2xl font-bold text-green-600">
+                          {formatPrice(getCartTotal())}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={saveSale}
+                        disabled={!canSave}
+                        className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Save size={20} />
+                        Salvar Venda ({cart.length} {cart.length === 1 ? 'item' : 'itens'})
+                      </button>
+                      
+                      {/* Status Debug */}
+                      <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
+                        <div className="flex items-center justify-between">
+                          <span>Itens no carrinho:</span>
+                          <span className={cart.length > 0 ? 'text-green-600' : 'text-red-600'}>
+                            {cart.length > 0 ? '✅' : '❌'} {cart.length}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Nome do cliente:</span>
+                          <span className={customerName.trim() ? 'text-green-600' : 'text-red-600'}>
+                            {customerName.trim() ? '✅' : '❌'} {customerName.trim() || 'Vazio'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Caixa da Loja {storeId}:</span>
+                          <span className={isCashRegisterOpen ? 'text-green-600' : 'text-red-600'}>
+                            {isCashRegisterOpen ? '✅ Aberto' : '❌ Fechado'}
+                          </span>
+                        </div>
+                        <div className="pt-2 border-t mt-2">
+                          <div className="text-center font-semibold">
+                            Status: <span className={canSave ? 'text-green-600' : 'text-red-600'}>
+                              {canSave ? '✅ PRONTO PARA SALVAR' : '❌ FALTAM DADOS'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-            
-            {needsJustification && !justification.trim() && (
-              <div className="mt-2 text-center">
-                <p className="text-sm text-red-600">
-                  ⚠️ Justificativa obrigatória para diferenças no caixa
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Bill Counting Modal */}
-      {showBillCounting && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      {/* Modal de Peso */}
+      {showWeightModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Contagem de Cédulas</h3>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Scale size={20} className="text-orange-500" />
+                Informar Peso
+              </h3>
               <button
-                onClick={() => setShowBillCounting(false)}
+                onClick={() => {
+                  setShowWeightModal(false);
+                  setSelectedProduct(null);
+                  setProductWeight('');
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {billValues.map((bill) => (
-                  <div key={bill.value} className={`flex items-center justify-between p-3 rounded-lg ${bill.color}`}>
-                    <span className="font-medium">{bill.label}</span>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => updateBillCount(bill.value, false)}
-                        className="p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <span className="w-12 text-center font-semibold">
-                        {billCounts[bill.value]}
-                      </span>
-                      <button
-                        onClick={() => updateBillCount(bill.value, true)}
-                        className="p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t pt-4 mt-4">
-                <div className="flex justify-between items-center text-lg font-semibold">
-                  <span>Total:</span>
-                  <span>R$ {calculateBillTotal().toFixed(2)}</span>
+            <div className="space-y-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <div className="font-medium text-orange-800">
+                  {selectedProduct.name}
+                </div>
+                <div className="text-sm text-orange-600">
+                  {formatPrice((selectedProduct.price_per_gram || 0) * 1000)}/kg
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={resetBillCounts}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Limpar
-                </button>
-                <button
-                  onClick={() => setShowBillCounting(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={applyBillTotal}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  Aplicar
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Peso (kg) *
+                </label>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0.001"
+                  max="50"
+                  value={productWeight}
+                  onChange={(e) => setProductWeight(e.target.value)}
+                  placeholder="Ex: 0.500"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  autoFocus
+                />
               </div>
+
+              {productWeight && parseFloat(productWeight) > 0 && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total:</span>
+                    <span className="font-bold text-green-600">
+                      {formatPrice((selectedProduct.price_per_gram || 0) * parseFloat(productWeight) * 1000)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowWeightModal(false);
+                  setSelectedProduct(null);
+                  setProductWeight('');
+                }}
+                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmWeight}
+                disabled={!productWeight || parseFloat(productWeight) <= 0}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white py-2 rounded-lg transition-colors"
+              >
+                Confirmar Peso
+              </button>
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
-export default CashRegisterCloseConfirmation;
+export default TableSalesPanel;
