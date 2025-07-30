@@ -110,6 +110,11 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [selectedWeightProduct, setSelectedWeightProduct] = useState<PDVProduct | null>(null);
   const [productWeight, setProductWeight] = useState('');
+  // Define table name based on store ID
+  const tableNameForStore = storeId === 1 ? 'store1_tables' : 'store2_tables';
+  const tableSalesNameForStore = storeId === 1 ? 'store1_table_sales' : 'store2_table_sales';
+  const tableSaleItemsNameForStore = storeId === 1 ? 'store1_table_sale_items' : 'store2_table_sale_items';
+
   
   // Table creation states
   const [newTableNumber, setNewTableNumber] = useState('');
