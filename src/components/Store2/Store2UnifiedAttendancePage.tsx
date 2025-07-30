@@ -26,7 +26,6 @@ interface Store2UnifiedAttendancePageProps {
 }
 
 const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = ({ operator, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'tables'>('sales');
   const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'tables' | 'history'>('sales');
   const { isOpen: isCashRegisterOpen, previousDayOpenRegister } = useStore2PDVCashRegister();
   const scale = useScale();
