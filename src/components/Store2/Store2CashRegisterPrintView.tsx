@@ -272,7 +272,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
                     let message =  `🆕 *NOVO PEDIDO RECEBIDO - ELITE AÇAÍ*\n\n`;
                     message += `📋 *Pedido #${order.id.slice(-8)}*\n`;
                     message += `🕐 Recebido: ${new Date(order.created_at).toLocaleString('pt-BR')}\n`;
-                    message += \`📊 Status: ${getStatusLabel(order.status)}\n\n`;
+                    message += `📊 Status: ${getStatusLabel(order.status)}\n\n`;
                     
                     message += \`👤 *CLIENTE:*\n`;
                     message += \`Nome: ${order.customer_name}\n`;
