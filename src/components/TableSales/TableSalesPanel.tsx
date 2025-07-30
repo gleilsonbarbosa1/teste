@@ -177,27 +177,51 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const loadTables = async () => {
     try {
       setLoading(true);
+      console.log(`🔄 Carregando mesas da Loja ${storeId}...`);
       const tablesTable = storeId === 1 ? 'store1_tables' : 'store2_tables';
-      const salesTable = storeId === 1 ? 'store1_table_sales' : 'store2_table_sales';
 
+      // Verificar se Supabase está configurado
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl === 'your_supabase_url_here' || 
+          supabaseKey === 'your_supabase_anon_key_here' ||
+          supabaseUrl.includes('placeholder')) {
+        console.warn('⚠️ Supabase não configurado - usando dados de demonstração');
+        setTables([
+          { id: '1', number: 1, name: 'Mesa 1', capacity: 4, status: 'livre', is_active: true },
+          { id: '2', number: 2, name: 'Mesa 2', capacity: 4, status: 'ocupada', is_active: true },
+          { id: '3', number: 3, name: 'Mesa 3', capacity: 6, status: 'aguardando_conta', is_active: true },
+          { id: '4', number: 4, name: 'Mesa 4', capacity: 8, status: 'livre', is_active: true }
+        ]);
+        setLoading(false);
+        return;
+      }
+
+      // Buscar mesas sem join complexo para evitar problemas
       const { data, error } = await supabase
         .from(tablesTable)
-        .select(`
-          *,
-          current_sale:${salesTable}!${tablesTable}_current_sale_id_fkey(*)
-        `)
+        .select('*')
         .eq('is_active', true)
         .order('number');
 
-      if (error) throw error;
+      if (error) {
+        console.error(`❌ Erro ao carregar mesas da Loja ${storeId}:`, error);
+        throw error;
+      }
+      
+      console.log(`✅ ${data?.length || 0} mesas carregadas da Loja ${storeId}`);
       setTables(data || []);
     } catch (err) {
-      console.error('Erro ao carregar mesas:', err);
-      // Fallback para demonstração
-      setTables([
-        { id: '1', number: 1, name: 'Mesa 1', capacity: 4, status: 'livre', is_active: true },
-        { id: '2', number: 2, name: 'Mesa 2', capacity: 4, status: 'ocupada', is_active: true }
-      ]);
+      console.error(`❌ Erro ao carregar mesas da Loja ${storeId}:`, err);
+      // Não sobrescrever o estado atual se já temos mesas
+      if (tables.length === 0) {
+        setTables([
+          { id: 'demo-1', number: 1, name: 'Mesa 1', capacity: 4, status: 'livre', is_active: true },
+          { id: 'demo-2', number: 2, name: 'Mesa 2', capacity: 4, status: 'ocupada', is_active: true }
+        ]);
+      }
     } finally {
       setLoading(false);
     }
@@ -214,6 +238,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         .order('name');
 
       if (error) {
+        console.warn('⚠️ Erro ao carregar produtos, usando dados de demonstração');
         setProducts(demoProducts);
         return;
       }
@@ -295,6 +320,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     if (!newTableNumber || !newTableName) return;
 
     try {
+      console.log(`🚀 Criando mesa ${newTableNumber} na Loja ${storeId}...`);
       const tablesTable = storeId === 1 ? 'store1_tables' : 'store2_tables';
 
       // Verificar se número já existe (incluindo mesas inativas)
@@ -305,12 +331,13 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         .maybeSingle();
 
       if (checkError) {
-        console.error('Erro ao verificar mesa existente:', checkError);
+        console.error('❌ Erro ao verificar mesa existente:', checkError);
         alert('Erro ao verificar se a mesa já existe. Tente novamente.');
         return;
       }
 
       if (existingTable) {
+        console.warn(`⚠️ Mesa ${newTableNumber} já existe na Loja ${storeId}`);
         // Encontrar o próximo número disponível
         await findAvailableNumbers();
         
@@ -326,6 +353,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         return;
       }
 
+      // Criar nova mesa
       const { data, error } = await supabase
         .from(tablesTable)
         .insert([{
@@ -340,15 +368,23 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
       if (error) throw error;
 
-      setTables(prev => [...prev, data]);
+      console.log(`✅ Mesa criada com sucesso na Loja ${storeId}:`, data);
+      
+      // Adicionar mesa ao estado e reordenar por número
+      setTables(prev => [...prev, data].sort((a, b) => a.number - b.number));
+      
+      // Fechar modal e limpar campos
       setShowCreateTable(false);
       setNewTableNumber('');
       setNewTableName('');
       setNewTableCapacity(4);
       setAvailableNumbers([]);
+      
+      // Mostrar mensagem de sucesso
+      alert(`Mesa ${data.name} criada com sucesso!`);
     } catch (err) {
-      console.error('Erro ao criar mesa:', err);
-      alert('Erro ao criar mesa. Tente novamente.');
+      console.error(`❌ Erro ao criar mesa na Loja ${storeId}:`, err);
+      alert(`Erro ao criar mesa: ${err instanceof Error ? err.message : 'Erro desconhecido'}. Tente novamente.`);
     }
   };
 
@@ -356,6 +392,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     if (!confirm('Tem certeza que deseja excluir esta mesa?')) return;
 
     try {
+      console.log(`🗑️ Excluindo mesa ${tableId} da Loja ${storeId}...`);
       const tablesTable = storeId === 1 ? 'store1_tables' : 'store2_tables';
       
       const { error } = await supabase
@@ -365,13 +402,14 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
       if (error) throw error;
 
+      console.log(`✅ Mesa excluída com sucesso da Loja ${storeId}`);
       setTables(prev => prev.filter(t => t.id !== tableId));
       if (selectedTable?.id === tableId) {
         setSelectedTable(null);
         setCart([]);
       }
     } catch (err) {
-      console.error('Erro ao excluir mesa:', err);
+      console.error(`❌ Erro ao excluir mesa da Loja ${storeId}:`, err);
       alert('Erro ao excluir mesa. Tente novamente.');
     }
   };
