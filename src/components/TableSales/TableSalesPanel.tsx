@@ -237,6 +237,23 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
     try {
       setSaving(true);
+      // Check if table number already exists
+      const { data: existingTable, error: checkError } = await supabase
+        .from(tableNameForStore)
+        .select('number')
+        .eq('number', formData.number)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existingTable) {
+        alert(`Mesa número ${formData.number} já existe. Escolha outro número.`);
+        setCreating(false);
+        return;
+      }
+
       
       if (!checkSupabaseConfig()) {
         // Modo demo
