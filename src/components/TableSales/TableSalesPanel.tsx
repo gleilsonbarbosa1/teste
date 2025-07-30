@@ -54,6 +54,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const [newTableNumber, setNewTableNumber] = useState('');
   const [newTableName, setNewTableName] = useState('');
   const [newTableCapacity, setNewTableCapacity] = useState(4);
+  const [availableNumbers, setAvailableNumbers] = useState<number[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [products, setProducts] = useState<any[]>([]);
   const [loadingTableSale, setLoadingTableSale] = useState(false);
@@ -126,6 +127,52 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       setLoading(false);
     }
   }, [storeId]);
+
+  // Função para encontrar números disponíveis
+  const findAvailableNumbers = useCallback(async () => {
+    try {
+      const tablesTable = storeId === 1 ? 'store1_tables' : 'store2_tables';
+      
+      const { data: existingTables, error } = await supabase
+        .from(tablesTable)
+        .select('number')
+        .eq('is_active', true)
+        .order('number');
+
+      if (error) {
+        console.error('Erro ao buscar mesas existentes:', error);
+        return;
+      }
+
+      const usedNumbers = new Set(existingTables?.map(t => t.number) || []);
+      const available = [];
+      
+      // Encontrar os próximos 10 números disponíveis
+      for (let i = 1; i <= 50; i++) {
+        if (!usedNumbers.has(i)) {
+          available.push(i);
+          if (available.length >= 10) break;
+        }
+      }
+      
+      setAvailableNumbers(available);
+      
+      // Se não tiver número pré-selecionado, usar o primeiro disponível
+      if (!newTableNumber && available.length > 0) {
+        setNewTableNumber(available[0].toString());
+        setNewTableName(`Mesa ${available[0]}`);
+      }
+    } catch (err) {
+      console.error('Erro ao encontrar números disponíveis:', err);
+    }
+  }, [storeId, newTableNumber]);
+
+  // Carregar números disponíveis quando o modal de criação abrir
+  useEffect(() => {
+    if (showCreateTable) {
+      findAvailableNumbers();
+    }
+  }, [showCreateTable, findAvailableNumbers]);
 
   const loadTables = async () => {
     try {
@@ -250,15 +297,32 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     try {
       const tablesTable = storeId === 1 ? 'store1_tables' : 'store2_tables';
 
-      // Verificar se número já existe
-      const { data: existingTable } = await supabase
+      // Verificar se número já existe (incluindo mesas inativas)
+      const { data: existingTable, error: checkError } = await supabase
         .from(tablesTable)
         .select('number')
         .eq('number', parseInt(newTableNumber))
         .maybeSingle();
 
+      if (checkError) {
+        console.error('Erro ao verificar mesa existente:', checkError);
+        alert('Erro ao verificar se a mesa já existe. Tente novamente.');
+        return;
+      }
+
       if (existingTable) {
-        alert(`Mesa número ${newTableNumber} já existe. Escolha outro número.`);
+        // Encontrar o próximo número disponível
+        await findAvailableNumbers();
+        
+        if (availableNumbers.length > 0) {
+          const nextAvailable = availableNumbers[0];
+          setNewTableNumber(nextAvailable.toString());
+          setNewTableName(`Mesa ${nextAvailable}`);
+          
+          alert(`Mesa número ${newTableNumber} já existe. Sugestão: Mesa ${nextAvailable}${availableNumbers.length > 1 ? ` (outros disponíveis: ${availableNumbers.slice(1, 4).join(', ')})` : ''}`);
+        } else {
+          alert(`Mesa número ${newTableNumber} já existe. Verifique os números disponíveis.`);
+        }
         return;
       }
 
@@ -281,6 +345,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       setNewTableNumber('');
       setNewTableName('');
       setNewTableCapacity(4);
+      setAvailableNumbers([]);
     } catch (err) {
       console.error('Erro ao criar mesa:', err);
       alert('Erro ao criar mesa. Tente novamente.');
@@ -839,16 +904,52 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Número da Mesa *
+                    Número da Mesa * 
+                    {availableNumbers.length > 0 && (
+                      <span className="text-green-600 text-xs ml-2">
+                        (Disponíveis: {availableNumbers.slice(0, 5).join(', ')}{availableNumbers.length > 5 ? '...' : ''})
+                      </span>
+                    )}
                   </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={newTableNumber}
-                    onChange={(e) => setNewTableNumber(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Ex: 5"
-                  />
+                  <div className="space-y-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={newTableNumber}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setNewTableNumber(value);
+                        if (value) {
+                          setNewTableName(`Mesa ${value}`);
+                        }
+                      }}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Ex: 5"
+                    />
+                    
+                    {availableNumbers.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-xs text-gray-600">Sugestões:</span>
+                        {availableNumbers.slice(0, 8).map((num) => (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => {
+                              setNewTableNumber(num.toString());
+                              setNewTableName(`Mesa ${num}`);
+                            }}
+                            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                              newTableNumber === num.toString()
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            {num}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -860,7 +961,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                     value={newTableName}
                     onChange={(e) => setNewTableName(e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Ex: Mesa 5"
+                    placeholder={`Ex: Mesa ${newTableNumber || '1'}`}
                   />
                 </div>
 
