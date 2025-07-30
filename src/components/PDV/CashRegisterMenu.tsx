@@ -46,7 +46,6 @@ const CashRegisterMenu: React.FC = () => {
   const [showBillCounting, setShowBillCounting] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('');
   const [closingAmount, setClosingAmount] = useState('');
-  const [closingAmount, setClosingAmount] = useState('');
   const [entryType, setEntryType] = useState<'income' | 'expense'>('income');
   const [entryAmount, setEntryAmount] = useState('');
   const [entryDescription, setEntryDescription] = useState('');
