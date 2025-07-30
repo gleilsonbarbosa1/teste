@@ -402,7 +402,6 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
               <p className="text-xs">Residencial 1 - Cágado</p>
               <p className="text-xs">Tel: (85) 98904-1010</p>
               <p className="text-xs">CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
-              <p className="text-xs">--------------------------</p>
             </div>
               
             <div className="mb-3">
