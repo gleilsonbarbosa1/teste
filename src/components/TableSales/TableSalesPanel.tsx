@@ -108,6 +108,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const [showCreateTable, setShowCreateTable] = useState(false);
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [showSaleModal, setShowSaleModal] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [selectedWeightProduct, setSelectedWeightProduct] = useState<PDVProduct | null>(null);
   const [productWeight, setProductWeight] = useState('');
   const [formData, setFormData] = useState({
