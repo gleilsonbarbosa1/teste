@@ -254,6 +254,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         .from(tableNameForStore)
         .select('number')
         .eq('number', formData.number)
+        .eq('is_active', true)
         .maybeSingle();
 
       if (checkError && checkError.code !== 'PGRST116') {
