@@ -248,7 +248,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           <div>@eliteacai</div>
           <div>⭐⭐⭐⭐⭐ Avalie-nos no Google</div>
           <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid black;">
-            <div class="small">Elite Açaí - CNPJ: ${storeSettings?.cnpj || '00.000.000/0001-00'}</div>
+            <div class="small">Elite Açaí - CNPJ: ${storeSettings?.cnpj || '38.130.139/0001-22'}</div>
             <div>Impresso: ${new Date().toLocaleString('pt-BR')}</div>
             <div>Este não é um documento fiscal</div>
           </div>
