@@ -94,7 +94,7 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
           
           body {
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 14px;
             line-height: 1.3;
             color: black;
             background: white;
@@ -126,8 +126,7 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
       <body>
         <!-- Cabeçalho -->
         <div class="center mb-3 separator">
-          <img src="/logo elite.jpeg" alt="Elite Açaí Logo" style="width: 60mm; height: auto; margin: 5px auto; display: block;">
-          <div class="bold" style="font-size: 16px;">ELITE AÇAÍ</div>
+          <div class="bold" style="font-size: 18px; color: #000;">ELITE AÇAÍ</div>
           <div class="small">Relatório de Caixa</div>
           <div class="small">Rua Um, 1614-C</div>
           <div class="small">Residencial 1 - Cágado</div>
@@ -516,12 +515,7 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
         <div style={{ fontFamily: 'Courier New, monospace', fontSize: '12px', lineHeight: '1.3', color: 'black', background: 'white', padding: '2mm', margin: '0' }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '1px dashed black', paddingBottom: '10px', color: 'black', background: 'white' }}>
-            <img 
-              src="/logo elite.jpeg" 
-              alt="Elite Açaí Logo" 
-              style={{ width: '60mm', height: 'auto', margin: '5px auto', display: 'block' }}
-            />
-            <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 5px 0' }}>ELITE AÇAÍ</h1>
+            <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 5px 0', color: '#000' }}>ELITE AÇAÍ</h1>
             <p style={{ fontSize: '10px', margin: '2px 0' }}>Relatório de Caixa</p>
             <p style={{ fontSize: '10px', margin: '2px 0' }}>Rua Dois, 2130-A</p>
             <p style={{ fontSize: '10px', margin: '2px 0' }}>Residencial 1 - Cágado</p>
@@ -674,7 +668,7 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
           
           html, body {
             font-family: 'Courier New', monospace !important;
-            font-size: 12px !important;
+            font-size: 14px !important;
             line-height: 1.3 !important;
             color: black !important;
             background: white !important;
@@ -728,7 +722,7 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
             height: auto !important;
             overflow: visible !important;
             font-family: 'Courier New', monospace !important;
-            font-size: 12px !important;
+            font-size: 14px !important;
             line-height: 1.3 !important;
             color: black !important;
             background: white !important;
