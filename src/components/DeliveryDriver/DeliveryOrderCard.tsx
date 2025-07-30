@@ -402,6 +402,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
               <p className="text-xs">Residencial 1 - Cágado</p>
               <p className="text-xs">Tel: (85) 98904-1010</p>
               <p className="text-xs">CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
+              <p className="text-xs">--------------------------</p>
             </div>
               
             <div className="mb-3">
@@ -433,7 +434,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
                   
                   {item.complements && item.complements.length > 0 && (
                     <div className="ml-2 mt-1">
-                      <p>Complementos:</p>
+                      <p style={{ fontSize: `${sizes.smallSize}px` }}>Complementos:</p>
                       {item.complements.map((comp, idx) => (
                         <p key={idx} className="ml-2">• {comp.name}{comp.price > 0 && ` (+${formatPrice(comp.price)})`}</p>
                       ))}
@@ -569,12 +570,13 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           {/* Footer */}
           <div style={{ textAlign: 'center', fontSize: '12px', borderTop: '1px solid black', paddingTop: '10px', color: 'black', background: 'white' }}>
             <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Obrigado pela preferência!</p>
+            <p style={{ margin: '2px 0' }}>Elite Açaí - O melhor açaí da cidade!</p>
             <p style={{ margin: '2px 0' }}>@eliteacai</p>
             <p style={{ margin: '2px 0' }}>⭐⭐⭐⭐⭐ Avalie-nos no Google</p>
             <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid black' }}>
-              <p style={{ margin: '2px 0' }}>Elite Açaí - CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
-              <p style={{ margin: '2px 0' }}>Impresso: {new Date().toLocaleString('pt-BR')}</p>
-              <p style={{ margin: '2px 0' }}>Este não é um documento fiscal</p>
+              <p style={{ fontSize: '10px', margin: '2px 0' }}>Elite Açaí - CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
+              <p style={{ fontSize: '10px', margin: '2px 0' }}>Impresso: {new Date().toLocaleString('pt-BR')}</p>
+              <p style={{ fontSize: '10px', margin: '2px 0' }}>Este não é um documento fiscal</p>
             </div>
           </div>
         </div>
