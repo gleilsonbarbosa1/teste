@@ -402,8 +402,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
                 <p className="text-xs">Residencial 1 - Cágado</p>
                 <p className="text-xs">Tel: (85) 98904-1010</p>
                 <p className="text-xs">CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
-                <p className="text-xs">--------------------------</p>
-                  <p style={{ fontSize: `${sizes.smallSize}px` }}>Complementos:</p>
+                      <p>Complementos:</p>
               
             <div className="mb-3">
               <p className="text-xs font-bold text-center">=== PEDIDO DE DELIVERY ===</p>
@@ -460,8 +459,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
               {order.change_for && <p className="text-xs">Troco para: {formatPrice(order.change_for)}</p>}
               {order.payment_method === 'pix' && (
                 <div className="mt-2">
-                  <p className="text-xs">⚠️ IMPORTANTE:</p>
-                    <p key={idx} style={{ fontSize: `${sizes.smallSize}px`, marginLeft: '8px' }}>• {comp.name}{comp.price > 0 && ` (+${formatPrice(comp.price)})`}</p>
+                        <p key={idx} className="ml-2">• {comp.name}{comp.price > 0 && ` (+${formatPrice(comp.price)})`}</p>
                   <p className="text-xs">para confirmar o pedido!</p>
                 </div>
               )}
@@ -532,7 +530,6 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
                 
                 {item.observations && <p style={{ fontSize: '12px', marginLeft: '8px', marginTop: '5px' }}>Obs: {item.observations}</p>}
               </div>
-          <p style={{ fontSize: `${sizes.mediumSize}px`, fontWeight: 'bold', marginBottom: '5px' }}>RESUMO:</p>
           </div>
 
           {/* Summary */}
@@ -557,28 +554,27 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           {/* Payment */}
           <div style={{ borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px', color: 'black', background: 'white' }}>
             <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>PAGAMENTO:</p>
-          <p style={{ fontSize: `${sizes.mediumSize}px`, fontWeight: 'bold', marginBottom: '5px' }}>PAGAMENTO:</p>
+            <p style={{ fontSize: '12px', margin: '2px 0' }}>Forma: {getPaymentMethodLabel(order.payment_method)}</p>
             {order.change_for && <p style={{ fontSize: '12px', margin: '2px 0' }}>Troco para: {formatPrice(order.change_for)}</p>}
             {order.payment_method === 'pix' && (
               <div style={{ marginTop: '5px' }}>
                 <p style={{ fontSize: '12px', margin: '2px 0' }}>⚠️ IMPORTANTE:</p>
-              <p style={{ fontSize: `${sizes.smallSize}px`, margin: '2px 0' }}>⚠️ IMPORTANTE:</p>
-              <p style={{ fontSize: `${sizes.smallSize}px`, margin: '2px 0' }}>Envie o comprovante do PIX</p>
-              <p style={{ fontSize: `${sizes.smallSize}px`, margin: '2px 0' }}>para confirmar o pedido!</p>
+                <p style={{ fontSize: '12px', margin: '2px 0' }}>Envie o comprovante do PIX</p>
+                <p style={{ fontSize: '12px', margin: '2px 0' }}>para confirmar o pedido!</p>
+              </div>
             )}
           </div>
 
           {/* Footer */}
           <div style={{ textAlign: 'center', fontSize: '12px', borderTop: '1px solid black', paddingTop: '10px', color: 'black', background: 'white' }}>
             <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Obrigado pela preferência!</p>
-          <p style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: `${sizes.baseFontSize}px` }}>Obrigado pela preferência!</p>
             <p style={{ margin: '2px 0' }}>@eliteacai</p>
             <p style={{ margin: '2px 0' }}>⭐⭐⭐⭐⭐ Avalie-nos no Google</p>
             <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid black' }}>
               <p style={{ margin: '2px 0' }}>Elite Açaí - CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
-            <p style={{ fontSize: `${sizes.smallSize}px`, margin: '2px 0' }}>Elite Açaí - CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
-            <p style={{ fontSize: `${sizes.smallSize}px`, margin: '2px 0' }}>Impresso: {new Date().toLocaleString('pt-BR')}</p>
-            <p style={{ fontSize: `${sizes.smallSize}px`, margin: '2px 0' }}>Este não é um documento fiscal</p>
+              <p style={{ margin: '2px 0' }}>Impresso: {new Date().toLocaleString('pt-BR')}</p>
+              <p style={{ margin: '2px 0' }}>Este não é um documento fiscal</p>
+            </div>
           </div>
         </div>
       </div>
