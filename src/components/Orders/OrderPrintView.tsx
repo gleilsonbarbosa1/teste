@@ -46,7 +46,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           
           body {
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 14px;
             line-height: 1.3;
             color: black;
             background: white;
@@ -85,25 +85,13 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
       <body>
         <!-- Cabeçalho -->
         <div class="center mb-3 separator">
-          <img src="/logo elite.jpeg" alt="Elite Açaí Logo" style="width: 60mm; height: auto; margin: 5px auto; display: block;">
-          <div class="bold" style="font-size: 16px;">ELITE AÇAÍ</div>
+          <div class="bold" style="font-size: 18px; color: #000;">ELITE AÇAÍ</div>
           <div class="small">Delivery Premium</div>
           <div class="small">Rua Um, 1614-C</div>
           <div class="small">Residencial 1 - Cágado</div>
           <div class="small">Tel: (85) 98904-1010</div>
           <div class="small">CNPJ: ${storeSettings?.cnpj || '38.130.139/0001-22'}</div>
         </div>
-        
-        ${order.payment_method === 'pix' ? `
-        <!-- QR Code PIX -->
-        <div class="center mb-3 separator">
-          <div class="bold mb-2">QR CODE PIX</div>
-          <img src="/WhatsApp Image 2025-07-22 at 14.53.40.jpeg" alt="QR Code PIX" style="width: 60mm; height: 60mm;">
-          <div class="small">Chave PIX: 85989041010</div>
-          <div class="small">Nome: Amanda Suyelen da Costa Pereira</div>
-          <div class="bold">Valor: ${formatPrice(order.total_price)}</div>
-        </div>
-        ` : ''}
         
         <!-- Dados do Pedido -->
         <div class="mb-3 separator">
@@ -341,127 +329,90 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
                 <p className="text-xs">--------------------------</p>
               </div>
               
-              {/* QR Code PIX - apenas para pagamentos PIX */}
+            <div className="mb-3">
+              <p className="text-xs font-bold text-center">=== PEDIDO DE DELIVERY ===</p>
+              <p className="text-xs">Pedido: #{order.id.slice(-8)}</p>
+              <p className="text-xs">Data: {new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
+              <p className="text-xs">Hora: {new Date(order.created_at).toLocaleTimeString('pt-BR')}</p>
+              <p className="text-xs">Status: {getStatusLabel(order.status)}</p>
+              <p className="text-xs">--------------------------</p>
+            </div>
+            
+            <div className="mb-3">
+              <p className="text-xs font-bold">CLIENTE:</p>
+              <p className="text-xs">Nome: {order.customer_name}</p>
+              <p className="text-xs">Telefone: {order.customer_phone}</p>
+              <p className="text-xs">Endereço: {order.customer_address}</p>
+              <p className="text-xs">Bairro: {order.customer_neighborhood}</p>
+              {order.customer_complement && <p className="text-xs">Complemento: {order.customer_complement}</p>}
+              <p className="text-xs">--------------------------</p>
+            </div>
+            
+            <div className="mb-3">
+              <p className="text-xs font-bold">ITENS:</p>
+              {order.items.map((item, index) => (
+                <div key={index} className="text-xs mb-2">
+                  <p>{item.product_name}</p>
+                  {item.selected_size && <p>Tamanho: {item.selected_size}</p>}
+                  <p>{item.quantity}x {formatPrice(item.unit_price)} = {formatPrice(item.total_price)}</p>
+                  
+                  {item.complements && item.complements.length > 0 && (
+                    <div className="ml-2 mt-1">
+                      <p>Complementos:</p>
+                      {item.complements.map((comp, idx) => (
+                        <p key={idx} className="ml-2">• {comp.name}{comp.price > 0 && ` (+${formatPrice(comp.price)})`}</p>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {item.observations && <p>Obs: {item.observations}</p>}
+                </div>
+              ))}
+              <p className="text-xs">--------------------------</p>
+            </div>
+            
+            <div className="mb-3">
+              <p className="text-xs">Subtotal: {formatPrice(order.total_price - (order.delivery_fee || 0))}</p>
+              {order.delivery_fee && order.delivery_fee > 0 && <p className="text-xs">Taxa: {formatPrice(order.delivery_fee)}</p>}
+              <p className="text-xs font-bold">TOTAL: {formatPrice(order.total_price)}</p>
+              <p className="text-xs">--------------------------</p>
+            </div>
+            
+            <div className="mb-3">
+              <p className="text-xs font-bold">PAGAMENTO:</p>
+              <p className="text-xs">Forma: {getPaymentMethodLabel(order.payment_method)}</p>
+              {order.change_for && <p className="text-xs">Troco para: {formatPrice(order.change_for)}</p>}
               {order.payment_method === 'pix' && (
-                <div className="text-center mb-4 pb-2 border-b border-dashed border-gray-400">
-                  <div className="font-bold mb-2">QR CODE PIX</div>
-                  <img 
-                    src="/WhatsApp Image 2025-07-22 at 14.53.40.jpeg" 
-                    alt="QR Code PIX" 
-                    className="w-24 h-24 mx-auto mb-2"
-                  />
-                  <div className="space-y-1">
-                    <div>Chave PIX: 85989041010</div>
-                    <div>Nome: Amanda Suyelen da Costa Pereira</div>
-                    <div className="font-bold">Valor: {formatPrice(order.total_price)}</div>
-                  </div>
-                  <p>--------------------------</p>
+                <div className="mt-2">
+                  <p className="text-xs">⚠️ IMPORTANTE:</p>
+                  <p className="text-xs">Envie o comprovante do PIX</p>
+                  <p className="text-xs">para confirmar o pedido!</p>
                 </div>
               )}
-              
-              <div className="mb-3">
-                <p className="text-xs">Pedido: #{order.id.slice(-8)}</p>
-                <p className="text-xs">Data: {new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
-                <p className="text-xs">Hora: {new Date(order.created_at).toLocaleTimeString('pt-BR')}</p>
-                <p className="text-xs">Status: {getStatusLabel(order.status)}</p>
-                <p className="text-xs">--------------------------</p>
-              </div>
-              
-              <div className="mb-3">
-                <p className="text-xs font-bold">CLIENTE:</p>
-                <p className="text-xs">Nome: {order.customer_name}</p>
-                <p className="text-xs">Telefone: {order.customer_phone}</p>
-                <p className="text-xs">Endereço: {order.customer_address}</p>
-                <p className="text-xs">Bairro: {order.customer_neighborhood}</p>
-                {order.customer_complement && <p className="text-xs">Complemento: {order.customer_complement}</p>}
-                <p className="text-xs">--------------------------</p>
-              </div>
-              
-              <div className="mb-3">
-                <p className="text-xs font-bold">ITENS:</p>
-                {order.items.map((item, index) => (
-                  <div key={index} className="text-xs mb-2">
-                    <p>{item.product_name}</p>
-                    {item.selected_size && <p>Tamanho: {item.selected_size}</p>}
-                    <p>{item.quantity}x {formatPrice(item.unit_price)} = {formatPrice(item.total_price)}</p>
-                    
-                    {item.complements && item.complements.length > 0 && (
-                      <div className="ml-2 mt-1">
-                        <p>Complementos:</p>
-                        {item.complements.map((comp, idx) => (
-                          <p key={idx} className="ml-2">• {comp.name}{comp.price > 0 && ` (+${formatPrice(comp.price)})`}</p>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {item.observations && <p>Obs: {item.observations}</p>}
-                  </div>
-                ))}
-                <p className="text-xs">--------------------------</p>
-              </div>
-              
-              <div className="mb-3">
-                <p className="text-xs">Subtotal: {formatPrice(order.total_price - (order.delivery_fee || 0))}</p>
-                {order.delivery_fee && order.delivery_fee > 0 && <p className="text-xs">Taxa: {formatPrice(order.delivery_fee)}</p>}
-                <p className="text-xs font-bold">TOTAL: {formatPrice(order.total_price)}</p>
-                <p className="text-xs">--------------------------</p>
-              </div>
-              
-              <div className="mb-3">
-                <p className="text-xs font-bold">PAGAMENTO:</p>
-                <p className="text-xs">Forma: {getPaymentMethodLabel(order.payment_method)}</p>
-                {order.change_for && <p className="text-xs">Troco para: {formatPrice(order.change_for)}</p>}
-                {order.payment_method === 'pix' && (
-                  <div className="mt-2">
-                    <p className="text-xs">⚠️ IMPORTANTE:</p>
-                    <p className="text-xs">Envie o comprovante do PIX</p>
-                    <p className="text-xs">para confirmar o pedido!</p>
-                  </div>
-                )}
-                <p className="text-xs">--------------------------</p>
-              </div>
-              
-              <div className="text-center text-xs">
-                <p>Obrigado pela preferência!</p>
-                <p>Elite Açaí</p>
-              </div>
+              <p className="text-xs">--------------------------</p>
+            </div>
+            
+            <div className="text-center text-xs">
+              <p>Obrigado pela preferência!</p>
+              <p>Elite Açaí</p>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
       {/* Print Content - Only visible when printing */}
       <div className="hidden print:block print:w-full print:h-full print:bg-white print:text-black thermal-print-content">
         <div style={{ fontFamily: 'Courier New, monospace', fontSize: '14px', lineHeight: '1.4', color: 'black', background: 'white', padding: '10mm' }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '1px dashed black', paddingBottom: '10px', color: 'black', background: 'white' }}>
-            <img 
-              src="/logo elite.jpeg" 
-              alt="Elite Açaí Logo" 
-              style={{ width: '60mm', height: 'auto', margin: '5px auto', display: 'block' }}
-            />
-            <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 5px 0' }}>ELITE AÇAÍ</h1>
+            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 5px 0', color: '#000' }}>ELITE AÇAÍ</h1>
             <p style={{ fontSize: '12px', margin: '2px 0' }}>Delivery Premium</p>
             <p style={{ fontSize: '10px', margin: '2px 0' }}>Rua Dois, 2130-A</p>
             <p style={{ fontSize: '10px', margin: '2px 0' }}>Residencial 1 - Cágado</p>
             <p style={{ fontSize: '10px', margin: '2px 0' }}>Tel: (85) 98904-1010</p>
             <p style={{ fontSize: '10px', margin: '2px 0' }}>CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
           </div>
-
-          {/* QR Code PIX */}
-          {order.payment_method === 'pix' && (
-            <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '1px dashed black', paddingBottom: '10px', color: 'black', background: 'white' }}>
-              <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>QR CODE PIX</p>
-              <img 
-                src="/WhatsApp Image 2025-07-22 at 14.53.40.jpeg" 
-                alt="QR Code PIX" 
-                style={{ width: '80px', height: '80px', margin: '0 auto', display: 'block' }}
-              />
-              <p style={{ fontSize: '10px', margin: '5px 0' }}>Chave PIX: 85989041010</p>
-              <p style={{ fontSize: '10px', margin: '5px 0' }}>Nome: Grupo Elite</p>
-              <p style={{ fontSize: '12px', fontWeight: 'bold', margin: '5px 0' }}>Valor: {formatPrice(order.total_price)}</p>
-            </div>
-          )}
 
           {/* Order Info */}
           <div style={{ marginBottom: '15px', color: 'black', background: 'white' }}>
@@ -566,7 +517,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           
           html, body {
             font-family: 'Courier New', monospace !important;
-            font-size: 12px !important;
+            font-size: 14px !important;
             line-height: 1.4 !important;
             color: black !important;
             background: white !important;
@@ -620,7 +571,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
             height: auto !important;
             overflow: visible !important;
             font-family: 'Courier New', monospace !important;
-            font-size: 12px !important;
+            font-size: 14px !important;
             line-height: 1.3 !important;
             color: black !important;
             background: white !important;
@@ -647,13 +598,6 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
             visibility: visible !important;
           }
           
-          /* Images for thermal printing */
-          .thermal-print-content img {
-            max-width: 60mm !important;
-            height: auto !important;
-            display: block !important;
-            margin: 5mm auto !important;
-          }
         }
       `}</style>
     </>
