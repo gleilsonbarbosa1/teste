@@ -39,6 +39,7 @@ const Cart: React.FC<CartProps> = ({
   const [showOrderTracking, setShowOrderTracking] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const { isOpen: isCashRegisterOpen } = usePDVCashRegister();
   const [customerBalance, setCustomerBalance] = useState<CustomerBalance | null>(null);
   const [appliedCashback, setAppliedCashback] = useState(0);
@@ -435,6 +436,32 @@ const Cart: React.FC<CartProps> = ({
       setShowCheckout(false);
       setShowOrderTracking(true);
       
+      // Mostrar mensagem de sucesso
+      setShowSuccessMessage(true);
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+      
+      // Criar notificação de sucesso
+      const successNotification = document.createElement('div');
+      successNotification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3';
+      successNotification.innerHTML = `
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <div>
+          <p class="font-semibold">Venda realizada com sucesso!</p>
+          <p class="text-sm opacity-90">Pedido enviado para o WhatsApp</p>
+        </div>
+      `;
+      document.body.appendChild(successNotification);
+      
+      setTimeout(() => {
+        if (document.body.contains(successNotification)) {
+          document.body.removeChild(successNotification);
+        }
+      }, 4000);
+      
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
       const message = generateWhatsAppMessage();
@@ -442,6 +469,32 @@ const Cart: React.FC<CartProps> = ({
       window.open(whatsappUrl, '_blank');
       onClearCart();
       setShowCheckout(false);
+      
+      // Mostrar mensagem de sucesso mesmo em caso de erro no banco
+      setShowSuccessMessage(true);
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+      
+      const successNotification = document.createElement('div');
+      successNotification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3';
+      successNotification.innerHTML = `
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <div>
+          <p class="font-semibold">Venda realizada com sucesso!</p>
+          <p class="text-sm opacity-90">Pedido enviado para o WhatsApp</p>
+        </div>
+      `;
+      document.body.appendChild(successNotification);
+      
+      setTimeout(() => {
+        if (document.body.contains(successNotification)) {
+          document.body.removeChild(successNotification);
+        }
+      }, 4000);
+      
       onClose();
     }
   };
@@ -1034,6 +1087,23 @@ const Cart: React.FC<CartProps> = ({
           initialComplements={editingItem.selectedComplements}
           isEditing={true}
         />
+      )}
+      
+      {/* Success Message Overlay */}
+      {showSuccessMessage && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl">
+            <div className="bg-green-100 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Venda Realizada!</h2>
+            <p className="text-gray-600 mb-4">
+              Seu pedido foi processado com sucesso e enviado para o WhatsApp da loja.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
