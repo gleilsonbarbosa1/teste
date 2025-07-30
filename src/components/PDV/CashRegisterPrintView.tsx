@@ -475,7 +475,6 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           </div>
         </div>
       </div>
-    </div>
 
       {/* Print Content - Only visible when printing */}
       <div className="hidden print:block print:w-full print:h-full print:bg-white print:text-black thermal-print-content">
