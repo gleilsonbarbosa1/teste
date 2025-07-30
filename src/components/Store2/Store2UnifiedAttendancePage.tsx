@@ -15,6 +15,7 @@ import {
 import Store2PDVSalesScreen from './Store2PDVSalesScreen';
 import Store2CashRegisterMenu from './Store2CashRegisterMenu';
 import TableSalesPanel from '../TableSales/TableSalesPanel';
+import SalesHistory from '../Orders/SalesHistory';
 import { useScale } from '../../hooks/useScale';
 import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
 import { PDVOperator } from '../../types/pdv';
@@ -199,6 +200,9 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
             </button>
           </div>
         </div>
+
+        {/* Histórico de Vendas */}
+        <SalesHistory storeId={2} />
 
         {/* Content */}
         <div className="transition-all duration-300 print:hidden">

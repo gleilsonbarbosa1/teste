@@ -17,6 +17,7 @@ import AttendantPanel from './Orders/AttendantPanel';
 import PDVSalesScreen from './PDV/PDVSalesScreen';
 import CashRegisterMenu from './PDV/CashRegisterMenu';
 import TableSalesPanel from './TableSales/TableSalesPanel';
+import SalesHistory from './Orders/SalesHistory';
 import { usePermissions } from '../hooks/usePermissions';
 import { useScale } from '../hooks/useScale';
 import { useOrders } from '../hooks/useOrders';
@@ -243,6 +244,9 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
             )}
           </div>
         </div>
+
+        {/* Histórico de Vendas */}
+        <SalesHistory storeId={1} />
 
         {/* Content */}
         <div className="transition-all duration-300 print:hidden">
