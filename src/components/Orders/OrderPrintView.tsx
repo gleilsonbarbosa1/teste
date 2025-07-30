@@ -259,11 +259,6 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-800">Imprimir Pedido ({printerSettings.paper_width})</h2>
               <div className="flex gap-2">
-                <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
-                  <span className="text-sm text-gray-600">Papel:</span>
-                  <span className="text-sm font-medium text-gray-800">{printerSettings.paper_width}</span>
-                  <span className="text-xs text-gray-500">({sizes.baseFontSize}px)</span>
-                </div>
                 <button
                   onClick={() => {
                     // Gerar mensagem do pedido para WhatsApp da loja
