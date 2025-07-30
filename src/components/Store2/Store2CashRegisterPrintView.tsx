@@ -269,18 +269,18 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
                 <button
                   onClick={() => {
                     // Gerar mensagem do pedido para WhatsApp da loja
-                    let message = \`🆕 *NOVO PEDIDO RECEBIDO - ELITE AÇAÍ*\n\n`;
-                    message += \`📋 *Pedido #${order.id.slice(-8)}*\n`;
-                    message += \`🕐 Recebido: ${new Date(order.created_at).toLocaleString('pt-BR')}\n`;
-                    message += \`📊 Status: ${getStatusLabel(order.status)}\n\n`;
+                    let message = \` *NOVO PEDIDO RECEBIDO - ELITE AÇAÍ*\n\n`;
+                    message += \` *Pedido #${order.id.slice(-8)}*\n`;
+                    message += \` Recebido: ${new Date(order.created_at).toLocaleString('pt-BR')}\n`;
+                    message += \` Status: ${getStatusLabel(order.status)}\n\n`;
                     
-                    message += \`👤 *CLIENTE:*\n`;
+                    message += \` *CLIENTE:*\n`;
                     message += \`Nome: ${order.customer_name}\n`;
-                    message += \`📱 Telefone: ${order.customer_phone}\n`;
-                    message += \`📍 Endereço: ${order.customer_address}\n`;
-                    message += \`🏘️ Bairro: ${order.customer_neighborhood}\n`;
+                    message += \` Telefone: ${order.customer_phone}\n`;
+                    message += \` Endereço: ${order.customer_address}\n`;
+                    message += \` Bairro: ${order.customer_neighborhood}\n`;
                     if (order.customer_complement) {
-                      message += \`🏠 Complemento: ${order.customer_complement}\n`;
+                      message += \` Complemento: ${order.customer_complement}\n`;
                     }
                     
                     // Adicionar link do Google Maps para localização
