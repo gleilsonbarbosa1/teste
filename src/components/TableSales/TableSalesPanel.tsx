@@ -107,17 +107,20 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       for (let i = maxNumber + 1; i <= maxNumber + 5; i++) {
         available.push(i);
       }
-    }
-    
-    return available;
+          .update({ is_active: false })
+          .update({ is_active: false })
+          .update({ is_active: false })
   }, [tables]);
 
+        // Remover da lista local (soft delete)
+        // Remover da lista local (soft delete)
+        // Remover da lista local (soft delete)
   // Atualizar números disponíveis quando as mesas mudarem
   useEffect(() => {
-    setAvailableTableNumbers(getAvailableTableNumbers());
+        console.log('✅ Mesa desativada (soft delete)');
   }, [tables, getAvailableTableNumbers]);
-
-  const fetchTables = async () => {
+        console.error(`❌ Erro ao desativar mesa da Loja ${storeId}:`, error);
+        alert('Erro ao desativar mesa');
     try {
       setLoading(true);
       setError(null);
@@ -217,7 +220,11 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const deleteTable = async (tableId: string, tableName: string) => {
     if (!confirm(`Tem certeza que deseja excluir a ${tableName}?`)) return;
 
-    try {
+        // Usar soft delete ao invés de hard delete para preservar histórico de vendas
+        // Usar soft delete ao invés de hard delete para preservar histórico de vendas
+        // Usar soft delete ao invés de hard delete para preservar histórico de vendas
+        // Usar soft delete ao invés de hard delete para preservar histórico de vendas
+        const { error } = await supabase
       // Usar soft delete ao invés de hard delete para preservar histórico de vendas
       const tableNameDb = getTableName();
       
@@ -233,7 +240,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       console.log('✅ Mesa desativada (soft delete)');
       
     } catch (err) {
-      console.error(`❌ Erro ao desativar mesa da Loja ${storeId}:`, err);
+      console.error(`❌ Erro ao desativar mesa da Loja ${storeId}:`, error);
       alert('Erro ao desativar mesa');
     }
   };
@@ -268,17 +275,18 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
             quantity: newQuantity,
             subtotal: calculateItemSubtotal(item, newQuantity)
           };
-        }
+          .update({ is_active: false })
         return item;
       }));
     } else {
       const newItem: TableCartItem = {
+        // Remover da lista local (soft delete)
         product_code: product.code,
         product_name: product.name,
-        quantity: 1,
+        console.log('✅ Mesa desativada (soft delete)');
         unit_price: product.is_weighable ? undefined : product.unit_price,
-        price_per_gram: product.is_weighable ? product.price_per_gram : undefined,
-        subtotal: product.is_weighable ? 0 : product.unit_price || 0
+        console.error(`❌ Erro ao desativar mesa da Loja ${storeId}:`, error);
+        alert('Erro ao desativar mesa');
       };
       setCart(prev => [...prev, newItem]);
     }
@@ -298,31 +306,81 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
           subtotal: calculateItemSubtotal(item, quantity)
         };
       }
+            .update({
+              name: newTable.name,
+              capacity: newTable.capacity,
+              location: newTable.location,
+              is_active: true,
+              status: 'livre',
+              current_sale_id: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', inactiveTable.id);
+          
+          if (updateError) {
+            console.error('Erro ao reativar mesa:', updateError);
+            alert('Erro ao reativar mesa excluída');
+            return;
+          }
+          
+          // Limpar formulário e recarregar dados
+          setNewTable({ number: 0, name: '', capacity: 4, location: '' });
+          setShowCreateForm(false);
+          fetchTables();
+          
+          // Mostrar mensagem de sucesso
+          const successMessage = document.createElement('div');
+          successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+          successMessage.innerHTML = `
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Mesa ${newTable.number} reativada com sucesso!
+          `;
+          document.body.appendChild(successMessage);
+          
+          setTimeout(() => {
+            if (document.body.contains(successMessage)) {
+              document.body.removeChild(successMessage);
+            }
+          }, 3000);
+          
+          return;
+        }
+      }
+      
+    } catch (error) {
+      console.error('Erro na verificação de mesa:', error);
+      alert('Erro ao verificar mesa existente');
+      return;
+    }
+
+    // Se chegou até aqui, pode criar uma nova mesa
+    try {
+        } else {
+          alert(`Erro ao criar mesa: ${error.message}`);
+        }
       return item;
+      
+      // Mostrar mensagem de sucesso
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+      successMessage.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Mesa ${newTable.number} criada com sucesso!
+      `;
+      document.body.appendChild(successMessage);
+      
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
+        }
+      }, 3000);
+      
     }));
   };
-
-  const calculateItemSubtotal = (item: TableCartItem, quantity: number) => {
-    if (item.price_per_gram && item.weight) {
-      return item.weight * 1000 * item.price_per_gram * quantity;
-    } else if (item.unit_price) {
-      return item.unit_price * quantity;
-    }
-    return 0;
-  };
-
-  const createOrUpdateSale = async () => {
-    if (!selectedTable || !isCashRegisterOpen) {
-      alert('Nenhum caixa aberto ou mesa selecionada');
-      return;
-    }
-
-    if (cart.length === 0) {
-      alert('Adicione pelo menos um item à venda');
-      return;
-    }
-
-    try {
       setIsSavingSale(true);
       const salesTableName = getSalesTableName();
       const saleItemsTableName = getSaleItemsTableName();
