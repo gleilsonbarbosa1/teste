@@ -968,6 +968,16 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               <div className="w-1/2 p-6 flex flex-col bg-white">
                 <h4 className="text-xl font-bold text-gray-800 mb-6">Carrinho da Venda</h4>
                 
+                {/* Loading Sale Items */}
+                {loadingSaleItems && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+                      <span className="text-blue-700 font-medium">Carregando itens da venda...</span>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Customer Info */}
                 <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -999,6 +1009,20 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                   </div>
                 </div>
 
+                {/* Notes */}
+                <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Observações
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white resize-none"
+                    rows={3}
+                    placeholder="Observações sobre a venda..."
+                  />
+                </div>
+
                 {/* Cart Items */}
                 <div className="flex-1 overflow-y-auto mb-6">
                   {cart.length === 0 ? (
@@ -1017,10 +1041,20 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                             <h5 className="font-bold text-gray-800">{item.product_name}</h5>
                             <button
                               onClick={() => setCart(prev => prev.filter((_, i) => i !== index))}
-                              className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors"
+                              className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors"
                             >
                               <Trash2 size={16} />
                             </button>
+                          </div>
+                          
+                          <div className="mb-3">
+                            <p className="text-sm text-gray-600 font-mono">Código: {item.product_code}</p>
+                            {item.weight && (
+                              <p className="text-sm text-gray-600">Peso: {item.weight}kg</p>
+                            )}
+                            {item.notes && (
+                              <p className="text-sm text-gray-500 italic">Obs: {item.notes}</p>
+                            )}
                           </div>
                           
                           <div className="flex items-center justify-between">
@@ -1042,6 +1076,19 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                             <span className="text-xl font-bold text-green-600">
                               {formatPrice(item.subtotal)}
                             </span>
+                          </div>
+                          
+                          {/* Item price breakdown */}
+                          <div className="mt-2 text-xs text-gray-500">
+                            {item.price_per_gram ? (
+                              <span>
+                                {formatPrice(item.price_per_gram * 1000)}/kg × {item.weight || 0}kg × {item.quantity}
+                              </span>
+                            ) : (
+                              <span>
+                                {formatPrice(item.unit_price || 0)} × {item.quantity}
+                              </span>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1094,6 +1141,11 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                       {formatPrice(calculateCartTotal())}
                     </span>
                   </div>
+                  {cart.length > 0 && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      {cart.length} item(ns) • Última atualização: {new Date().toLocaleTimeString('pt-BR')}
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
