@@ -107,20 +107,17 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       for (let i = maxNumber + 1; i <= maxNumber + 5; i++) {
         available.push(i);
       }
-          .update({ is_active: false })
-          .update({ is_active: false })
-          .update({ is_active: false })
+    }
+    
+    return available;
   }, [tables]);
 
-        // Remover da lista local (soft delete)
-        // Remover da lista local (soft delete)
-        // Remover da lista local (soft delete)
   // Atualizar números disponíveis quando as mesas mudarem
   useEffect(() => {
-        console.log('✅ Mesa desativada (soft delete)');
+    setAvailableTableNumbers(getAvailableTableNumbers());
   }, [tables, getAvailableTableNumbers]);
-        console.error(`❌ Erro ao desativar mesa da Loja ${storeId}:`, error);
-        alert('Erro ao desativar mesa');
+
+  const fetchTables = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -220,12 +217,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const deleteTable = async (tableId: string, tableName: string) => {
     if (!confirm(`Tem certeza que deseja excluir a ${tableName}?`)) return;
 
-        // Usar soft delete ao invés de hard delete para preservar histórico de vendas
-        // Usar soft delete ao invés de hard delete para preservar histórico de vendas
-        // Usar soft delete ao invés de hard delete para preservar histórico de vendas
-        // Usar soft delete ao invés de hard delete para preservar histórico de vendas
-        // Usar soft delete ao invés de hard delete para preservar histórico de vendas
-        const { error } = await supabase
+    try {
       // Usar soft delete ao invés de hard delete para preservar histórico de vendas
       const tableNameDb = getTableName();
       
@@ -241,7 +233,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       console.log('✅ Mesa desativada (soft delete)');
       
     } catch (err) {
-      console.error(`❌ Erro ao desativar mesa da Loja ${storeId}:`, error);
+      console.error(`❌ Erro ao desativar mesa da Loja ${storeId}:`, err);
       alert('Erro ao desativar mesa');
     }
   };
@@ -264,6 +256,13 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     setShowSaleModal(true);
   };
 
+  const calculateItemSubtotal = (item: TableCartItem, quantity: number) => {
+    if (item.price_per_gram && item.weight) {
+      return item.price_per_gram * item.weight * quantity;
+    }
+    return (item.unit_price || 0) * quantity;
+  };
+
   const addToCart = (product: any) => {
     const existingIndex = cart.findIndex(item => item.product_code === product.code);
     
@@ -276,18 +275,18 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
             quantity: newQuantity,
             subtotal: calculateItemSubtotal(item, newQuantity)
           };
-          .update({ is_active: false })
+        }
         return item;
       }));
     } else {
       const newItem: TableCartItem = {
-        // Remover da lista local (soft delete)
         product_code: product.code,
         product_name: product.name,
-        console.log('✅ Mesa desativada (soft delete)');
+        quantity: 1,
         unit_price: product.is_weighable ? undefined : product.unit_price,
-        console.error(`❌ Erro ao desativar mesa da Loja ${storeId}:`, error);
-        alert('Erro ao desativar mesa');
+        price_per_gram: product.is_weighable ? product.price_per_gram : undefined,
+        weight: product.is_weighable ? 1 : undefined,
+        subtotal: product.is_weighable ? (product.price_per_gram || 0) : (product.unit_price || 0)
       };
       setCart(prev => [...prev, newItem]);
     }
@@ -307,97 +306,90 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
           subtotal: calculateItemSubtotal(item, quantity)
         };
       }
-            .update({
-              name: newTable.name,
-              capacity: newTable.capacity,
-              location: newTable.location,
-              is_active: true,
-              status: 'livre',
-              current_sale_id: null,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', inactiveTable.id);
-          .update({ is_active: false })
-          if (updateError) {
-            console.error('Erro ao reativar mesa:', updateError);
-            alert('Erro ao reativar mesa excluída');
-            return;
-        // Remover da lista local (soft delete)
-          }
-          
-        console.log('✅ Mesa desativada (soft delete)');
-          setNewTable({ number: 0, name: '', capacity: 4, location: '' });
-        console.error(`❌ Erro ao desativar mesa da Loja ${storeId}:`, error);
-        alert('Erro ao desativar mesa');
-          
-          // Mostrar mensagem de sucesso
-          const successMessage = document.createElement('div');
-          successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
-          successMessage.innerHTML = `
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            Mesa ${newTable.number} reativada com sucesso!
-          `;
-          document.body.appendChild(successMessage);
-          
-          setTimeout(() => {
-            if (document.body.contains(successMessage)) {
-              document.body.removeChild(successMessage);
-            }
-          }, 3000);
-          
-          return;
-        }
-      }
-    } catch (error) {
-      console.error('Erro na verificação de mesa:', error);
-      alert(error instanceof Error ? error.message : 'Erro ao criar mesa');
-      return;
-    }
-
-    // Se chegou até aqui, pode criar uma nova mesa
-    try {
-        } else {
-          alert(`Erro ao criar mesa: ${error.message}`);
-        }
       return item;
-      
-      // Mostrar mensagem de sucesso
-      const successMessage = document.createElement('div');
-      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
-      successMessage.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-        </svg>
-        Mesa ${newTable.number} criada com sucesso!
-      `;
-      document.body.appendChild(successMessage);
-      if (currentSale) {
-      // Criar nova mesa (ignora mesas inativas)
-      console.log('🆕 Criando nova mesa');
-      const { data: createdTable, error: createError } = await supabase
-        .from(`${storePrefix}_tables`)
-        .insert([{
-          number: newTable.number,
-          name: newTable.name,
-          capacity: newTable.capacity,
-          location: newTable.location || null,
-          status: 'livre',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
-        .select()
-        .single();
+    }));
+  };
 
-      if (createError) {
-        console.error('❌ Erro ao criar mesa:', createError);
-        if (createError.code === '23505') {
-          alert(`Mesa ${newTable.number} já existe. Recarregue a página e tente novamente.`);
-        } else {
-          throw new Error(`Erro ao criar mesa: ${createError.message}`);
+  const createOrUpdateSale = async () => {
+    if (!selectedTable || cart.length === 0) return;
+
+    try {
+      setIsSavingSale(true);
+      const salesTableName = getSalesTableName();
+      const saleItemsTableName = getSaleItemsTableName();
+      const tableName = getTableName();
+      const subtotal = calculateCartTotal();
+      const total = subtotal;
+
+      let sale;
+
+      if (currentSale) {
+        // Atualizar venda existente
+        const { data: updatedSale, error: saleError } = await supabase
+          .from(salesTableName)
+          .update({
+            customer_name: customerName,
+            customer_count: customerCount,
+            subtotal: subtotal,
+            total_amount: total,
+            notes: notes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', currentSale.id)
+          .select()
+          .single();
+
+        if (saleError) throw saleError;
+        sale = updatedSale;
+
+        // Deletar itens existentes
+        await supabase
+          .from(saleItemsTableName)
+          .update({ is_active: false })
+          .eq('sale_id', currentSale.id);
+      } else {
+        // Criar nova venda
+        const { data: newSale, error: saleError } = await supabase
+          .from(salesTableName)
+          .insert([{
+            table_id: selectedTable.id,
+            operator_name: operatorName,
+            customer_name: customerName,
+            customer_count: customerCount,
+            subtotal: subtotal,
+            total_amount: total,
+            status: 'aberta',
+            notes: notes
+          }])
+          .select()
+          .single();
+
+        if (saleError) throw saleError;
+        sale = newSale;
+
+        // Atualizar mesa com venda atual
+        await supabase
+          .from(tableName)
+          .update({ 
+            current_sale_id: sale.id,
+            status: 'ocupada'
+          })
+          .eq('id', selectedTable.id);
       }
+
+      // Inserir itens da venda
+      const saleItems = cart.map(item => ({
+        sale_id: sale.id,
+        product_code: item.product_code,
+        product_name: item.product_name,
+        quantity: item.quantity,
+        weight_kg: item.weight,
+        unit_price: item.unit_price,
+        price_per_gram: item.price_per_gram,
+        discount_amount: 0,
+        subtotal: item.subtotal,
+        notes: item.notes
+      }));
 
       const { error: itemsError } = await supabase
         .from(saleItemsTableName)
@@ -451,27 +443,12 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       // Adicionar ao caixa
       if (addCashEntry) {
         await addCashEntry({
-        return;
+          type: 'income',
+          amount: currentSale.total_amount,
+          description: `Venda Mesa #${selectedTable.number} - ${getStoreName()} (${getPaymentMethodName(paymentMethod)})`,
+          payment_method: paymentMethod
+        });
       }
-
-      console.log('✅ Mesa criada:', createdTable);
-      
-      // Mostrar mensagem de sucesso
-      const successMessage = document.createElement('div');
-      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
-      successMessage.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-        </svg>
-        Mesa ${newTable.number} criada com sucesso!
-      `;
-      document.body.appendChild(successMessage);
-      
-      setTimeout(() => {
-        if (document.body.contains(successMessage)) {
-          document.body.removeChild(successMessage);
-        }
-      }, 3000);
 
       // Mostrar mensagem de sucesso
       setSuccessMessage(`Venda da Mesa ${currentSale.table.name} finalizada com sucesso!`);
