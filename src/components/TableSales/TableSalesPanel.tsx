@@ -944,10 +944,10 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
       {/* Sale Modal */}
       {showSaleModal && selectedTable && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-indigo-50">
+            <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-indigo-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-3 rounded-xl">
@@ -976,9 +976,9 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               </div>
             </div>
 
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden min-h-0">
               {/* Products Section */}
-              <div className="w-1/2 border-r border-gray-200 p-6 overflow-y-auto bg-gray-50">
+              <div className="w-1/2 border-r border-gray-200 p-4 overflow-y-auto bg-gray-50">
                 <div className="mb-6">
                   <h4 className="text-xl font-bold text-gray-800 mb-4">Produtos Disponíveis</h4>
                   
@@ -1026,7 +1026,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               </div>
 
               {/* Cart Section */}
-              <div className="w-1/2 p-6 flex flex-col bg-white">
+              <div className="w-1/2 p-4 flex flex-col bg-white min-h-0">
                 <h4 className="text-xl font-bold text-gray-800 mb-6">Carrinho da Venda</h4>
                 
                 {/* Loading Sale Items */}
