@@ -39,11 +39,15 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     capacity: 4,
     location: ''
   });
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [selectedWeightProduct, setSelectedWeightProduct] = useState<any>(null);
+  const [loadingSaleItems, setLoadingSaleItems] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const { products: pdvProducts, loading: productsLoading } = usePDVProducts();
   const loja1CashRegister = usePDVCashRegister();
   const loja2CashRegister = useStore2PDVCashRegister();
-  const [loadingSaleItems, setLoadingSaleItems] = useState(false);
   
   const cashRegisterHook = storeId === 1 ? loja1CashRegister : loja2CashRegister;
   const { isOpen: isCashRegisterOpen, currentRegister, addCashEntry } = cashRegisterHook;
@@ -452,6 +456,15 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         });
       }
 
+      // Mostrar mensagem de sucesso
+      setSuccessMessage(`Venda da Mesa ${currentSale.table.name} finalizada com sucesso!`);
+      setShowSuccessMessage(true);
+      
+      // Ocultar mensagem após 3 segundos
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+
       await fetchTables();
       setShowSaleModal(false);
       setCurrentSale(null);
@@ -827,6 +840,24 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Success Message Overlay */}
+      {showSuccessMessage && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl">
+            <div className="bg-green-100 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Venda Finalizada!</h2>
+            <p className="text-gray-600 mb-4">{successMessage}</p>
+            <div className="text-sm text-gray-500">
+              A mesa foi liberada e está disponível para novo atendimento.
+            </div>
+          </div>
         </div>
       )}
 
