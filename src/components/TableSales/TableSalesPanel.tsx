@@ -108,10 +108,11 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         available.push(i);
       }
           .update({ is_active: false })
-    
+          .update({ is_active: false })
     return available;
   }, [tables]);
 
+        // Remover da lista local (soft delete)
         // Remover da lista local (soft delete)
   // Atualizar números disponíveis quando as mesas mudarem
   useEffect(() => {
@@ -218,6 +219,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const deleteTable = async (tableId: string, tableName: string) => {
     if (!confirm(`Tem certeza que deseja excluir a ${tableName}?`)) return;
 
+        // Usar soft delete ao invés de hard delete para preservar histórico de vendas
         // Usar soft delete ao invés de hard delete para preservar histórico de vendas
         const { error } = await supabase
       // Usar soft delete ao invés de hard delete para preservar histórico de vendas
