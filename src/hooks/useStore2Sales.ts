@@ -1036,11 +1036,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                 <input
                   type="text"
                   value={newTable.location}
- 
-      )
-      }
-  )
-}                 onChange={(e) => setNewTable(prev => ({ ...prev, location: e.target.value }))}
+                  onChange={(e) => setNewTable(prev => ({ ...prev, location: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   placeholder="Área Central"
                 />
