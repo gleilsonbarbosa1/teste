@@ -42,6 +42,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const { products: pdvProducts, loading: productsLoading } = usePDVProducts();
   const loja1CashRegister = usePDVCashRegister();
   const loja2CashRegister = useStore2PDVCashRegister();
+  const [loadingSaleItems, setLoadingSaleItems] = useState(false);
   
   const cashRegisterHook = storeId === 1 ? loja1CashRegister : loja2CashRegister;
   const { isOpen: isCashRegisterOpen, currentRegister, addCashEntry } = cashRegisterHook;
