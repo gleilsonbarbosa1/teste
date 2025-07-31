@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, Plus, Trash2, RefreshCw, AlertCircle, Clock, CheckCircle, 
   Utensils, Sparkles, ShoppingCart, X, Minus, Calculator, DollarSign,
@@ -32,6 +32,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const [notes, setNotes] = useState('');
   const [isSavingSale, setIsSavingSale] = useState(false);
   const [isFinalizingSale, setIsFinalizingSale] = useState(false);
+  const [availableTableNumbers, setAvailableTableNumbers] = useState<number[]>([]);
   const [newTable, setNewTable] = useState({
     number: '',
     name: '',
@@ -68,6 +69,49 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const calculateCartTotal = () => {
     return cart.reduce((total, item) => total + item.subtotal, 0);
   };
+
+  // Função para encontrar o próximo número de mesa disponível
+  const getNextAvailableTableNumber = useCallback(() => {
+    const existingNumbers = tables.map(table => table.number).sort((a, b) => a - b);
+    
+    // Procurar por gaps na sequência
+    for (let i = 1; i <= existingNumbers.length + 1; i++) {
+      if (!existingNumbers.includes(i)) {
+        return i;
+      }
+    }
+    
+    // Se não há gaps, retornar o próximo número
+    return existingNumbers.length + 1;
+  }, [tables]);
+
+  // Função para obter números de mesa disponíveis (incluindo gaps)
+  const getAvailableTableNumbers = useCallback(() => {
+    const existingNumbers = tables.map(table => table.number).sort((a, b) => a - b);
+    const available: number[] = [];
+    
+    // Adicionar gaps na sequência
+    for (let i = 1; i <= Math.max(...existingNumbers, 0) + 1; i++) {
+      if (!existingNumbers.includes(i)) {
+        available.push(i);
+      }
+    }
+    
+    // Se não há gaps, adicionar os próximos 5 números
+    if (available.length === 0) {
+      const maxNumber = Math.max(...existingNumbers, 0);
+      for (let i = maxNumber + 1; i <= maxNumber + 5; i++) {
+        available.push(i);
+      }
+    }
+    
+    return available;
+  }, [tables]);
+
+  // Atualizar números disponíveis quando as mesas mudarem
+  useEffect(() => {
+    setAvailableTableNumbers(getAvailableTableNumbers());
+  }, [tables, getAvailableTableNumbers]);
 
   const fetchTables = async () => {
     try {
@@ -796,7 +840,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                   <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-lg">
                     <Plus size={24} className="text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800">Nova Mesa - {getStoreName()}</h3>
+                  <h3 className="text-xl font-bold text-gray-800">Criar Nova Mesa {storeId === 1 ? '- Loja 1' : '- Loja 2'}</h3>
                 </div>
                 <button
                   onClick={() => setShowCreateModal(false)}
@@ -811,15 +855,30 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Número *
+                    Número da Mesa
                   </label>
-                  <input
-                    type="number"
-                    value={newTable.number}
-                    onChange={(e) => setNewTable(prev => ({ ...prev, number: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                    placeholder="1"
-                  />
+                  <div className="space-y-2">
+                    <select
+                      value={newTable.number}
+                      onChange={(e) => setNewTable(prev => ({ ...prev, number: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    >
+                      <option value="">Selecione um número</option>
+                      {availableTableNumbers.map(num => (
+                        <option key={num} value={num}>
+                          Mesa {num} {tables.find(t => t.number === num) ? '(Reutilizar)' : '(Novo)'}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="text-xs text-gray-500">
+                      {availableTableNumbers.length > 0 ? (
+                        <span>
+                          Números disponíveis: {availableTableNumbers.slice(0, 5).join(', ')}
+                          {availableTableNumbers.length > 5 && '...'}
+                        </span>
+                      ) : 'Próximo número: ' + (getNextAvailableTableNumber())}
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -873,8 +932,9 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               <button
                 onClick={createTable}
                 disabled={!newTable.number || !newTable.name}
-                className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200"
+                className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2"
               >
+                <Plus size={16} />
                 Criar Mesa
               </button>
             </div>
