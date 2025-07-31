@@ -1,14 +1,81 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { 
-  Users, Plus, Trash2, RefreshCw, AlertCircle, Clock, CheckCircle, 
-  Utensils, Sparkles, ShoppingCart, X, Minus, Calculator, DollarSign,
-  Save, Package, Search, Eye, Edit3, User, MapPin, Settings
-} from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { RestaurantTable, TableSale, TableCartItem } from '../../types/table-sales';
-import { usePDVProducts } from '../../hooks/usePDV';
-import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
-import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
+import { 
+  Users, 
+  Plus, 
+  Edit3, 
+  Trash2, 
+  DollarSign, 
+  Clock,
+  User,
+  Package,
+  Calculator,
+  Save,
+  X,
+  AlertCircle,
+  CheckCircle,
+  RefreshCw,
+  Coffee
+} from 'lucide-react';
+
+interface RestaurantTable {
+  id: string;
+  number: number;
+  name: string;
+  capacity: number;
+  status: 'livre' | 'ocupada' | 'aguardando_conta' | 'limpeza';
+  location?: string;
+  is_active: boolean;
+  current_sale_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface TableSale {
+  id: string;
+  table_id: string;
+  sale_number: number;
+  operator_name?: string;
+  customer_name?: string;
+  customer_count: number;
+  subtotal: number;
+  discount_amount: number;
+  total_amount: number;
+  payment_type?: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto';
+  change_amount: number;
+  status: 'aberta' | 'fechada' | 'cancelada';
+  notes?: string;
+  opened_at: string;
+  closed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface TableSaleItem {
+  id: string;
+  sale_id: string;
+  product_code: string;
+  product_name: string;
+  quantity: number;
+  weight_kg?: number;
+  unit_price?: number;
+  price_per_gram?: number;
+  discount_amount: number;
+  subtotal: number;
+  notes?: string;
+  created_at: string;
+}
+
+interface TableCartItem {
+  product_code: string;
+  product_name: string;
+  quantity: number;
+  weight?: number;
+  unit_price?: number;
+  price_per_gram?: number;
+  subtotal: number;
+  notes?: string;
+}
 
 interface TableSalesPanelProps {
   storeId: number;
@@ -17,51 +84,57 @@ interface TableSalesPanelProps {
 
 const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName }) => {
   const [tables, setTables] = useState<RestaurantTable[]>([]);
+  const [sales, setSales] = useState<TableSale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showSaleModal, setShowSaleModal] = useState(false);
+  const [showCreateTable, setShowCreateTable] = useState(false);
+  const [showCreateSale, setShowCreateSale] = useState(false);
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
   const [currentSale, setCurrentSale] = useState<TableSale | null>(null);
-  const [cart, setCart] = useState<TableCartItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerCount, setCustomerCount] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto'>('dinheiro');
-  const [changeFor, setChangeFor] = useState<number | undefined>();
-  const [notes, setNotes] = useState('');
-  const [isSavingSale, setIsSavingSale] = useState(false);
-  const [isFinalizingSale, setIsFinalizingSale] = useState(false);
-  const [availableTableNumbers, setAvailableTableNumbers] = useState<number[]>([]);
-  const [newTable, setNewTable] = useState({
+  const [cartItems, setCartItems] = useState<TableCartItem[]>([]);
+  const [supabaseConfigured, setSupabaseConfigured] = useState(true);
+
+  // Form states
+  const [tableForm, setTableForm] = useState({
     number: '',
     name: '',
     capacity: 4,
     location: ''
   });
-  const [showWeightModal, setShowWeightModal] = useState(false);
-  const [selectedWeightProduct, setSelectedWeightProduct] = useState<any>(null);
-  const [loadingSaleItems, setLoadingSaleItems] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
-  const { products: pdvProducts, loading: productsLoading } = usePDVProducts();
-  const loja1CashRegister = usePDVCashRegister();
-  const loja2CashRegister = useStore2PDVCashRegister();
-  
-  const cashRegisterHook = storeId === 1 ? loja1CashRegister : loja2CashRegister;
-  const { isOpen: isCashRegisterOpen, currentRegister, addCashEntry } = cashRegisterHook;
+  const [saleForm, setSaleForm] = useState({
+    customer_name: '',
+    customer_count: 1,
+    payment_type: 'dinheiro' as const,
+    change_amount: 0,
+    notes: ''
+  });
 
-  const getStoreName = () => storeId === 1 ? 'Loja 1' : 'Loja 2';
-  const getTableName = () => storeId === 1 ? 'store1_tables' : 'store2_tables';
+  const [itemForm, setItemForm] = useState({
+    product_code: '',
+    product_name: '',
+    quantity: 1,
+    unit_price: 0,
+    notes: ''
+  });
+
+  // Get table names
+  const getTableTableName = () => storeId === 1 ? 'store1_tables' : 'store2_tables';
   const getSalesTableName = () => storeId === 1 ? 'store1_table_sales' : 'store2_table_sales';
-  const getSaleItemsTableName = () => storeId === 1 ? 'store1_table_sale_items' : 'store2_table_sale_items';
+  const getItemsTableName = () => storeId === 1 ? 'store1_table_sale_items' : 'store2_table_sale_items';
 
-  const filteredProducts = searchTerm ? 
-    pdvProducts.filter(p => 
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.code.toLowerCase().includes(searchTerm.toLowerCase())
-    ) : pdvProducts;
+  // Check Supabase configuration
+  useEffect(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    const isConfigured = supabaseUrl && supabaseKey && 
+                        supabaseUrl !== 'your_supabase_url_here' && 
+                        supabaseKey !== 'your_supabase_anon_key_here' &&
+                        !supabaseUrl.includes('placeholder');
+    
+    setSupabaseConfigured(isConfigured);
+  }, []);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -70,190 +143,179 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     }).format(price);
   };
 
-  const calculateCartTotal = () => {
-    return cart.reduce((total, item) => total + item.subtotal, 0);
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString('pt-BR');
   };
 
-  // Função para encontrar o próximo número de mesa disponível
-  const getNextAvailableTableNumber = useCallback(() => {
-    const existingNumbers = tables.map(table => table.number).sort((a, b) => a - b);
-    
-    // Procurar por gaps na sequência
-    for (let i = 1; i <= existingNumbers.length + 1; i++) {
-      if (!existingNumbers.includes(i)) {
-        return i;
-      }
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'livre': return 'bg-green-100 text-green-800';
+      case 'ocupada': return 'bg-red-100 text-red-800';
+      case 'aguardando_conta': return 'bg-yellow-100 text-yellow-800';
+      case 'limpeza': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-    
-    // Se não há gaps, retornar o próximo número
-    return existingNumbers.length + 1;
-  }, [tables]);
+  };
 
-  // Função para obter números de mesa disponíveis (incluindo gaps)
-  const getAvailableTableNumbers = useCallback(() => {
-    const existingNumbers = tables.map(table => table.number).sort((a, b) => a - b);
-    const available: number[] = [];
-    
-    // Adicionar gaps na sequência
-    for (let i = 1; i <= Math.max(...existingNumbers, 0) + 1; i++) {
-      if (!existingNumbers.includes(i)) {
-        available.push(i);
-      }
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'livre': return 'Livre';
+      case 'ocupada': return 'Ocupada';
+      case 'aguardando_conta': return 'Aguardando Conta';
+      case 'limpeza': return 'Limpeza';
+      default: return status;
     }
-    
-    // Se não há gaps, adicionar os próximos 5 números
-    if (available.length === 0) {
-      const maxNumber = Math.max(...existingNumbers, 0);
-      for (let i = maxNumber + 1; i <= maxNumber + 5; i++) {
-        available.push(i);
-      }
-    }
-    
-    return available;
-  }, [tables]);
+  };
 
-  // Atualizar números disponíveis quando as mesas mudarem
-  useEffect(() => {
-    setAvailableTableNumbers(getAvailableTableNumbers());
-  }, [tables, getAvailableTableNumbers]);
-
-  const fetchTables = async () => {
+  const fetchTables = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
+      console.log(`🔄 Carregando mesas da Loja ${storeId}...`);
       
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
-        console.warn(`⚠️ Supabase não configurado - usando dados de demonstração para ${getStoreName()}`);
-        setTables([]);
-        setLoading(false);
+      if (!supabaseConfigured) {
+        console.warn('⚠️ Supabase não configurado - usando dados de demonstração');
+        
+        const demoTables: RestaurantTable[] = [
+          {
+            id: '1',
+            number: 1,
+            name: 'Mesa 1',
+            capacity: 4,
+            status: 'livre',
+            location: 'Área principal',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: '2',
+            number: 2,
+            name: 'Mesa 2',
+            capacity: 6,
+            status: 'ocupada',
+            location: 'Área principal',
+            is_active: true,
+            current_sale_id: 'demo-sale-1',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ];
+        
+        setTables(demoTables);
         return;
       }
 
-      const tableName = getTableName();
-      const salesTableName = getSalesTableName();
-      
       const { data, error } = await supabase
-        .from(tableName)
-        .select(`*, current_sale:${salesTableName}!${tableName}_current_sale_id_fkey(*)`)
+        .from(getTableTableName())
+        .select('*')
         .eq('is_active', true)
         .order('number');
 
       if (error) throw error;
-      
+
       setTables(data || []);
-      console.log(`✅ ${data?.length || 0} mesas carregadas para ${getStoreName()}`);
+      console.log(`✅ ${data?.length || 0} mesas carregadas da Loja ${storeId}`);
     } catch (err) {
-      console.error(`❌ Erro ao carregar mesas da ${getStoreName()}:`, err);
+      console.error(`❌ Erro ao carregar mesas da Loja ${storeId}:`, err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar mesas');
-      setTables([]);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [storeId, supabaseConfigured]);
 
-  const createTable = async () => {
-    if (!newTable.number || !newTable.name) {
-      alert('Número e nome da mesa são obrigatórios');
-      return;
-    }
-
-    const storePrefix = storeId === 1 ? 'store1' : 'store2';
-
-    // Verificar se existe uma mesa inativa com o mesmo número
+  const fetchSales = useCallback(async () => {
     try {
-      const { data: inactiveTable, error: checkError } = await supabase
-        .from(`${storePrefix}_tables`)
-        .select('*')
-        .eq('number', parseInt(newTable.number))
-        .eq('is_active', false)
-        .single();
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-
-      // Se existe uma mesa inativa, reativar ela
-      if (inactiveTable) {
-        console.log('🔄 Reativando mesa existente');
-        const { error: updateError } = await supabase
-          .from(`${storePrefix}_tables`)
-          .update({
-            name: newTable.name,
-            capacity: newTable.capacity,
-            location: newTable.location,
-            is_active: true,
-            status: 'livre',
-            current_sale_id: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', inactiveTable.id);
-
-        if (updateError) {
-          console.error('Erro ao reativar mesa:', updateError);
-          alert('Erro ao reativar mesa excluída');
-          return;
-        }
-
-        await fetchTables();
-        setShowCreateModal(false);
-        setNewTable({ number: '', name: '', capacity: 4, location: '' });
-        
-        // Mostrar mensagem de sucesso
-        const successMessage = document.createElement('div');
-        successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
-        successMessage.innerHTML = `
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-          Mesa ${newTable.number} reativada com sucesso!
-        `;
-        document.body.appendChild(successMessage);
-        
-        setTimeout(() => {
-          if (document.body.contains(successMessage)) {
-            document.body.removeChild(successMessage);
-          }
-        }, 3000);
-        
+      if (!supabaseConfigured) {
+        setSales([]);
         return;
       }
-    } catch (error) {
-      console.error('Erro na verificação de mesa:', error);
-      alert(error instanceof Error ? error.message : 'Erro ao criar mesa');
-      return;
-    }
 
-    // Se chegou até aqui, pode criar uma nova mesa
+      console.log(`🔄 Carregando vendas de mesa da Loja ${storeId}...`);
+
+      const { data, error } = await supabase
+        .from(getSalesTableName())
+        .select(`
+          *,
+          ${getItemsTableName()}(*)
+        `)
+        .eq('status', 'aberta')
+        .order('opened_at', { ascending: false });
+
+      if (error) throw error;
+
+      setSales(data || []);
+      console.log(`✅ ${data?.length || 0} vendas de mesa carregadas da Loja ${storeId}`);
+    } catch (err) {
+      console.error(`❌ Erro ao carregar vendas da Loja ${storeId}:`, err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar vendas');
+    }
+  }, [storeId, supabaseConfigured]);
+
+  const createTable = async () => {
     try {
-      // Criar nova mesa (ignora mesas inativas)
-      console.log('🆕 Criando nova mesa');
-      const { data: createdTable, error: createError } = await supabase
-        .from(`${storePrefix}_tables`)
+      if (!tableForm.number || !tableForm.name) {
+        alert('Número e nome da mesa são obrigatórios');
+        return;
+      }
+
+      const tableNumber = parseInt(tableForm.number);
+      if (isNaN(tableNumber) || tableNumber <= 0) {
+        alert('Número da mesa deve ser um número válido maior que zero');
+        return;
+      }
+
+      console.log(`🚀 Criando mesa ${tableNumber} na Loja ${storeId}...`);
+
+      if (!supabaseConfigured) {
+        alert('Supabase não configurado. Configure as variáveis de ambiente para usar esta funcionalidade.');
+        return;
+      }
+
+      // NOVA LÓGICA: Verificar apenas mesas ATIVAS com o mesmo número
+      const { data: existingTables, error: checkError } = await supabase
+        .from(getTableTableName())
+        .select('id, number, is_active')
+        .eq('number', tableNumber)
+        .eq('is_active', true);
+
+      if (checkError) {
+        console.error('❌ Erro ao verificar mesas existentes:', checkError);
+        throw new Error(`Erro ao verificar mesas: ${checkError.message}`);
+      }
+
+      // Se existe mesa ATIVA com o mesmo número, bloquear
+      if (existingTables && existingTables.length > 0) {
+        alert(`❌ Mesa ${tableNumber} já existe e está ativa. Escolha outro número.`);
+        return;
+      }
+
+      console.log(`✅ Número ${tableNumber} disponível para uso`);
+
+      // Criar nova mesa
+      const { data, error } = await supabase
+        .from(getTableTableName())
         .insert([{
-          number: parseInt(newTable.number),
-          name: newTable.name,
-          capacity: newTable.capacity,
-          location: newTable.location || null,
+          number: tableNumber,
+          name: tableForm.name,
+          capacity: tableForm.capacity,
+          location: tableForm.location || null,
           status: 'livre',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          is_active: true
         }])
         .select()
         .single();
 
-      if (createError) {
-        console.error('❌ Erro ao criar mesa:', createError);
-        if (createError.code === '23505') {
-          alert(`Mesa ${newTable.number} já existe. Recarregue a página e tente novamente.`);
-        } else {
-          alert(`Erro ao criar mesa: ${createError.message}`);
+      if (error) {
+        console.error('❌ Erro ao criar mesa:', error);
+        
+        // Tratamento específico para constraint de unicidade
+        if (error.code === '23505') {
+          alert('❌ Conflito de número de mesa. Tente recarregar a página e verificar novamente.');
+          await fetchTables(); // Recarregar dados
+          return;
         }
-        return;
+        
+        throw new Error(`Erro ao criar mesa: ${error.message}`);
       }
 
-      console.log('✅ Mesa criada:', createdTable);
+      console.log('✅ Mesa criada com sucesso:', data);
       
       // Mostrar mensagem de sucesso
       const successMessage = document.createElement('div');
@@ -262,7 +324,73 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
         </svg>
-        Mesa ${newTable.number} criada com sucesso!
+        Mesa ${tableNumber} criada com sucesso!
+      `;
+      document.body.appendChild(successMessage);
+      
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
+        }
+      }, 3000);
+
+      setTableForm({
+        number: '',
+        name: '',
+        capacity: 4,
+        location: ''
+      });
+      setShowCreateTable(false);
+      await fetchTables();
+    } catch (err) {
+      console.error('❌ Erro na criação da mesa:', err);
+      alert(`Erro ao criar mesa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+    }
+  };
+
+  const deleteTable = async (table: RestaurantTable) => {
+    if (table.status === 'ocupada') {
+      alert('❌ Não é possível excluir mesa ocupada. Finalize a venda primeiro.');
+      return;
+    }
+
+    if (!confirm(`Tem certeza que deseja excluir a ${table.name}?`)) {
+      return;
+    }
+
+    try {
+      console.log(`🗑️ Excluindo mesa ${table.number} da Loja ${storeId}...`);
+
+      if (!supabaseConfigured) {
+        alert('Supabase não configurado. Configure as variáveis de ambiente para usar esta funcionalidade.');
+        return;
+      }
+
+      // Marcar como inativa ao invés de deletar
+      const { error } = await supabase
+        .from(getTableTableName())
+        .update({ 
+          is_active: false,
+          status: 'livre',
+          current_sale_id: null
+        })
+        .eq('id', table.id);
+
+      if (error) {
+        console.error('❌ Erro ao excluir mesa:', error);
+        throw new Error(`Erro ao excluir mesa: ${error.message}`);
+      }
+
+      console.log('✅ Mesa excluída (marcada como inativa)');
+      
+      // Mostrar mensagem de sucesso
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+      successMessage.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Mesa ${table.number} excluída com sucesso!
       `;
       document.body.appendChild(successMessage);
       
@@ -273,784 +401,532 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       }, 3000);
 
       await fetchTables();
-      setShowCreateModal(false);
-      setNewTable({ number: '', name: '', capacity: 4, location: '' });
-      
     } catch (err) {
-      console.error(`❌ Erro ao criar mesa na ${getStoreName()}:`, err);
-      alert(`Erro ao criar mesa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      console.error('❌ Erro na exclusão da mesa:', err);
+      alert(`Erro ao excluir mesa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   };
 
-  const updateTableStatus = async (tableId: string, newStatus: RestaurantTable['status']) => {
+  const openSale = async (table: RestaurantTable) => {
     try {
-      const tableName = getTableName();
-      
-      const { error } = await supabase
-        .from(tableName)
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
+      console.log(`🚀 Abrindo venda para mesa ${table.number} na Loja ${storeId}...`);
+
+      if (!supabaseConfigured) {
+        alert('Supabase não configurado. Configure as variáveis de ambiente para usar esta funcionalidade.');
+        return;
+      }
+
+      // Criar nova venda
+      const { data: sale, error: saleError } = await supabase
+        .from(getSalesTableName())
+        .insert([{
+          table_id: table.id,
+          operator_name: operatorName || 'Operador',
+          customer_name: saleForm.customer_name || 'Cliente',
+          customer_count: saleForm.customer_count,
+          subtotal: 0,
+          discount_amount: 0,
+          total_amount: 0,
+          change_amount: 0,
+          status: 'aberta',
+          notes: saleForm.notes || null,
+          opened_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (saleError) {
+        console.error('❌ Erro ao criar venda:', saleError);
+        throw new Error(`Erro ao criar venda: ${saleError.message}`);
+      }
+
+      // Atualizar status da mesa
+      const { error: updateError } = await supabase
+        .from(getTableTableName())
+        .update({
+          status: 'ocupada',
+          current_sale_id: sale.id
         })
-        .eq('id', tableId);
+        .eq('id', table.id);
 
-      if (error) throw error;
+      if (updateError) {
+        console.error('❌ Erro ao atualizar status da mesa:', updateError);
+        // Tentar reverter a criação da venda
+        await supabase.from(getSalesTableName()).delete().eq('id', sale.id);
+        throw new Error(`Erro ao atualizar mesa: ${updateError.message}`);
+      }
 
-      await fetchTables();
+      console.log('✅ Venda aberta com sucesso:', sale);
       
-    } catch (err) {
-      console.error(`❌ Erro ao atualizar status da mesa na ${getStoreName()}:`, err);
-      alert('Erro ao atualizar status da mesa');
-    }
-  };
-
-  const deleteTable = async (tableId: string, tableName: string) => {
-    if (!confirm(`Tem certeza que deseja excluir a ${tableName}?`)) return;
-
-    try {
-      // Usar soft delete ao invés de hard delete para preservar histórico de vendas
-      const tableNameDb = getTableName();
+      // Mostrar mensagem de sucesso
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+      successMessage.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Venda aberta para Mesa ${table.number}!
+      `;
+      document.body.appendChild(successMessage);
       
-      const { error } = await supabase
-        .from(tableNameDb)
-        .update({ is_active: false })
-        .eq('id', tableId);
-
-      if (error) throw error;
-
-      // Remover da lista local (soft delete)
-      setTables(prev => prev.filter(table => table.id !== tableId));
-      console.log('✅ Mesa desativada (soft delete)');
-      
-    } catch (err) {
-      console.error(`❌ Erro ao desativar mesa da Loja ${storeId}:`, err);
-      alert('Erro ao desativar mesa');
-    }
-  };
-
-  const openSaleModal = (table: RestaurantTable) => {
-    setSelectedTable(table);
-    setCurrentSale(table.current_sale || null);
-    
-    if (table.current_sale) {
-      setCustomerName(table.current_sale.customer_name || '');
-      setCustomerCount(table.current_sale.customer_count || 1);
-      setNotes(table.current_sale.notes || '');
-    } else {
-      setCustomerName('');
-      setCustomerCount(1);
-      setNotes('');
-      setCart([]);
-    }
-    
-    setShowSaleModal(true);
-  };
-
-  const calculateItemSubtotal = (item: TableCartItem, quantity?: number) => {
-    const qty = quantity !== undefined ? quantity : item.quantity;
-    if (item.price_per_gram && item.weight) {
-      return item.price_per_gram * item.weight * qty;
-    }
-    return (item.unit_price || 0) * qty;
-  };
-
-  const addToCart = (product: any) => {
-    const existingIndex = cart.findIndex(item => item.product_code === product.code);
-    
-    if (existingIndex >= 0) {
-      setCart(prev => prev.map((item, index) => {
-        if (index === existingIndex) {
-          const newQuantity = item.quantity + 1;
-          return {
-            ...item,
-            quantity: newQuantity,
-            subtotal: calculateItemSubtotal(item, newQuantity)
-          };
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
         }
-        return item;
-      }));
-    } else {
-      const newItem: TableCartItem = {
-        product_code: product.code,
-        product_name: product.name,
-        quantity: 1,
-        unit_price: product.is_weighable ? undefined : product.unit_price,
-        price_per_gram: product.is_weighable ? product.price_per_gram : undefined,
-        weight: product.is_weighable ? 1 : undefined,
-        subtotal: product.is_weighable ? (product.price_per_gram || 0) * 1 : (product.unit_price || 0),
+      }, 3000);
+
+      setCurrentSale(sale);
+      setSelectedTable(table);
+      setShowCreateSale(false);
+      setSaleForm({
+        customer_name: '',
+        customer_count: 1,
+        payment_type: 'dinheiro',
+        change_amount: 0,
         notes: ''
-      };
-      setCart(prev => [...prev, newItem]);
+      });
+      
+      await Promise.all([fetchTables(), fetchSales()]);
+    } catch (err) {
+      console.error('❌ Erro ao abrir venda:', err);
+      alert(`Erro ao abrir venda: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   };
 
-  const updateCartItemQuantity = (index: number, quantity: number) => {
-    if (quantity <= 0) {
-      setCart(prev => prev.filter((_, i) => i !== index));
+  const addItemToSale = async () => {
+    if (!currentSale) {
+      alert('Nenhuma venda ativa selecionada');
       return;
     }
 
-    setCart(prev => prev.map((item, i) => {
-      if (i === index) {
-        return {
-          ...item,
-          quantity,
-          subtotal: calculateItemSubtotal(item, quantity)
-        };
-      }
-      return item;
-    }));
-  };
+    if (!itemForm.product_code || !itemForm.product_name) {
+      alert('Código e nome do produto são obrigatórios');
+      return;
+    }
 
-  const createOrUpdateSale = async () => {
-    if (!selectedTable || cart.length === 0) return;
+    if (itemForm.quantity <= 0) {
+      alert('Quantidade deve ser maior que zero');
+      return;
+    }
 
     try {
-      setIsSavingSale(true);
-      const salesTableName = getSalesTableName();
-      const saleItemsTableName = getSaleItemsTableName();
-      const tableName = getTableName();
-      
-      const saleData = {
-        table_id: selectedTable.id,
-        customer_name: customerName || null,
-        customer_count: customerCount,
-        total_amount: calculateCartTotal(),
-        status: 'aberta' as const,
-        notes: notes || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+      console.log(`➕ Adicionando item à venda ${currentSale.sale_number}...`);
 
-      let saleId: string;
+      const subtotal = itemForm.unit_price * itemForm.quantity;
 
-      if (currentSale) {
-        // Atualizar venda existente
-        const { error: saleError } = await supabase
-          .from(salesTableName)
-          .update({
-            customer_name: saleData.customer_name,
-            customer_count: saleData.customer_count,
-            total_amount: saleData.total_amount,
-            notes: saleData.notes,
-            updated_at: saleData.updated_at
-          })
-          .eq('id', currentSale.id);
-
-        if (saleError) throw saleError;
-
-        // Deletar itens existentes
-        await supabase
-          .from(saleItemsTableName)
-          .delete()
-          .eq('sale_id', currentSale.id);
-
-        saleId = currentSale.id;
-      } else {
-        // Criar nova venda
-        const { data: newSale, error: saleError } = await supabase
-          .from(salesTableName)
-          .insert([saleData])
-          .select()
-          .single();
-
-        if (saleError) throw saleError;
-
-        saleId = newSale.id;
-
-        // Atualizar mesa com a venda
-        await supabase
-          .from(tableName)
-          .update({ 
-            current_sale_id: saleId,
-            status: 'ocupada'
-          })
-          .eq('id', selectedTable.id);
+      if (!supabaseConfigured) {
+        // Adicionar ao carrinho local
+        const newItem: TableCartItem = {
+          product_code: itemForm.product_code,
+          product_name: itemForm.product_name,
+          quantity: itemForm.quantity,
+          unit_price: itemForm.unit_price,
+          subtotal,
+          notes: itemForm.notes
+        };
+        
+        setCartItems(prev => [...prev, newItem]);
+        setItemForm({
+          product_code: '',
+          product_name: '',
+          quantity: 1,
+          unit_price: 0,
+          notes: ''
+        });
+        return;
       }
 
-      // Inserir novos itens
-      const saleItems = cart.map(item => ({
-        sale_id: saleId,
-        product_code: item.product_code,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        price_per_gram: item.price_per_gram,
-        weight: item.weight,
-        subtotal: item.subtotal,
-        notes: item.notes
-      }));
+      // Adicionar item no banco
+      const { error } = await supabase
+        .from(getItemsTableName())
+        .insert([{
+          sale_id: currentSale.id,
+          product_code: itemForm.product_code,
+          product_name: itemForm.product_name,
+          quantity: itemForm.quantity,
+          unit_price: itemForm.unit_price,
+          discount_amount: 0,
+          subtotal,
+          notes: itemForm.notes || null
+        }]);
 
-      const { error: itemsError } = await supabase
-        .from(saleItemsTableName)
-        .insert(saleItems);
+      if (error) {
+        console.error('❌ Erro ao adicionar item:', error);
+        throw new Error(`Erro ao adicionar item: ${error.message}`);
+      }
 
-      if (itemsError) throw itemsError;
+      // Atualizar totais da venda
+      const newSubtotal = currentSale.subtotal + subtotal;
+      const newTotal = newSubtotal - currentSale.discount_amount;
 
-      await fetchTables();
-      setShowSaleModal(false);
-      setCart([]);
-      setCurrentSale(null);
+      const { error: updateError } = await supabase
+        .from(getSalesTableName())
+        .update({
+          subtotal: newSubtotal,
+          total_amount: newTotal
+        })
+        .eq('id', currentSale.id);
+
+      if (updateError) {
+        console.error('❌ Erro ao atualizar totais:', updateError);
+      }
+
+      console.log('✅ Item adicionado com sucesso');
       
+      setItemForm({
+        product_code: '',
+        product_name: '',
+        quantity: 1,
+        unit_price: 0,
+        notes: ''
+      });
+      
+      await fetchSales();
     } catch (err) {
-      console.error(`❌ Erro ao salvar venda na ${getStoreName()}:`, err);
-      alert(`Erro ao salvar venda: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
-    } finally {
-      setIsSavingSale(false);
+      console.error('❌ Erro ao adicionar item:', err);
+      alert(`Erro ao adicionar item: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   };
 
-  const finalizeSale = async () => {
-    if (!currentSale || !selectedTable || !isCashRegisterOpen) return;
-
+  const closeSale = async (sale: TableSale, paymentType: string, changeAmount: number = 0) => {
     try {
-      setIsFinalizingSale(true);
-      const salesTableName = getSalesTableName();
-      const tableName = getTableName();
-      
-      // Finalizar venda
+      console.log(`🔒 Fechando venda ${sale.sale_number}...`);
+
+      if (!supabaseConfigured) {
+        alert('Supabase não configurado. Configure as variáveis de ambiente para usar esta funcionalidade.');
+        return;
+      }
+
+      // Fechar venda
       const { error: saleError } = await supabase
-        .from(salesTableName)
+        .from(getSalesTableName())
         .update({
           status: 'fechada',
-          payment_type: paymentMethod,
-          change_amount: changeFor || 0,
+          payment_type: paymentType,
+          change_amount: changeAmount,
           closed_at: new Date().toISOString()
         })
-        .eq('id', currentSale.id);
+        .eq('id', sale.id);
 
-      if (saleError) throw saleError;
-
-      // Liberar mesa
-      await supabase
-        .from(tableName)
-        .update({ 
-          current_sale_id: null,
-          status: 'limpeza'
-        })
-        .eq('id', selectedTable.id);
-
-      // Adicionar ao caixa
-      if (addCashEntry) {
-        await addCashEntry({
-          type: 'entrada',
-          amount: currentSale.total_amount,
-          description: `Venda Mesa ${selectedTable.number} - ${currentSale.sale_number}`,
-          payment_method: paymentMethod,
-          operator: operatorName || 'Sistema'
-        });
+      if (saleError) {
+        console.error('❌ Erro ao fechar venda:', saleError);
+        throw new Error(`Erro ao fechar venda: ${saleError.message}`);
       }
 
-      // Mostrar mensagem de sucesso
-      setSuccessMessage(`Venda da Mesa ${selectedTable.name} finalizada com sucesso!`);
-      setShowSuccessMessage(true);
-      
-      // Ocultar mensagem após 3 segundos
-      setTimeout(() => {
-        setShowSuccessMessage(false);
-      }, 3000);
-
-      await fetchTables();
-      setShowSaleModal(false);
-      setCurrentSale(null);
-      
-    } catch (err) {
-      console.error(`❌ Erro ao finalizar venda na ${getStoreName()}:`, err);
-      alert(`Erro ao finalizar venda: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
-    } finally {
-      setIsFinalizingSale(false);
-    }
-  };
-
-  const handleFinalizeSale = async () => {
-    await finalizeSale();
-  };
-
-  const handleCancelSale = async () => {
-    if (!currentSale || !selectedTable) return;
-
-    if (!confirm('Tem certeza que deseja cancelar esta venda?')) return;
-
-    try {
-      const salesTableName = getSalesTableName();
-      const saleItemsTableName = getSaleItemsTableName();
-      const tableName = getTableName();
-
-      // Deletar itens da venda
-      await supabase
-        .from(saleItemsTableName)
-        .delete()
-        .eq('sale_id', currentSale.id);
-
-      // Deletar venda
-      await supabase
-        .from(salesTableName)
-        .delete()
-        .eq('id', currentSale.id);
-
       // Liberar mesa
-      await supabase
-        .from(tableName)
-        .update({ 
-          current_sale_id: null,
-          status: 'livre'
+      const { error: tableError } = await supabase
+        .from(getTableTableName())
+        .update({
+          status: 'livre',
+          current_sale_id: null
         })
-        .eq('id', selectedTable.id);
+        .eq('id', sale.table_id);
 
-      await fetchTables();
-      setShowSaleModal(false);
-      setCurrentSale(null);
-      setCart([]);
+      if (tableError) {
+        console.error('❌ Erro ao liberar mesa:', tableError);
+      }
+
+      console.log('✅ Venda fechada com sucesso');
       
+      // Mostrar mensagem de sucesso
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3';
+      successMessage.innerHTML = `
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <div>
+          <p class="font-semibold">Venda finalizada com sucesso!</p>
+          <p class="text-sm opacity-90">Mesa liberada - Total: ${formatPrice(sale.total_amount)}</p>
+        </div>
+      `;
+      document.body.appendChild(successMessage);
+      
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
+        }
+      }, 4000);
+      
+      setCurrentSale(null);
+      setSelectedTable(null);
+      setCartItems([]);
+      
+      await Promise.all([fetchTables(), fetchSales()]);
     } catch (err) {
-      console.error(`❌ Erro ao cancelar venda na ${getStoreName()}:`, err);
-      alert(`Erro ao cancelar venda: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      console.error('❌ Erro ao fechar venda:', err);
+      alert(`Erro ao fechar venda: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   };
 
-  const getPaymentMethodName = (method: string) => {
-    const methodNames: Record<string, string> = {
-      'dinheiro': 'Dinheiro',
-      'pix': 'PIX',
-      'cartao_credito': 'Cartão de Crédito',
-      'cartao_debito': 'Cartão de Débito',
-      'voucher': 'Voucher',
-      'misto': 'Pagamento Misto'
-    };
-    return methodNames[method] || method;
-  };
-
-  const getStatusConfig = (status: RestaurantTable['status']) => {
-    switch (status) {
-      case 'livre':
-        return {
-          label: 'Livre',
-          color: 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200',
-          textColor: 'text-green-800',
-          icon: CheckCircle,
-          iconColor: 'text-green-600',
-          badge: 'bg-green-100 text-green-800'
-        };
-      case 'ocupada':
-        return {
-          label: 'Ocupada',
-          color: 'bg-gradient-to-br from-red-50 to-rose-50 border-red-200',
-          textColor: 'text-red-800',
-          icon: Users,
-          iconColor: 'text-red-600',
-          badge: 'bg-red-100 text-red-800'
-        };
-      case 'aguardando_conta':
-        return {
-          label: 'Aguardando Conta',
-          color: 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200',
-          textColor: 'text-yellow-800',
-          icon: Clock,
-          iconColor: 'text-yellow-600',
-          badge: 'bg-yellow-100 text-yellow-800'
-        };
-      case 'limpeza':
-        return {
-          label: 'Limpeza',
-          color: 'bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200',
-          textColor: 'text-blue-800',
-          icon: Sparkles,
-          iconColor: 'text-blue-600',
-          badge: 'bg-blue-100 text-blue-800'
-        };
-      default:
-        return {
-          label: 'Desconhecido',
-          color: 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200',
-          textColor: 'text-gray-800',
-          icon: AlertCircle,
-          iconColor: 'text-gray-600',
-          badge: 'bg-gray-100 text-gray-800'
-        };
+  const refreshData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([fetchTables(), fetchSales()]);
+    } catch (err) {
+      console.error('Erro ao recarregar dados:', err);
+    } finally {
+      setLoading(false);
     }
   };
-
-  const getStatusOptions = (currentStatus: RestaurantTable['status']) => {
-    const allStatuses: RestaurantTable['status'][] = ['livre', 'ocupada', 'aguardando_conta', 'limpeza'];
-    return allStatuses.filter(status => status !== currentStatus);
-  };
-
-  // Calculate finalize button state at top level to avoid conditional hook calls
-  const { isFinalizeButtonDisabled, finalizeButtonTitle, finalizeButtonContent } = useMemo(() => {
-    const disabled = !paymentMethod || isFinalizingSale || !cashRegisterHook.isOpen;
-    const title = isFinalizingSale
-      ? 'Finalizando venda...'
-      : !cashRegisterHook.isOpen
-      ? 'Caixa fechado. Abra o caixa para finalizar a venda.'
-      : !paymentMethod
-      ? 'Selecione uma forma de pagamento.'
-      : '';
-    
-    const content = (
-      <button
-        onClick={handleFinalizeSale}
-        disabled={disabled}
-        title={title}
-        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-      >
-        <CheckCircle size={20} />
-        {isFinalizingSale ? 'Finalizando...' : 'Finalizar Venda'}
-      </button>
-    );
-    
-    return { 
-      isFinalizeButtonDisabled: disabled, 
-      finalizeButtonTitle: title, 
-      finalizeButtonContent: content 
-    };
-  }, [paymentMethod, isFinalizingSale, cashRegisterHook.isOpen, handleFinalizeSale]);
 
   useEffect(() => {
-    fetchTables();
-  }, [storeId]);
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([fetchTables(), fetchSales()]);
+      } catch (err) {
+        console.error('Erro ao carregar dados:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [fetchTables, fetchSales]);
 
   if (loading) {
     return (
-      <div className="min-h-[400px] flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600 mx-auto mb-4"></div>
-            <Utensils size={24} className="absolute inset-0 m-auto text-indigo-600" />
-          </div>
-          <p className="text-gray-600 font-medium">Carregando mesas da {getStoreName()}...</p>
-          <p className="text-sm text-gray-500">Aguarde um momento</p>
-        </div>
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Carregando vendas de mesa...</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Caixa Status Warning */}
-      {!isCashRegisterOpen && (
-        <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-400 p-6 rounded-lg shadow-sm">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <Coffee size={24} className="text-indigo-600" />
+            Vendas de Mesa - Loja {storeId}
+          </h2>
+          <p className="text-gray-600">Gerencie mesas e vendas presenciais</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={refreshData}
+            disabled={loading}
+            className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            Atualizar
+          </button>
+          <button
+            onClick={() => setShowCreateTable(true)}
+            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+          >
+            <Plus size={20} />
+            Nova Mesa
+          </button>
+        </div>
+      </div>
+
+      {/* Supabase Configuration Warning */}
+      {!supabaseConfigured && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
-            <div className="bg-yellow-100 p-2 rounded-full">
-              <AlertCircle size={24} className="text-yellow-600" />
+            <div className="bg-yellow-100 rounded-full p-2">
+              <AlertCircle size={20} className="text-yellow-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-yellow-800">Caixa Fechado</h3>
-              <p className="text-yellow-700">Caixa da {getStoreName()} está fechado - não é possível processar vendas</p>
+              <h3 className="font-medium text-yellow-800">Modo Demonstração</h3>
+              <p className="text-yellow-700 text-sm">
+                Supabase não configurado. Funcionalidades limitadas.
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-4 rounded-xl shadow-lg">
-              <Utensils size={32} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Vendas de Mesas
-              </h1>
-              <p className="text-gray-600 text-lg">{getStoreName()} • Atendimento Presencial</p>
-              {operatorName && (
-                <div className="flex items-center gap-2 mt-2">
-                  <User size={16} className="text-indigo-600" />
-                  <span className="text-sm font-medium text-indigo-700">Operador: {operatorName}</span>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2">
-              <span className="text-sm font-semibold text-indigo-700">{tables.length} Mesa(s)</span>
-            </div>
-            <button
-              onClick={fetchTables}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
-            >
-              <RefreshCw size={18} />
-              Atualizar
-            </button>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
-            >
-              <Plus size={18} />
-              Nova Mesa
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Error Message */}
       {error && (
-        <div className="bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-400 p-6 rounded-lg shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="bg-red-100 p-2 rounded-full">
-              <AlertCircle size={24} className="text-red-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-red-800">Erro ao Carregar Mesas</h3>
-              <p className="text-red-700">{error}</p>
-              <p className="text-red-600 text-sm mt-1">Sistema funcionando em modo demonstração</p>
-            </div>
-          </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-600">{error}</p>
         </div>
       )}
 
       {/* Tables Grid */}
-      {tables.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
-          <div className="relative mb-6">
-            <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full p-8 w-32 h-32 mx-auto flex items-center justify-center">
-              <Utensils size={48} className="text-gray-400" />
-            </div>
-            <div className="absolute -bottom-2 -right-2 bg-indigo-500 rounded-full p-2">
-              <Plus size={20} className="text-white" />
-            </div>
-          </div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-3">Nenhuma Mesa Encontrada</h3>
-          <p className="text-gray-600 text-lg mb-6">
-            Comece criando sua primeira mesa para a {getStoreName()}
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {tables.map((table) => (
+          <div
+            key={table.id}
+            className={`bg-white rounded-xl shadow-sm border-2 p-4 transition-all hover:shadow-md ${
+              selectedTable?.id === table.id ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-200'
+            }`}
           >
-            Criar Primeira Mesa
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {tables.map((table) => {
-            const statusConfig = getStatusConfig(table.status);
-            const StatusIcon = statusConfig.icon;
-            
-            return (
-              <div
-                key={table.id}
-                className={`${statusConfig.color} border-2 rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl hover:scale-105 transform cursor-pointer group`}
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full bg-white/80 backdrop-blur-sm`}>
-                      <StatusIcon size={24} className={statusConfig.iconColor} />
-                    </div>
-                    <div>
-                      <h3 className={`text-xl font-bold ${statusConfig.textColor}`}>
-                        Mesa {table.number}
-                      </h3>
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${statusConfig.badge}`}>
-                        {statusConfig.label}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => deleteTable(table.id, table.name)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-full"
-                    title="Excluir mesa"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-                
-                {/* Info */}
-                <div className="space-y-3 mb-6">
-                  <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3">
-                    <p className={`font-semibold ${statusConfig.textColor}`}>{table.name}</p>
-                    <div className="flex items-center gap-4 mt-2 text-sm">
-                      <div className="flex items-center gap-1">
-                        <Users size={14} className={statusConfig.iconColor} />
-                        <span className={statusConfig.textColor}>{table.capacity} pessoas</span>
-                      </div>
-                      {table.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin size={14} className={statusConfig.iconColor} />
-                          <span className={statusConfig.textColor}>{table.location}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Current Sale Info */}
-                {table.current_sale && (
-                  <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 mb-4 border border-white/50">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Calculator size={16} className="text-green-600" />
-                      <span className="font-semibold text-green-800">Venda Ativa</span>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-gray-700">#{table.current_sale.sale_number}</p>
-                      <p className="text-lg font-bold text-green-700">
-                        {formatPrice(table.current_sale.total_amount)}
-                      </p>
-                      {table.current_sale.customer_name && (
-                        <p className="text-sm text-gray-600">{table.current_sale.customer_name}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Actions */}
-                <div className="space-y-3">
-                  <button
-                    onClick={() => openSaleModal(table)}
-                    disabled={!isCashRegisterOpen}
-                    className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-                  >
-                    <ShoppingCart size={18} />
-                    {table.current_sale ? 'Gerenciar Venda' : 'Nova Venda'}
-                  </button>
-                  
-                  {/* Status Quick Actions */}
-                  <div className="flex gap-2">
-                    {getStatusOptions(table.status).slice(0, 2).map((status) => {
-                      const config = getStatusConfig(status);
-                      return (
-                        <button
-                          key={status}
-                          onClick={() => updateTableStatus(table.id, status)}
-                          className="flex-1 bg-white/60 hover:bg-white/80 backdrop-blur-sm border border-white/50 text-gray-700 hover:text-gray-900 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200"
-                        >
-                          {config.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-semibold text-gray-800">Mesa {table.number}</h3>
+                <p className="text-sm text-gray-600">{table.name}</p>
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Success Message Overlay */}
-      {showSuccessMessage && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl">
-            <div className="bg-green-100 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(table.status)}`}>
+                {getStatusLabel(table.status)}
+              </span>
             </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Venda Finalizada!</h2>
-            <p className="text-gray-600 mb-4">{successMessage}</p>
-            <div className="text-sm text-gray-500">
-              A mesa foi liberada e está disponível para novo atendimento.
+
+            <div className="space-y-2 text-sm text-gray-600 mb-4">
+              <div className="flex items-center gap-2">
+                <Users size={14} />
+                <span>Capacidade: {table.capacity} pessoas</span>
+              </div>
+              {table.location && (
+                <div className="flex items-center gap-2">
+                  <Package size={14} />
+                  <span>{table.location}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              {table.status === 'livre' && (
+                <button
+                  onClick={() => {
+                    setSelectedTable(table);
+                    setShowCreateSale(true);
+                  }}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-1 text-sm"
+                >
+                  <DollarSign size={14} />
+                  Abrir Venda
+                </button>
+              )}
+              
+              {table.status === 'ocupada' && (
+                <button
+                  onClick={() => {
+                    setSelectedTable(table);
+                    const sale = sales.find(s => s.table_id === table.id && s.status === 'aberta');
+                    setCurrentSale(sale || null);
+                  }}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-1 text-sm"
+                >
+                  <Calculator size={14} />
+                  Gerenciar
+                </button>
+              )}
+
+              <button
+                onClick={() => deleteTable(table)}
+                disabled={table.status === 'ocupada'}
+                className="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white py-2 px-3 rounded-lg transition-colors"
+                title="Excluir mesa"
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        ))}
+
+        {tables.length === 0 && (
+          <div className="col-span-full text-center py-12">
+            <Coffee size={48} className="mx-auto text-gray-300 mb-4" />
+            <h3 className="text-lg font-medium text-gray-600 mb-2">
+              Nenhuma mesa cadastrada
+            </h3>
+            <p className="text-gray-500 mb-4">
+              Crie sua primeira mesa para começar as vendas presenciais
+            </p>
+            <button
+              onClick={() => setShowCreateTable(true)}
+              className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 mx-auto"
+            >
+              <Plus size={20} />
+              Criar Mesa
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Create Table Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
-            <div className="p-6 border-b border-gray-100">
+      {showCreateTable && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-lg">
-                    <Plus size={24} className="text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800">Criar Nova Mesa {storeId === 1 ? '- Loja 1' : '- Loja 2'}</h3>
-                </div>
+                <h2 className="text-xl font-semibold text-gray-800">Nova Mesa - Loja {storeId}</h2>
                 <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  onClick={() => setShowCreateTable(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
                   <X size={20} />
                 </button>
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Número da Mesa
-                  </label>
-                  <div className="space-y-2">
-                    <select
-                      value={newTable.number}
-                      onChange={(e) => setNewTable(prev => ({ ...prev, number: e.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                    >
-                      <option value="">Selecione um número</option>
-                      {availableTableNumbers.map(num => (
-                        <option key={num} value={num}>
-                          Mesa {num} {tables.find(t => t.number === num) ? '(Reutilizar)' : '(Novo)'}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="text-xs text-gray-500">
-                      {availableTableNumbers.length > 0 ? (
-                        <span>
-                          Números disponíveis: {availableTableNumbers.slice(0, 5).join(', ')}
-                          {availableTableNumbers.length > 5 && '...'}
-                        </span>
-                      ) : 'Próximo número: ' + (getNextAvailableTableNumber())}
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Capacidade
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={newTable.capacity}
-                    onChange={(e) => setNewTable(prev => ({ ...prev, capacity: parseInt(e.target.value) || 4 }))}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                  />
-                </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Número da Mesa *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={tableForm.number}
+                  onChange={(e) => setTableForm(prev => ({ ...prev, number: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Números de mesas excluídas podem ser reutilizados
+                </p>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nome da Mesa *
                 </label>
                 <input
                   type="text"
-                  value={newTable.name}
-                  onChange={(e) => setNewTable(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                  placeholder="Mesa VIP"
+                  value={tableForm.name}
+                  onChange={(e) => setTableForm(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Mesa 1"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Localização
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Capacidade (pessoas)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={tableForm.capacity}
+                  onChange={(e) => setTableForm(prev => ({ ...prev, capacity: parseInt(e.target.value) || 4 }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Localização (opcional)
                 </label>
                 <input
                   type="text"
-                  value={newTable.location}
-                  onChange={(e) => setNewTable(prev => ({ ...prev, location: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                  placeholder="Área Central"
+                  value={tableForm.location}
+                  onChange={(e) => setTableForm(prev => ({ ...prev, location: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Ex: Área principal, Varanda..."
                 />
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-100 flex gap-3">
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
               <button
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-colors"
+                onClick={() => setShowCreateTable(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={createTable}
-                disabled={!newTable.number || !newTable.name}
-                className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2"
+                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors flex items-center gap-2"
               >
-                <Plus size={16} />
+                <Save size={16} />
                 Criar Mesa
               </button>
             </div>
@@ -1058,324 +934,293 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         </div>
       )}
 
-      {/* Sale Modal */}
-      {showSaleModal && selectedTable && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-indigo-50">
+      {/* Create Sale Modal */}
+      {showCreateSale && selectedTable && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-3 rounded-xl">
-                    <Utensils size={24} className="text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-800">
-                      Mesa {selectedTable.number} - {getStoreName()}
-                    </h3>
-                    <p className="text-gray-600">{selectedTable.name}</p>
-                    {currentSale && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">
-                          Venda #{currentSale.sale_number}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Abrir Venda - Mesa {selectedTable.number}
+                </h2>
                 <button
-                  onClick={() => setShowSaleModal(false)}
-                  className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  onClick={() => setShowCreateSale(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
-                  <X size={24} />
+                  <X size={20} />
                 </button>
               </div>
             </div>
 
-            <div className="flex flex-1 overflow-hidden min-h-0">
-              {/* Products Section */}
-              <div className="w-1/2 border-r border-gray-200 p-4 overflow-y-auto bg-gray-50">
-                <div className="mb-6">
-                  <h4 className="text-xl font-bold text-gray-800 mb-4">Produtos Disponíveis</h4>
-                  
-                  {/* Search */}
-                  <div className="relative">
-                    <Search size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Buscar produtos..."
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
-                    />
-                  </div>
-                </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome do Cliente
+                </label>
+                <input
+                  type="text"
+                  value={saleForm.customer_name}
+                  onChange={(e) => setSaleForm(prev => ({ ...prev, customer_name: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Nome do cliente (opcional)"
+                />
+              </div>
 
-                {/* Products List */}
-                <div className="space-y-3">
-                  {filteredProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="bg-white border border-gray-200 rounded-xl p-4 hover:border-purple-300 hover:shadow-lg transition-all duration-200 group cursor-pointer"
-                      onClick={() => addToCart(product)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h5 className="font-bold text-gray-800 group-hover:text-purple-700 transition-colors">
-                            {product.name}
-                          </h5>
-                          <p className="text-sm text-gray-500 font-mono">{product.code}</p>
-                          <p className="text-lg font-bold text-green-600 mt-1">
-                            {product.is_weighable 
-                              ? `${formatPrice((product.price_per_gram || 0) * 1000)}/kg`
-                              : formatPrice(product.unit_price || 0)
-                            }
-                          </p>
-                        </div>
-                        <div className="bg-gradient-to-br from-purple-500 to-indigo-600 group-hover:from-purple-600 group-hover:to-indigo-700 text-white p-3 rounded-xl shadow-lg group-hover:shadow-xl transition-all duration-200">
-                          <Plus size={20} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Número de Pessoas
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={selectedTable.capacity}
+                  value={saleForm.customer_count}
+                  onChange={(e) => setSaleForm(prev => ({ ...prev, customer_count: parseInt(e.target.value) || 1 }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Capacidade da mesa: {selectedTable.capacity} pessoas
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Observações
+                </label>
+                <textarea
+                  value={saleForm.notes}
+                  onChange={(e) => setSaleForm(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  rows={3}
+                  placeholder="Observações sobre a venda (opcional)"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setShowCreateSale(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => openSale(selectedTable)}
+                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors flex items-center gap-2"
+              >
+                <DollarSign size={16} />
+                Abrir Venda
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sale Management Modal */}
+      {currentSale && selectedTable && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Venda #{currentSale.sale_number} - Mesa {selectedTable.number}
+                </h2>
+                <button
+                  onClick={() => {
+                    setCurrentSale(null);
+                    setSelectedTable(null);
+                    setCartItems([]);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Sale Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Cliente:</span>
+                    <span className="ml-2 font-medium">{currentSale.customer_name || 'Não informado'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Pessoas:</span>
+                    <span className="ml-2 font-medium">{currentSale.customer_count}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Aberta em:</span>
+                    <span className="ml-2 font-medium">{formatDateTime(currentSale.opened_at)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Total:</span>
+                    <span className="ml-2 font-medium text-green-600">{formatPrice(currentSale.total_amount)}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Cart Section */}
-              <div className="w-1/2 p-4 flex flex-col bg-white min-h-0">
-                <h4 className="text-xl font-bold text-gray-800 mb-6">Carrinho da Venda</h4>
-                
-                {/* Loading Sale Items */}
-                {loadingSaleItems && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
-                      <span className="text-blue-700 font-medium">Carregando itens da venda...</span>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Customer Info */}
-                <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Nome do Cliente
-                      </label>
-                      <input
-                        type="text"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
-                        placeholder="Nome do cliente"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Pessoas na Mesa
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={customerCount}
-                        onChange={(e) => setCustomerCount(parseInt(e.target.value) || 1)}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Observações
-                  </label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white resize-none"
-                    rows={3}
-                    placeholder="Observações sobre a venda..."
+              {/* Add Item Form */}
+              <div className="border rounded-lg p-4">
+                <h3 className="font-medium text-gray-800 mb-3">Adicionar Item</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    value={itemForm.product_code}
+                    onChange={(e) => setItemForm(prev => ({ ...prev, product_code: e.target.value }))}
+                    className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Código do produto"
+                  />
+                  <input
+                    type="text"
+                    value={itemForm.product_name}
+                    onChange={(e) => setItemForm(prev => ({ ...prev, product_name: e.target.value }))}
+                    className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Nome do produto"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    value={itemForm.quantity}
+                    onChange={(e) => setItemForm(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+                    className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Quantidade"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={itemForm.unit_price}
+                    onChange={(e) => setItemForm(prev => ({ ...prev, unit_price: parseFloat(e.target.value) || 0 }))}
+                    className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Preço unitário"
                   />
                 </div>
-
-                {/* Cart Items */}
-                <div className="flex-1 overflow-y-auto mb-6">
-                  {cart.length === 0 ? (
-                    <div className="text-center text-gray-500 py-12">
-                      <div className="bg-gray-100 rounded-full p-8 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
-                        <ShoppingCart size={32} className="text-gray-400" />
-                      </div>
-                      <h4 className="text-lg font-semibold mb-2">Carrinho Vazio</h4>
-                      <p className="text-sm">Clique nos produtos para adicionar</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {cart.map((item, index) => (
-                        <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                          <div className="flex items-center justify-between mb-3">
-                            <h5 className="font-bold text-gray-800">{item.product_name}</h5>
-                            <button
-                              onClick={() => setCart(prev => prev.filter((_, i) => i !== index))}
-                              className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                          
-                          <div className="mb-3">
-                            <p className="text-sm text-gray-600 font-mono">Código: {item.product_code}</p>
-                            {item.weight && (
-                              <p className="text-sm text-gray-600">Peso: {item.weight}kg</p>
-                            )}
-                            {item.notes && (
-                              <p className="text-sm text-gray-500 italic">Obs: {item.notes}</p>
-                            )}
-                          </div>
-                          
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 bg-white rounded-lg p-2 border border-gray-200">
-                              <button
-                                onClick={() => updateCartItemQuantity(index, item.quantity - 1)}
-                                className="bg-red-100 hover:bg-red-200 text-red-600 rounded-full p-1 transition-colors"
-                              >
-                                <Minus size={16} />
-                              </button>
-                              <span className="w-8 text-center font-bold">{item.quantity}</span>
-                              <button
-                                onClick={() => updateCartItemQuantity(index, item.quantity + 1)}
-                                className="bg-green-100 hover:bg-green-200 text-green-600 rounded-full p-1 transition-colors"
-                              >
-                                <Plus size={16} />
-                              </button>
-                            </div>
-                            <span className="text-xl font-bold text-green-600">
-                              {formatPrice(item.subtotal)}
-                            </span>
-                          </div>
-                          
-                          {/* Item price breakdown */}
-                          <div className="mt-2 text-xs text-gray-500">
-                            {item.price_per_gram ? (
-                              <span>
-                                {formatPrice(item.price_per_gram * 1000)}/kg × {item.weight || 0}kg × {item.quantity}
-                              </span>
-                            ) : (
-                              <span>
-                                {formatPrice(item.unit_price || 0)} × {item.quantity}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Payment Method */}
-                {currentSale && (
-                  <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Forma de Pagamento
-                    </label>
-                    <select
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value as any)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
-                    >
-                      <option value="dinheiro">💵 Dinheiro</option>
-                      <option value="pix">📱 PIX</option>
-                      <option value="cartao_credito">💳 Cartão de Crédito</option>
-                      <option value="cartao_debito">💳 Cartão de Débito</option>
-                      <option value="voucher">🎫 Voucher</option>
-                      <option value="misto">🔀 Misto</option>
-                    </select>
-
-                    {paymentMethod === 'dinheiro' && (
-                      <div className="mt-3">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Troco para
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={changeFor || ''}
-                          onChange={(e) => setChangeFor(parseFloat(e.target.value) || undefined)}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
-                          placeholder="Valor para troco"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Total */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 mb-6">
-                  <div className="flex justify-between items-center">
-                    <span className="text-2xl font-bold text-gray-800">Total:</span>
-                    <span className="text-3xl font-bold text-green-600">
-                      {formatPrice(calculateCartTotal())}
-                    </span>
-                  </div>
-                  {cart.length > 0 && (
-                    <div className="mt-2 text-sm text-gray-600">
-                      {cart.length} item(ns) • Última atualização: {new Date().toLocaleTimeString('pt-BR')}
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3">
-                  {!currentSale ? (
-                    <>
-                      <button
-                        onClick={() => setShowSaleModal(false)}
-                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-4 rounded-xl font-semibold transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        onClick={createOrUpdateSale}
-                        disabled={cart.length === 0 || !isCashRegisterOpen || isSavingSale}
-                        className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
-                      >
-                        <Save size={20} />
-                        {isSavingSale ? 'Criando...' : 'Criar Venda'}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={createOrUpdateSale}
-                        disabled={cart.length === 0 || isSavingSale || isFinalizingSale}
-                        className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
-                      >
-                        <Save size={20} />
-                        {isSavingSale ? 'Salvando...' : 'Salvar Alterações'}
-                      </button>
-
-                      {finalizeButtonContent}
-
-                      <button
-                        onClick={handleCancelSale}
-                        disabled={isSavingSale || isFinalizingSale}
-                        className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-6 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
-                      >
-                        <X size={20} />
-                        Cancelar Venda
-                      </button>
-                    </>
-                  )}
+                <div className="mt-3 flex gap-3">
+                  <input
+                    type="text"
+                    value={itemForm.notes}
+                    onChange={(e) => setItemForm(prev => ({ ...prev, notes: e.target.value }))}
+                    className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Observações (opcional)"
+                  />
                   <button
-                    onClick={() => setShowSaleModal(false)}
-                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-colors"
+                    onClick={addItemToSale}
+                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
                   >
-                    Voltar
+                    <Plus size={16} />
+                    Adicionar
                   </button>
                 </div>
               </div>
+
+              {/* Items List */}
+              {cartItems.length > 0 && (
+                <div className="border rounded-lg p-4">
+                  <h3 className="font-medium text-gray-800 mb-3">Itens da Venda</h3>
+                  <div className="space-y-2">
+                    {cartItems.map((item, index) => (
+                      <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <div>
+                          <span className="font-medium">{item.product_name}</span>
+                          <span className="text-gray-600 ml-2">({item.product_code})</span>
+                          {item.notes && <p className="text-xs text-gray-500">{item.notes}</p>}
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">{item.quantity}x {formatPrice(item.unit_price || 0)}</div>
+                          <div className="text-green-600 font-semibold">{formatPrice(item.subtotal)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex justify-between font-bold text-lg">
+                      <span>Total:</span>
+                      <span className="text-green-600">
+                        {formatPrice(cartItems.reduce((sum, item) => sum + item.subtotal, 0))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Form */}
+              <div className="border rounded-lg p-4">
+                <h3 className="font-medium text-gray-800 mb-3">Finalizar Venda</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                  <select
+                    value={saleForm.payment_type}
+                    onChange={(e) => setSaleForm(prev => ({ ...prev, payment_type: e.target.value as any }))}
+                    className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="pix">PIX</option>
+                    <option value="cartao_credito">Cartão de Crédito</option>
+                    <option value="cartao_debito">Cartão de Débito</option>
+                  </select>
+                  {saleForm.payment_type === 'dinheiro' && (
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={saleForm.change_amount}
+                      onChange={(e) => setSaleForm(prev => ({ ...prev, change_amount: parseFloat(e.target.value) || 0 }))}
+                      className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Valor do troco"
+                    />
+                  )}
+                </div>
+                <button
+                  onClick={() => closeSale(currentSale, saleForm.payment_type, saleForm.change_amount)}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold"
+                >
+                  <CheckCircle size={20} />
+                  Finalizar Venda - {formatPrice(currentSale.total_amount)}
+                </button>
+              </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Sales Summary */}
+      {sales.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Vendas Ativas</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sales.map((sale) => {
+              const table = tables.find(t => t.id === sale.table_id);
+              return (
+                <div key={sale.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-medium">Venda #{sale.sale_number}</h4>
+                      <p className="text-sm text-gray-600">Mesa {table?.number || '?'}</p>
+                    </div>
+                    <span className="text-lg font-bold text-green-600">
+                      {formatPrice(sale.total_amount)}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>Cliente: {sale.customer_name || 'Não informado'}</p>
+                    <p>Pessoas: {sale.customer_count}</p>
+                    <p>Aberta: {formatDateTime(sale.opened_at)}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (table) {
+                        setSelectedTable(table);
+                        setCurrentSale(sale);
+                      }
+                    }}
+                    className="w-full mt-3 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg transition-colors"
+                  >
+                    Gerenciar Venda
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
