@@ -207,49 +207,28 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const addToCart = (product: any) => {
     const existingIndex = cart.findIndex(item => item.product_code === product.code);
     
-    // Verificar se o produto é pesável
-    if (product.is_weighable) {
-      setPendingWeightProduct(product);
-      setShowWeightModal(true);
-    } else {
-      addItemToSale(product, 1);
-    }
-  };
-
-  const addItemToSale = (product: any, quantity: number, weight?: number) => {
-    const existingItem = saleItems.find(item => item.product_code === product.code);
-    
-    if (existingItem) {
-      setSaleItems(prev => prev.map(item => 
-        item.product_code === product.code
-          ? { 
-              ...item, 
-              quantity: weight ? quantity : item.quantity + quantity,
-              weight: weight || item.weight,
-              subtotal: calculateItemPrice(product, weight ? quantity : item.quantity + quantity, weight || item.weight)
-            }
-          : item
-      ));
+    if (existingIndex >= 0) {
+      setCart(prev => prev.map((item, index) => {
+        if (index === existingIndex) {
+          const newQuantity = item.quantity + 1;
+          return {
+            ...item,
+            quantity: newQuantity,
+            subtotal: calculateItemSubtotal(item, newQuantity)
+          };
+        }
+        return item;
+      }));
     } else {
       const newItem: TableCartItem = {
         product_code: product.code,
         product_name: product.name,
-        quantity,
-        weight,
-        unit_price: product.unit_price,
-        price_per_gram: product.price_per_gram,
-        subtotal: calculateItemPrice(product, quantity, weight)
+        quantity: 1,
+        unit_price: product.is_weighable ? undefined : product.unit_price,
+        price_per_gram: product.is_weighable ? product.price_per_gram : undefined,
+        subtotal: product.is_weighable ? 0 : product.unit_price || 0
       };
-      setSaleItems(prev => [...prev, newItem]);
-    }
-  };
-
-  const handleWeightConfirm = (weightInGrams: number) => {
-    if (pendingWeightProduct) {
-      const weightInKg = weightInGrams / 1000;
-      addItemToSale(pendingWeightProduct, 1, weightInKg);
-      setPendingWeightProduct(null);
-      setShowWeightModal(false);
+      setCart(prev => [...prev, newItem]);
     }
   };
 
