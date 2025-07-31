@@ -158,29 +158,119 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       return;
     }
 
+    const storePrefix = storeId === 1 ? 'store1' : 'store2';
+
+    // Verificar se existe uma mesa inativa com o mesmo número
     try {
-      const tableName = getTableName();
-      
-      const { data, error } = await supabase
-        .from(tableName)
+      const { data: inactiveTable, error: checkError } = await supabase
+        .from(`${storePrefix}_tables`)
+        .select('*')
+        .eq('number', parseInt(newTable.number))
+        .eq('is_active', false)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      // Se existe uma mesa inativa, reativar ela
+      if (inactiveTable) {
+        console.log('🔄 Reativando mesa existente');
+        const { error: updateError } = await supabase
+          .from(`${storePrefix}_tables`)
+          .update({
+            name: newTable.name,
+            capacity: newTable.capacity,
+            location: newTable.location,
+            is_active: true,
+            status: 'livre',
+            current_sale_id: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', inactiveTable.id);
+
+        if (updateError) {
+          console.error('Erro ao reativar mesa:', updateError);
+          alert('Erro ao reativar mesa excluída');
+          return;
+        }
+
+        await fetchTables();
+        setShowCreateModal(false);
+        setNewTable({ number: '', name: '', capacity: 4, location: '' });
+        
+        // Mostrar mensagem de sucesso
+        const successMessage = document.createElement('div');
+        successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+        successMessage.innerHTML = `
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          Mesa ${newTable.number} reativada com sucesso!
+        `;
+        document.body.appendChild(successMessage);
+        
+        setTimeout(() => {
+          if (document.body.contains(successMessage)) {
+            document.body.removeChild(successMessage);
+          }
+        }, 3000);
+        
+        return;
+      }
+    } catch (error) {
+      console.error('Erro na verificação de mesa:', error);
+      alert(error instanceof Error ? error.message : 'Erro ao criar mesa');
+      return;
+    }
+
+    // Se chegou até aqui, pode criar uma nova mesa
+    try {
+      // Criar nova mesa (ignora mesas inativas)
+      console.log('🆕 Criando nova mesa');
+      const { data: createdTable, error: createError } = await supabase
+        .from(`${storePrefix}_tables`)
         .insert([{
           number: parseInt(newTable.number),
           name: newTable.name,
           capacity: newTable.capacity,
+          location: newTable.location || null,
           status: 'livre',
-          location: newTable.location,
-          is_active: true
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }])
         .select()
         .single();
 
-      if (error) {
-        if (error.code === '23505') {
-          alert(`Mesa número ${newTable.number} já existe. Escolha um número diferente.`);
-          return;
+      if (createError) {
+        console.error('❌ Erro ao criar mesa:', createError);
+        if (createError.code === '23505') {
+          alert(`Mesa ${newTable.number} já existe. Recarregue a página e tente novamente.`);
+        } else {
+          alert(`Erro ao criar mesa: ${createError.message}`);
         }
-        throw error;
+        return;
       }
+
+      console.log('✅ Mesa criada:', createdTable);
+      
+      // Mostrar mensagem de sucesso
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+      successMessage.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Mesa ${newTable.number} criada com sucesso!
+      `;
+      document.body.appendChild(successMessage);
+      
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
+        }
+      }, 3000);
 
       await fetchTables();
       setShowCreateModal(false);
@@ -256,11 +346,12 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     setShowSaleModal(true);
   };
 
-  const calculateItemSubtotal = (item: TableCartItem, quantity: number) => {
+  const calculateItemSubtotal = (item: TableCartItem, quantity?: number) => {
+    const qty = quantity !== undefined ? quantity : item.quantity;
     if (item.price_per_gram && item.weight) {
-      return item.price_per_gram * item.weight * quantity;
+      return item.price_per_gram * item.weight * qty;
     }
-    return (item.unit_price || 0) * quantity;
+    return (item.unit_price || 0) * qty;
   };
 
   const addToCart = (product: any) => {
@@ -286,7 +377,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         unit_price: product.is_weighable ? undefined : product.unit_price,
         price_per_gram: product.is_weighable ? product.price_per_gram : undefined,
         weight: product.is_weighable ? 1 : undefined,
-        subtotal: product.is_weighable ? (product.price_per_gram || 0) : (product.unit_price || 0)
+        subtotal: product.is_weighable ? (product.price_per_gram || 0) * 1 : (product.unit_price || 0),
+        notes: ''
       };
       setCart(prev => [...prev, newItem]);
     }
@@ -318,75 +410,73 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       const salesTableName = getSalesTableName();
       const saleItemsTableName = getSaleItemsTableName();
       const tableName = getTableName();
-      const subtotal = calculateCartTotal();
-      const total = subtotal;
+      
+      const saleData = {
+        table_id: selectedTable.id,
+        customer_name: customerName || null,
+        customer_count: customerCount,
+        total_amount: calculateCartTotal(),
+        status: 'aberta' as const,
+        notes: notes || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
-      let sale;
+      let saleId: string;
 
       if (currentSale) {
         // Atualizar venda existente
-        const { data: updatedSale, error: saleError } = await supabase
+        const { error: saleError } = await supabase
           .from(salesTableName)
           .update({
-            customer_name: customerName,
-            customer_count: customerCount,
-            subtotal: subtotal,
-            total_amount: total,
-            notes: notes,
-            updated_at: new Date().toISOString()
+            customer_name: saleData.customer_name,
+            customer_count: saleData.customer_count,
+            total_amount: saleData.total_amount,
+            notes: saleData.notes,
+            updated_at: saleData.updated_at
           })
-          .eq('id', currentSale.id)
-          .select()
-          .single();
+          .eq('id', currentSale.id);
 
         if (saleError) throw saleError;
-        sale = updatedSale;
 
         // Deletar itens existentes
         await supabase
           .from(saleItemsTableName)
-          .update({ is_active: false })
+          .delete()
           .eq('sale_id', currentSale.id);
+
+        saleId = currentSale.id;
       } else {
         // Criar nova venda
         const { data: newSale, error: saleError } = await supabase
           .from(salesTableName)
-          .insert([{
-            table_id: selectedTable.id,
-            operator_name: operatorName,
-            customer_name: customerName,
-            customer_count: customerCount,
-            subtotal: subtotal,
-            total_amount: total,
-            status: 'aberta',
-            notes: notes
-          }])
+          .insert([saleData])
           .select()
           .single();
 
         if (saleError) throw saleError;
-        sale = newSale;
 
-        // Atualizar mesa com venda atual
+        saleId = newSale.id;
+
+        // Atualizar mesa com a venda
         await supabase
           .from(tableName)
           .update({ 
-            current_sale_id: sale.id,
+            current_sale_id: saleId,
             status: 'ocupada'
           })
           .eq('id', selectedTable.id);
       }
 
-      // Inserir itens da venda
+      // Inserir novos itens
       const saleItems = cart.map(item => ({
-        sale_id: sale.id,
+        sale_id: saleId,
         product_code: item.product_code,
         product_name: item.product_name,
         quantity: item.quantity,
-        weight_kg: item.weight,
         unit_price: item.unit_price,
         price_per_gram: item.price_per_gram,
-        discount_amount: 0,
+        weight: item.weight,
         subtotal: item.subtotal,
         notes: item.notes
       }));
@@ -443,15 +533,16 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       // Adicionar ao caixa
       if (addCashEntry) {
         await addCashEntry({
-          type: 'income',
+          type: 'entrada',
           amount: currentSale.total_amount,
-          description: `Venda Mesa #${selectedTable.number} - ${getStoreName()} (${getPaymentMethodName(paymentMethod)})`,
-          payment_method: paymentMethod
+          description: `Venda Mesa ${selectedTable.number} - ${currentSale.sale_number}`,
+          payment_method: paymentMethod,
+          operator: operatorName || 'Sistema'
         });
       }
 
       // Mostrar mensagem de sucesso
-      setSuccessMessage(`Venda da Mesa ${currentSale.table.name} finalizada com sucesso!`);
+      setSuccessMessage(`Venda da Mesa ${selectedTable.name} finalizada com sucesso!`);
       setShowSuccessMessage(true);
       
       // Ocultar mensagem após 3 segundos
