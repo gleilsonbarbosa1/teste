@@ -107,17 +107,18 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       for (let i = maxNumber + 1; i <= maxNumber + 5; i++) {
         available.push(i);
       }
-    }
+          .update({ is_active: false })
     
     return available;
   }, [tables]);
 
+        // Remover da lista local (soft delete)
   // Atualizar números disponíveis quando as mesas mudarem
   useEffect(() => {
-    setAvailableTableNumbers(getAvailableTableNumbers());
+        console.log('✅ Mesa desativada (soft delete)');
   }, [tables, getAvailableTableNumbers]);
-
-  const fetchTables = async () => {
+        console.error(`❌ Erro ao desativar mesa da Loja ${storeId}:`, error);
+        alert('Erro ao desativar mesa');
     try {
       setLoading(true);
       setError(null);
@@ -217,7 +218,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const deleteTable = async (tableId: string, tableName: string) => {
     if (!confirm(`Tem certeza que deseja excluir a ${tableName}?`)) return;
 
-    try {
+        // Usar soft delete ao invés de hard delete para preservar histórico de vendas
+        const { error } = await supabase
       // Usar soft delete ao invés de hard delete para preservar histórico de vendas
       const tableNameDb = getTableName();
       
