@@ -532,6 +532,36 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     return allStatuses.filter(status => status !== currentStatus);
   };
 
+  // Calculate finalize button state at top level to avoid conditional hook calls
+  const { isFinalizeButtonDisabled, finalizeButtonTitle, finalizeButtonContent } = useMemo(() => {
+    const disabled = !paymentMethod || isFinalizingSale || !cashRegisterHook.isOpen;
+    const title = isFinalizingSale
+      ? 'Finalizando venda...'
+      : !cashRegisterHook.isOpen
+      ? 'Caixa fechado. Abra o caixa para finalizar a venda.'
+      : !paymentMethod
+      ? 'Selecione uma forma de pagamento.'
+      : '';
+    
+    const content = (
+      <button
+        onClick={handleFinalizeSale}
+        disabled={disabled}
+        title={title}
+        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+      >
+        <CheckCircle size={20} />
+        {isFinalizingSale ? 'Finalizando...' : 'Finalizar Venda'}
+      </button>
+    );
+    
+    return { 
+      isFinalizeButtonDisabled: disabled, 
+      finalizeButtonTitle: title, 
+      finalizeButtonContent: content 
+    };
+  }, [paymentMethod, isFinalizingSale, cashRegisterHook.isOpen, handleFinalizeSale]);
+
   useEffect(() => {
     fetchTables();
   }, [storeId]);
@@ -1096,29 +1126,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                         {isSavingSale ? 'Salvando...' : 'Salvar Alterações'}
                       </button>
 
-                      {/* Calculate disabled state and title for finalize button */}
-                      {useMemo(() => {
-                        const isFinalizeButtonDisabled = !paymentMethod || isFinalizingSale || !cashRegisterHook.isOpen;
-                        const finalizeButtonTitle = isFinalizingSale
-                          ? 'Finalizando venda...'
-                          : !cashRegisterHook.isOpen
-                          ? 'Caixa fechado. Abra o caixa para finalizar a venda.'
-                          : !paymentMethod
-                          ? 'Selecione uma forma de pagamento.'
-                          : '';
-                        
-                        return (
-                          <button
-                            onClick={handleFinalizeSale}
-                            disabled={isFinalizeButtonDisabled}
-                            title={finalizeButtonTitle}
-                            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 text-white px-6 py-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                          >
-                            <CheckCircle size={20} />
-                            {isFinalizingSale ? 'Finalizando...' : 'Finalizar Venda'}
-                          </button>
-                        );
-                      }, [paymentMethod, isFinalizingSale, cashRegisterHook.isOpen, handleFinalizeSale])}
+                      {finalizeButtonContent}
 
                       <button
                         onClick={handleCancelSale}
