@@ -566,7 +566,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       // Adicionar ao caixa
       if (addCashEntry) {
         await addCashEntry({
-          type: 'entrada',
+          type: 'income',
           amount: currentSale.total_amount,
           description: `Venda Mesa ${selectedTable.number} - ${currentSale.sale_number}`,
           payment_method: paymentMethod,
@@ -1100,7 +1100,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-3 rounded-xl">
-                    <Utensils size={24} className="text-white" />
+                    <Utensils size={24} className="text-white" /> 
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold text-gray-800">
@@ -1175,8 +1175,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               </div>
 
               {/* Cart Section */}
-              <div className="w-1/2 p-4 flex flex-col bg-white min-h-0">
-                <h4 className="text-xl font-bold text-gray-800 mb-6">Carrinho da Venda</h4>
+              <div className="w-1/2 p-4 flex flex-col bg-white min-h-0"> 
+                <h4 className="text-xl font-bold text-gray-800 mb-6">Carrinho da Venda</h4>  
                 
                 {/* Loading Sale Items */}
                 {loadingSaleItems && (
