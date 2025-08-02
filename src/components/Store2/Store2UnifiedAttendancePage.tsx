@@ -9,13 +9,11 @@ import {
   User,
   LogOut,
   Store,
-  Clock,
   Users
 } from 'lucide-react';
 import Store2PDVSalesScreen from './Store2PDVSalesScreen';
 import Store2CashRegisterMenu from './Store2CashRegisterMenu';
 import TableSalesPanel from '../TableSales/TableSalesPanel';
-import SalesHistory from '../Orders/SalesHistory';
 import { useScale } from '../../hooks/useScale';
 import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
 import { PDVOperator } from '../../types/pdv';
@@ -26,8 +24,8 @@ interface Store2UnifiedAttendancePageProps {
 }
 
 const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = ({ operator, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'tables' | 'history'>('sales');
-  const { isOpen: isCashRegisterOpen, previousDayOpenRegister } = useStore2PDVCashRegister();
+  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'tables'>('sales');
+  const { isOpen: isCashRegisterOpen } = useStore2PDVCashRegister();
   const scale = useScale();
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
 
@@ -43,14 +41,6 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
     
     setSupabaseConfigured(isConfigured);
   }, []);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -119,26 +109,6 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
         </div>
       )}
 
-      {/* Previous Day Open Register Alert */}
-      {supabaseConfigured && previousDayOpenRegister && (
-        <div className="max-w-7xl mx-auto px-4 mt-6 print:hidden">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-red-100 rounded-full p-2">
-                <Clock size={20} className="text-red-600" />
-              </div>
-              <div>
-                <h3 className="font-medium text-red-800">Caixa do Dia Anterior Não Fechado - Loja 2</h3>
-                <p className="text-red-700 text-sm">
-                  Há um caixa da Loja 2 aberto desde {formatDate(previousDayOpenRegister.opened_at)} que não foi fechado.
-                  É recomendado fechar este caixa antes de continuar as operações.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Cash Register Warning */}
       {supabaseConfigured && !isCashRegisterOpen && (activeTab === 'sales') && (
         <div className="max-w-7xl mx-auto px-4 mt-6 print:hidden">
@@ -198,18 +168,6 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
               <Users size={20} />
               Vendas Mesas
             </button>
-            
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                activeTab === 'history'
-                  ? 'bg-orange-500 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <Clock size={20} />
-              Histórico de Vendas
-            </button>
           </div>
         </div>
 
@@ -218,7 +176,6 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
           {activeTab === 'sales' && <Store2PDVSalesScreen operator={operator} scaleHook={scale} />}
           {activeTab === 'cash' && <Store2CashRegisterMenu />}
           {activeTab === 'tables' && <TableSalesPanel storeId={2} operatorName={operator?.name} />}
-          {activeTab === 'history' && <SalesHistory storeId={2} />}
         </div>
       </div>
     </div>

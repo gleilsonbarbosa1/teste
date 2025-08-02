@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Order } from '../../types/order';
-import { usePDVSettings } from '../../hooks/usePDVSettings';
 
 interface OrderPrintViewProps {
   order: Order;
@@ -9,52 +8,6 @@ interface OrderPrintViewProps {
 }
 
 const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, onClose }) => {
-  const { settings: pdvSettings } = usePDVSettings();
-  const [printerSettings, setPrinterSettings] = useState({
-    paper_width: '80mm',
-    font_size: 14,
-    auto_adjust_font: true,
-    auto_adjust_paper: true
-  });
-
-  // Carregar configurações de impressora do localStorage ou PDVSettings
-  useEffect(() => {
-    if (pdvSettings) {
-      setPrinterSettings(prev => ({
-        ...prev,
-        paper_width: pdvSettings.printer_paper_width || '80mm',
-        font_size: pdvSettings.printer_font_size || 14,
-        auto_adjust_font: pdvSettings.printer_auto_adjust_font !== false,
-        auto_adjust_paper: pdvSettings.printer_auto_adjust_paper !== false
-      }));
-    }
-  }, [pdvSettings]);
-
-  // Calcular tamanhos responsivos baseado no papel
-  const getResponsiveSizes = () => {
-    let baseFontSize = printerSettings.font_size;
-    let width = printerSettings.paper_width === 'A4' ? '190mm' : (printerSettings.paper_width === '58mm' ? '54mm' : '76mm');
-    let padding = printerSettings.paper_width === 'A4' ? '5mm' : (printerSettings.paper_width === '58mm' ? '1mm' : '2mm');
-
-    if (printerSettings.auto_adjust_font) {
-      if (printerSettings.paper_width === '58mm') baseFontSize = 10;
-      else if (printerSettings.paper_width === '80mm') baseFontSize = 14;
-      else if (printerSettings.paper_width === 'A4') baseFontSize = 16;
-    }
-
-    return {
-      baseFontSize,
-      titleSize: baseFontSize + 4,
-      mediumSize: baseFontSize + 1,
-      largeSize: baseFontSize + 2,
-      smallSize: Math.max(8, baseFontSize - 4),
-      width,
-      padding
-    };
-  };
-
-  const sizes = getResponsiveSizes();
-
   const formatPrice = (price: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
   const getPaymentMethodLabel = (method: string) => method === 'money' ? 'Dinheiro' : method === 'pix' ? 'PIX' : method === 'card' ? 'Cartão' : method;
   const getStatusLabel = (status: string) => ({
@@ -79,7 +32,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         <title>Pedido #${order.id.slice(-8)}</title>
         <style>
           @page {
-            size: ${printerSettings.paper_width} auto; /* Ajusta o tamanho do papel */
+            size: 80mm auto;
             margin: 0;
           }
           
@@ -93,20 +46,17 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           
           body {
             font-family: 'Courier New', monospace;
-            font-size: ${sizes.baseFontSize}px; /* Tamanho da fonte base */
+            font-size: 12px;
             line-height: 1.3;
             color: black;
             background: white;
-            padding: ${sizes.padding}; /* Preenchimento da página */
-            width: ${sizes.width}; /* Largura do conteúdo */
+            padding: 2mm;
+            width: 76mm;
           }
           
           .center { text-align: center; }
           .bold { font-weight: bold; }
-          .small { font-size: ${sizes.smallSize}px; font-weight: 600; } /* Tamanho da fonte pequena com peso maior */
-          .title { font-size: ${sizes.titleSize}px; }
-          .medium { font-size: ${sizes.mediumSize}px; font-weight: 600; }
-          .large { font-size: ${sizes.largeSize}px; font-weight: 600; }
+          .small { font-size: 10px; }
           .separator { 
             border-bottom: 1px dashed black; 
             margin: 5px 0; 
@@ -116,7 +66,6 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
             display: flex; 
             justify-content: space-between; 
             align-items: center;
-            font-weight: 600;
           }
           .mb-1 { margin-bottom: 2px; }
           .mb-2 { margin-bottom: 5px; }
@@ -131,21 +80,13 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
             display: block;
             margin: 5px auto;
           }
-          
-          /* Melhorar legibilidade do texto */
-          p, div, span {
-            font-weight: 500;
-          }
-          
-          .small {
-            font-weight: 600 !important;
-          }
         </style>
       </head>
       <body>
         <!-- Cabeçalho -->
         <div class="center mb-3 separator">
-          <div class="bold title" style="color: #000;">ELITE AÇAÍ</div>
+          <img src="/logo elite.jpeg" alt="Elite Açaí Logo" style="width: 60mm; height: auto; margin: 5px auto; display: block;">
+          <div class="bold" style="font-size: 16px;">ELITE AÇAÍ</div>
           <div class="small">Delivery Premium</div>
           <div class="small">Rua Um, 1614-C</div>
           <div class="small">Residencial 1 - Cágado</div>
@@ -153,73 +94,86 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           <div class="small">CNPJ: ${storeSettings?.cnpj || '38.130.139/0001-22'}</div>
         </div>
         
+        ${order.payment_method === 'pix' ? `
+        <!-- QR Code PIX -->
+        <div class="center mb-3 separator">
+          <div class="bold mb-2">QR CODE PIX</div>
+          <img src="/WhatsApp Image 2025-07-22 at 14.53.40.jpeg" alt="QR Code PIX" style="width: 60mm; height: 60mm;">
+          <div class="small">Chave PIX: 85989041010</div>
+          <div class="small">Nome: Amanda Suyelen da Costa Pereira</div>
+          <div class="bold">Valor: ${formatPrice(order.total_price)}</div>
+        </div>
+        ` : ''}
+        
         <!-- Dados do Pedido -->
         <div class="mb-3 separator">
-          <div class="bold center mb-2 medium">=== PEDIDO DE DELIVERY ===</div>
+          <div class="bold center mb-2">=== PEDIDO DE DELIVERY ===</div>
           <div class="small">Pedido: #${order.id.slice(-8)}</div>
-          <div class="small" style="font-weight: 600;">Data: ${new Date(order.created_at).toLocaleDateString('pt-BR')}</div>
-          <div class="small" style="font-weight: 600;">Hora: ${new Date(order.created_at).toLocaleTimeString('pt-BR')}</div>
-          <div class="small" style="font-weight: 600;">Status: ${getStatusLabel(order.status)}</div>
+          <div class="small">Data: ${new Date(order.created_at).toLocaleDateString('pt-BR')}</div>
+          <div class="small">Hora: ${new Date(order.created_at).toLocaleTimeString('pt-BR')}</div>
+          <div class="small">Status: ${getStatusLabel(order.status)}</div>
         </div>
         
         <!-- Cliente -->
         <div class="mb-3 separator">
-          <div class="bold mb-1 medium">DADOS DO CLIENTE:</div>
-          <div class="small" style="font-weight: 600;">Nome: ${order.customer_name}</div>
-          <div class="small" style="font-weight: 600;">Telefone: ${order.customer_phone}</div>
-          <div class="small" style="font-weight: 600;">Endereço: ${order.customer_address}</div>
-          <div class="small" style="font-weight: 600;">Bairro: ${order.customer_neighborhood}</div>
-          ${order.customer_complement ? `<div class="small" style="font-weight: 600;">Complemento: ${order.customer_complement}</div>` : ''}
+          <div class="bold mb-1">DADOS DO CLIENTE:</div>
+          <div class="small">Nome: ${order.customer_name}</div>
+          <div class="small">Telefone: ${order.customer_phone}</div>
+          <div class="small">Endereço: ${order.customer_address}</div>
+          <div class="small">Bairro: ${order.customer_neighborhood}</div>
+          ${order.customer_complement ? `<div class="small">Complemento: ${order.customer_complement}</div>` : ''}
         </div>
         
         <!-- Itens -->
         <div class="mb-3 separator">
-          <div class="bold mb-1 medium">ITENS DO PEDIDO:</div>
+          <div class="bold mb-1">ITENS DO PEDIDO:</div>
           ${order.items.map((item, index) => `
             <div class="mb-2">
               <div class="bold">${item.product_name}</div>
               ${item.selected_size ? `<div class="small">Tamanho: ${item.selected_size}</div>` : ''}
               <div class="flex-between">
-                <span class="small" style="font-weight: 600;">${item.quantity}x ${formatPrice(item.unit_price)}</span>
-                <span class="small" style="font-weight: 600;">${formatPrice(item.total_price)}</span>
+                <span class="small">${item.quantity}x ${formatPrice(item.unit_price)}</span>
+                <span class="small">${formatPrice(item.total_price)}</span>
               </div>
               ${item.complements && item.complements.length > 0 ? `
                 <div class="ml-2 mt-1">
-                  <div class="small" style="font-weight: 600;">Complementos:</div>
+                  <div class="small">Complementos:</div>
                   ${item.complements.map(comp => `
-                    <div class="small ml-2" style="font-weight: 600;">• ${comp.name}${comp.price > 0 ? ` (+${formatPrice(comp.price)})` : ''}</div>
+                    <div class="small ml-2">• ${comp.name}${comp.price > 0 ? ` (+${formatPrice(comp.price)})` : ''}</div>
                   `).join('')}
                 </div>
               ` : ''}
-              ${item.observations ? `<div class="small ml-2 mt-1" style="font-weight: 600;">Obs: ${item.observations}</div>` : ''}
+              ${item.observations ? `<div class="small ml-2 mt-1">Obs: ${item.observations}</div>` : ''}
             </div>
           `).join('')}
         </div>
         
         <!-- Resumo -->
         <div class="mb-3 separator">
-          <div class="bold mb-1 medium">RESUMO:</div>
+          <div class="bold mb-1">RESUMO:</div>
           <div class="flex-between">
-            <span class="small" style="font-weight: 600;">Subtotal:</span>
-            <span class="small" style="font-weight: 600;">${formatPrice(order.total_price - (order.delivery_fee || 0))}</span>
+            <span class="small">Subtotal:</span>
+            <span class="small">${formatPrice(order.total_price - (order.delivery_fee || 0))}</span>
           </div>
           ${order.delivery_fee && order.delivery_fee > 0 ? `
           <div class="flex-between">
-            <span class="small" style="font-weight: 600;">Taxa de Entrega:</span>
-            <span class="small" style="font-weight: 600;">${formatPrice(order.delivery_fee)}</span>
+            <span class="small">Taxa de Entrega:</span>
+            <span class="small">${formatPrice(order.delivery_fee)}</span>
           </div>
           ` : ''}
           <div style="border-top: 1px solid black; padding-top: 3px; margin-top: 3px;">
             <div class="flex-between bold">
-              <span class="large">TOTAL:</span>
-              <span class="large">${formatPrice(order.total_price)}</span>
+              <span>TOTAL:</span>
+              <span>${formatPrice(order.total_price)}</span>
             </div>
           </div>
         </div>
         
         <!-- Pagamento -->
         <div class="mb-3 separator">
-          <div class="bold mb-1 medium">PAGAMENTO:</div>
+          <div class="bold mb-1">PAGAMENTO:</div>
+          <div class="small">Forma: ${getPaymentMethodLabel(order.payment_method)}</div>
+          ${order.change_for ? `<div class="small">Troco para: ${formatPrice(order.change_for)}</div>` : ''}
           ${order.payment_method === 'pix' ? `
           <div class="mt-2">
             <div class="small">⚠️ IMPORTANTE:</div>
@@ -231,12 +185,12 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         
         <!-- Rodapé -->
         <div class="center small" style="border-top: 1px solid black; padding-top: 5px;">
-          <div class="bold mb-2" style="font-size: ${sizes.baseFontSize}px;">Obrigado pela preferência!</div>
+          <div class="bold mb-2">Obrigado pela preferência!</div>
           <div>Elite Açaí - O melhor açaí da cidade!</div>
           <div>@eliteacai</div>
           <div>⭐⭐⭐⭐⭐ Avalie-nos no Google</div>
           <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid black;">
-            <div class="small">Elite Açaí - CNPJ: ${storeSettings?.cnpj || '00.000.000/0001-00'}</div>
+            <div>Elite Açaí - CNPJ: ${storeSettings?.cnpj || '00.000.000/0001-00'}</div>
             <div>Impresso: ${new Date().toLocaleString('pt-BR')}</div>
             <div>Este não é um documento fiscal</div>
           </div>
@@ -265,7 +219,7 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           {/* Controls */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-800">Imprimir Pedido ({printerSettings.paper_width})</h2>
+              <h2 className="text-lg font-semibold text-gray-800">Imprimir Pedido</h2>
               <div className="flex gap-2">
                 <button
                   onClick={() => {
@@ -387,90 +341,127 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
                 <p className="text-xs">--------------------------</p>
               </div>
               
-            <div className="mb-3">
-              <p className="text-xs font-bold text-center">=== PEDIDO DE DELIVERY ===</p>
-              <p className="text-xs">Pedido: #{order.id.slice(-8)}</p>
-              <p className="text-xs">Data: {new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
-              <p className="text-xs">Hora: {new Date(order.created_at).toLocaleTimeString('pt-BR')}</p>
-              <p className="text-xs">Status: {getStatusLabel(order.status)}</p>
-              <p className="text-xs">--------------------------</p>
-            </div>
-            
-            <div className="mb-3">
-              <p className="text-xs font-bold">CLIENTE:</p>
-              <p className="text-xs">Nome: {order.customer_name}</p>
-              <p className="text-xs">Telefone: {order.customer_phone}</p>
-              <p className="text-xs">Endereço: {order.customer_address}</p>
-              <p className="text-xs">Bairro: {order.customer_neighborhood}</p>
-              {order.customer_complement && <p className="text-xs">Complemento: {order.customer_complement}</p>}
-              <p className="text-xs">--------------------------</p>
-            </div>
-            
-            <div className="mb-3">
-              <p className="text-xs font-bold">ITENS:</p>
-              {order.items.map((item, index) => (
-                <div key={index} className="text-xs mb-2">
-                  <p>{item.product_name}</p>
-                  {item.selected_size && <p>Tamanho: {item.selected_size}</p>}
-                  <p>{item.quantity}x {formatPrice(item.unit_price)} = {formatPrice(item.total_price)}</p>
-                  
-                  {item.complements && item.complements.length > 0 && (
-                    <div className="ml-2 mt-1">
-                      <p>Complementos:</p>
-                      {item.complements.map((comp, idx) => (
-                        <p key={idx} className="ml-2">• {comp.name}{comp.price > 0 && ` (+${formatPrice(comp.price)})`}</p>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {item.observations && <p>Obs: {item.observations}</p>}
-                </div>
-              ))}
-              <p className="text-xs">--------------------------</p>
-            </div>
-            
-            <div className="mb-3">
-              <p className="text-xs">Subtotal: {formatPrice(order.total_price - (order.delivery_fee || 0))}</p>
-              {order.delivery_fee && order.delivery_fee > 0 && <p className="text-xs">Taxa: {formatPrice(order.delivery_fee)}</p>}
-              <p className="text-xs font-bold">TOTAL: {formatPrice(order.total_price)}</p>
-              <p className="text-xs">--------------------------</p>
-            </div>
-            
-            <div className="mb-3">
-              <p className="text-xs font-bold">PAGAMENTO:</p>
-              <p className="text-xs">Forma: {getPaymentMethodLabel(order.payment_method)}</p>
-              {order.change_for && <p className="text-xs">Troco para: {formatPrice(order.change_for)}</p>}
+              {/* QR Code PIX - apenas para pagamentos PIX */}
               {order.payment_method === 'pix' && (
-                <div className="mt-2">
-                  <p className="text-xs">⚠️ IMPORTANTE:</p>
-                  <p className="text-xs">Envie o comprovante do PIX</p>
-                  <p className="text-xs">para confirmar o pedido!</p>
+                <div className="text-center mb-4 pb-2 border-b border-dashed border-gray-400">
+                  <div className="font-bold mb-2">QR CODE PIX</div>
+                  <img 
+                    src="/WhatsApp Image 2025-07-22 at 14.53.40.jpeg" 
+                    alt="QR Code PIX" 
+                    className="w-24 h-24 mx-auto mb-2"
+                  />
+                  <div className="space-y-1">
+                    <div>Chave PIX: 85989041010</div>
+                    <div>Nome: Amanda Suyelen da Costa Pereira</div>
+                    <div className="font-bold">Valor: {formatPrice(order.total_price)}</div>
+                  </div>
+                  <p>--------------------------</p>
                 </div>
               )}
-              <p className="text-xs">--------------------------</p>
-            </div>
-            
-            <div className="text-center text-xs">
-              <p>Obrigado pela preferência!</p>
-              <p>Elite Açaí</p>
+              
+              <div className="mb-3">
+                <p className="text-xs">Pedido: #{order.id.slice(-8)}</p>
+                <p className="text-xs">Data: {new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
+                <p className="text-xs">Hora: {new Date(order.created_at).toLocaleTimeString('pt-BR')}</p>
+                <p className="text-xs">Status: {getStatusLabel(order.status)}</p>
+                <p className="text-xs">--------------------------</p>
+              </div>
+              
+              <div className="mb-3">
+                <p className="text-xs font-bold">CLIENTE:</p>
+                <p className="text-xs">Nome: {order.customer_name}</p>
+                <p className="text-xs">Telefone: {order.customer_phone}</p>
+                <p className="text-xs">Endereço: {order.customer_address}</p>
+                <p className="text-xs">Bairro: {order.customer_neighborhood}</p>
+                {order.customer_complement && <p className="text-xs">Complemento: {order.customer_complement}</p>}
+                <p className="text-xs">--------------------------</p>
+              </div>
+              
+              <div className="mb-3">
+                <p className="text-xs font-bold">ITENS:</p>
+                {order.items.map((item, index) => (
+                  <div key={index} className="text-xs mb-2">
+                    <p>{item.product_name}</p>
+                    {item.selected_size && <p>Tamanho: {item.selected_size}</p>}
+                    <p>{item.quantity}x {formatPrice(item.unit_price)} = {formatPrice(item.total_price)}</p>
+                    
+                    {item.complements && item.complements.length > 0 && (
+                      <div className="ml-2 mt-1">
+                        <p>Complementos:</p>
+                        {item.complements.map((comp, idx) => (
+                          <p key={idx} className="ml-2">• {comp.name}{comp.price > 0 && ` (+${formatPrice(comp.price)})`}</p>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {item.observations && <p>Obs: {item.observations}</p>}
+                  </div>
+                ))}
+                <p className="text-xs">--------------------------</p>
+              </div>
+              
+              <div className="mb-3">
+                <p className="text-xs">Subtotal: {formatPrice(order.total_price - (order.delivery_fee || 0))}</p>
+                {order.delivery_fee && order.delivery_fee > 0 && <p className="text-xs">Taxa: {formatPrice(order.delivery_fee)}</p>}
+                <p className="text-xs font-bold">TOTAL: {formatPrice(order.total_price)}</p>
+                <p className="text-xs">--------------------------</p>
+              </div>
+              
+              <div className="mb-3">
+                <p className="text-xs font-bold">PAGAMENTO:</p>
+                <p className="text-xs">Forma: {getPaymentMethodLabel(order.payment_method)}</p>
+                {order.change_for && <p className="text-xs">Troco para: {formatPrice(order.change_for)}</p>}
+                {order.payment_method === 'pix' && (
+                  <div className="mt-2">
+                    <p className="text-xs">⚠️ IMPORTANTE:</p>
+                    <p className="text-xs">Envie o comprovante do PIX</p>
+                    <p className="text-xs">para confirmar o pedido!</p>
+                  </div>
+                )}
+                <p className="text-xs">--------------------------</p>
+              </div>
+              
+              <div className="text-center text-xs">
+                <p>Obrigado pela preferência!</p>
+                <p>Elite Açaí</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
       {/* Print Content - Only visible when printing */}
       <div className="hidden print:block print:w-full print:h-full print:bg-white print:text-black thermal-print-content">
         <div style={{ fontFamily: 'Courier New, monospace', fontSize: '14px', lineHeight: '1.4', color: 'black', background: 'white', padding: '10mm' }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '1px dashed black', paddingBottom: '10px', color: 'black', background: 'white' }}>
-            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 5px 0', color: '#000' }}>ELITE AÇAÍ</h1>
+            <img 
+              src="/logo elite.jpeg" 
+              alt="Elite Açaí Logo" 
+              style={{ width: '60mm', height: 'auto', margin: '5px auto', display: 'block' }}
+            />
+            <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 5px 0' }}>ELITE AÇAÍ</h1>
             <p style={{ fontSize: '12px', margin: '2px 0' }}>Delivery Premium</p>
             <p style={{ fontSize: '10px', margin: '2px 0' }}>Rua Dois, 2130-A</p>
             <p style={{ fontSize: '10px', margin: '2px 0' }}>Residencial 1 - Cágado</p>
             <p style={{ fontSize: '10px', margin: '2px 0' }}>Tel: (85) 98904-1010</p>
             <p style={{ fontSize: '10px', margin: '2px 0' }}>CNPJ: {storeSettings?.cnpj || '38.130.139/0001-22'}</p>
           </div>
+
+          {/* QR Code PIX */}
+          {order.payment_method === 'pix' && (
+            <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '1px dashed black', paddingBottom: '10px', color: 'black', background: 'white' }}>
+              <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>QR CODE PIX</p>
+              <img 
+                src="/WhatsApp Image 2025-07-22 at 14.53.40.jpeg" 
+                alt="QR Code PIX" 
+                style={{ width: '80px', height: '80px', margin: '0 auto', display: 'block' }}
+              />
+              <p style={{ fontSize: '10px', margin: '5px 0' }}>Chave PIX: 85989041010</p>
+              <p style={{ fontSize: '10px', margin: '5px 0' }}>Nome: Grupo Elite</p>
+              <p style={{ fontSize: '12px', fontWeight: 'bold', margin: '5px 0' }}>Valor: {formatPrice(order.total_price)}</p>
+            </div>
+          )}
 
           {/* Order Info */}
           <div style={{ marginBottom: '15px', color: 'black', background: 'white' }}>
@@ -565,6 +556,106 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         </div>
       </div>
 
+      {/* Print Styles */}
+      <style jsx>{`
+        @media print {
+          @page {
+            size: 80mm auto;
+            margin: 0 !important;
+          }
+          
+          html, body {
+            font-family: 'Courier New', monospace !important;
+            font-size: 12px !important;
+            line-height: 1.4 !important;
+            color: black !important;
+            background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          * {
+            color: black !important;
+            background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            box-sizing: border-box !important;
+          }
+          
+          .print\\:hidden {
+            display: none !important;
+          }
+          
+          .print\\:block {
+            display: block !important;
+            visibility: visible !important;
+          }
+          
+          .print\\:w-full {
+            width: 100% !important;
+          }
+          
+          .print\\:h-full {
+            height: 100% !important;
+          }
+          
+          .print\\:bg-white {
+            background: white !important;
+          }
+          
+          .print\\:text-black {
+            color: black !important;
+          }
+          
+          /* Force visibility for thermal printing */
+          .thermal-print-content {
+            display: block !important;
+            visibility: visible !important;
+            position: static !important;
+            width: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+            font-family: 'Courier New', monospace !important;
+            font-size: 12px !important;
+            line-height: 1.3 !important;
+            color: black !important;
+            background: white !important;
+            padding: 2mm !important;
+            margin: 0 !important;
+          }
+          
+          /* Remove all transforms and effects */
+          .thermal-print-content * {
+            transform: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+          }
+          
+          /* Ensure text is visible */
+          .thermal-print-content p,
+          .thermal-print-content div,
+          .thermal-print-content span {
+            color: black !important;
+            background: white !important;
+            display: block !important;
+            visibility: visible !important;
+          }
+          
+          /* Images for thermal printing */
+          .thermal-print-content img {
+            max-width: 60mm !important;
+            height: auto !important;
+            display: block !important;
+            margin: 5mm auto !important;
+          }
+        }
+      `}</style>
     </>
   );
 };

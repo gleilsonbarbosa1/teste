@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { PDVProduct } from './usePDV';
 
 export interface Store2Sale {
   id: string;
@@ -11,7 +12,7 @@ export interface Store2Sale {
   discount_amount: number;
   discount_percentage: number;
   total_amount: number;
-  payment_type: string;
+  payment_type: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto';
   payment_details?: any;
   change_amount: number;
   notes?: string;
@@ -21,14 +22,15 @@ export interface Store2Sale {
   cancel_reason?: string;
   created_at: string;
   updated_at: string;
-  channel?: string;
+  channel: string;
   cash_register_id?: string;
+  items?: Store2SaleItem[];
 }
 
 export interface Store2SaleItem {
   id: string;
   sale_id: string;
-  product_id?: string;
+  product_id: string;
   product_code: string;
   product_name: string;
   quantity: number;
@@ -41,11 +43,12 @@ export interface Store2SaleItem {
 }
 
 export interface Store2CartItem {
-  product: any;
+  product: PDVProduct;
   quantity: number;
   weight?: number;
   discount: number;
   subtotal: number;
+  notes?: string;
 }
 
 export const useStore2Sales = () => {
@@ -53,33 +56,53 @@ export const useStore2Sales = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to get payment method display name
+  const getPaymentMethodName = (method: string): string => {
+    const methodNames: Record<string, string> = {
+      'dinheiro': 'Dinheiro',
+      'pix': 'PIX',
+      'cartao_credito': 'Cartão de Crédito',
+      'cartao_debito': 'Cartão de Débito',
+      'voucher': 'Voucher',
+      'misto': 'Pagamento Misto'
+    };
+    return methodNames[method] || method;
+  };
+
+  // Helper function to validate UUID format
+  const isValidUUID = (uuid: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  };
+
   const createSale = useCallback(async (
     saleData: Omit<Store2Sale, 'id' | 'sale_number' | 'created_at' | 'updated_at'>,
     items: Omit<Store2SaleItem, 'id' | 'sale_id' | 'created_at'>[],
-    cashRegisterId: string
+    cashRegisterId?: string
   ) => {
     try {
       setLoading(true);
-      
-      // Check if Supabase is configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
-        throw new Error('Supabase não configurado. Configure as variáveis de ambiente para usar esta funcionalidade.');
-      }
-      
-      const saleWithCashRegister = {
+      console.log('🚀 Criando venda na Loja 2:', saleData);
+
+      // Validar e limpar IDs inválidos
+      const cleanedSaleData = {
         ...saleData,
-        cash_register_id: cashRegisterId,
-        channel: 'loja2'
+        operator_id: saleData.operator_id && isValidUUID(saleData.operator_id) ? saleData.operator_id : undefined,
+        cash_register_id: cashRegisterId && isValidUUID(cashRegisterId) ? cashRegisterId : undefined
       };
-      
+
+      // Criar venda
       const { data: sale, error: saleError } = await supabase
         .from('store2_sales')
-        .insert([saleWithCashRegister])
+        .insert([{
+          ...cleanedSaleData,
+          channel: 'loja2'
+        }])
         .select()
         .single();
 
       if (saleError) throw saleError;
+      console.log('✅ Venda da Loja 2 criada:', sale);
 
       // Criar itens da venda
       const saleItems = items.map(item => ({
@@ -92,26 +115,72 @@ export const useStore2Sales = () => {
         .insert(saleItems);
 
       if (itemsError) {
-        // Tentar deletar a venda se falhou criar itens
-        await supabase.from('store2_sales').delete().eq('id', sale.id);
-        throw itemsError;
+        console.error('❌ Erro ao criar itens da venda:', itemsError);
+        
+        // Tentar deletar a venda para evitar registros órfãos
+        try {
+          await supabase.from('store2_sales').delete().eq('id', sale.id);
+          console.log('🗑️ Venda órfã removida após erro nos itens');
+        } catch (cleanupError) {
+          console.error('⚠️ Falha ao limpar venda órfã:', cleanupError);
+        }
+        
+        throw new Error(`Erro ao criar itens da venda: ${itemsError.message}`);
       }
 
-      // Adicionar entrada ao caixa
-      await supabase
-        .from('pdv2_cash_entries')
-        .insert([{
-          register_id: cashRegisterId,
-          type: 'income',
-          amount: sale.total_amount,
-          description: `Venda #${sale.sale_number}`,
-          payment_method: sale.payment_type
-        }]);
+      // Adicionar entrada no caixa se houver caixa aberto
+      if (cashRegisterId && isValidUUID(cashRegisterId)) {
+        try {
+          console.log('💰 Adicionando venda ao caixa da Loja 2:', sale.id);
+          await supabase
+            .from('pdv2_cash_entries')
+            .insert([{
+              register_id: cashRegisterId,
+              type: 'income',
+              amount: sale.total_amount,
+              description: `Venda #${sale.sale_number} - Loja 2 (${getPaymentMethodName(sale.payment_type)})`,
+              payment_method: sale.payment_type
+            }]);
+          console.log('✅ Entrada de caixa criada para venda da Loja 2');
+        } catch (cashError) {
+          console.error('⚠️ Erro ao adicionar entrada no caixa (venda salva):', cashError);
+        }
+      }
 
+      console.log('✅ Itens da venda da Loja 2 criados');
       setSales(prev => [sale, ...prev]);
       return sale;
     } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Erro ao criar venda');
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao criar venda';
+      console.error('❌ Falha na criação da venda da Loja 2:', errorMessage);
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [isValidUUID]);
+
+  const fetchSales = useCallback(async (limit = 50) => {
+    try {
+      setLoading(true);
+      console.log('🔄 Carregando vendas da Loja 2...');
+      
+      const { data, error } = await supabase
+        .from('store2_sales')
+        .select(`
+          *,
+          store2_sale_items(*)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      setSales(data || []);
+      console.log(`✅ ${data?.length || 0} vendas da Loja 2 carregadas`);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar vendas';
+      console.error('❌ Erro ao carregar vendas da Loja 2:', errorMessage);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -119,6 +188,8 @@ export const useStore2Sales = () => {
 
   const cancelSale = useCallback(async (saleId: string, reason: string, operatorId: string) => {
     try {
+      console.log('❌ Cancelando venda da Loja 2:', saleId);
+      
       const { data, error } = await supabase
         .from('store2_sales')
         .update({
@@ -133,31 +204,17 @@ export const useStore2Sales = () => {
 
       if (error) throw error;
       
-      setSales(prev => prev.map(s => s.id === saleId ? data : s));
+      setSales(prev => prev.map(sale => 
+        sale.id === saleId ? { ...sale, ...data } : sale
+      ));
+      
+      console.log('✅ Venda da Loja 2 cancelada');
       return data;
     } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Erro ao cancelar venda');
-    }
-  }, []);
-
-  const fetchSales = useCallback(async (limit = 50) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('store2_sales')
-        .select(`
-          *,
-          store2_sale_items(*)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) throw error;
-      setSales(data || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar vendas');
-    } finally {
-      setLoading(false);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao cancelar venda';
+      console.error('❌ Erro ao cancelar venda da Loja 2:', errorMessage);
+      setError(errorMessage);
+      throw new Error(errorMessage);
     }
   }, []);
 
@@ -166,14 +223,17 @@ export const useStore2Sales = () => {
     loading,
     error,
     createSale,
-    cancelSale,
-    fetchSales
+    fetchSales,
+    cancelSale
   };
 };
 
 export const useStore2Cart = () => {
   const [items, setItems] = useState<Store2CartItem[]>([]);
-  const [discount, setDiscount] = useState({ type: 'none' as 'none' | 'percentage' | 'amount', value: 0 });
+  const [discount, setDiscount] = useState<{ type: 'none' | 'percentage' | 'amount'; value: number }>({
+    type: 'none',
+    value: 0
+  });
   const [paymentInfo, setPaymentInfo] = useState<{
     method: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto';
     changeFor?: number;
@@ -182,8 +242,17 @@ export const useStore2Cart = () => {
   }>({
     method: 'dinheiro'
   });
+  const [splitInfo, setSplitInfo] = useState<{
+    enabled: boolean;
+    parts: number;
+    amounts: number[];
+  }>({
+    enabled: false,
+    parts: 2,
+    amounts: []
+  });
 
-  const addItem = useCallback((product: any, quantity: number = 1, weight?: number) => {
+  const addItem = useCallback((product: PDVProduct, quantity: number, weight?: number) => {
     const existingIndex = items.findIndex(item => item.product.id === product.id);
     
     if (existingIndex >= 0) {
@@ -234,10 +303,24 @@ export const useStore2Cart = () => {
     }));
   }, [removeItem]);
 
+  const updateItemWeight = useCallback((productId: string, weight: number) => {
+    setItems(prev => prev.map(item => {
+      if (item.product.id === productId) {
+        return {
+          ...item,
+          weight,
+          subtotal: calculateItemSubtotal(item.product, item.quantity, weight, item.discount)
+        };
+      }
+      return item;
+    }));
+  }, []);
+
   const clearCart = useCallback(() => {
     setItems([]);
     setDiscount({ type: 'none', value: 0 });
     setPaymentInfo({ method: 'dinheiro' });
+    setSplitInfo({ enabled: false, parts: 2, amounts: [] });
   }, []);
 
   const getSubtotal = useCallback(() => {
@@ -262,15 +345,21 @@ export const useStore2Cart = () => {
     setPaymentInfo(prev => ({ ...prev, ...info }));
   }, []);
 
+  const updateSplitInfo = useCallback((info: Partial<typeof splitInfo>) => {
+    setSplitInfo(prev => ({ ...prev, ...info }));
+  }, []);
   return {
     items,
     discount,
     paymentInfo,
+    splitInfo,
     addItem,
     removeItem,
     updateItemQuantity,
+    updateItemWeight,
     setDiscount,
     updatePaymentInfo,
+    updateSplitInfo,
     clearCart,
     getSubtotal,
     getDiscountAmount,
@@ -280,9 +369,9 @@ export const useStore2Cart = () => {
   };
 };
 
-// Helper function to calculate item subtotal
+// Função auxiliar para calcular subtotal do item
 const calculateItemSubtotal = (
-  product: any, 
+  product: PDVProduct, 
   quantity: number, 
   weight?: number, 
   discount: number = 0

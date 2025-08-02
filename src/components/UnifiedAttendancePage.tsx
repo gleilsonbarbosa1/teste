@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
+import { 
   Calculator, 
   Package, 
   DollarSign, 
@@ -10,14 +10,12 @@ import {
   AlertCircle,
   User,
   LogOut,
-  Users,
-  Clock
+  Users
 } from 'lucide-react';
 import AttendantPanel from './Orders/AttendantPanel'; 
 import PDVSalesScreen from './PDV/PDVSalesScreen';
 import CashRegisterMenu from './PDV/CashRegisterMenu';
 import TableSalesPanel from './TableSales/TableSalesPanel';
-import SalesHistory from './Orders/SalesHistory';
 import { usePermissions } from '../hooks/usePermissions';
 import { useScale } from '../hooks/useScale';
 import { useOrders } from '../hooks/useOrders';
@@ -34,10 +32,9 @@ interface UnifiedAttendancePanelProps {
 
 const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator, storeSettings, scaleHook, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'sales' | 'orders' | 'cash' | 'tables'>('sales');
-
   const { hasPermission } = usePermissions(operator);
   const { storeSettings: localStoreSettings } = useStoreHours();
-  const { isOpen: isCashRegisterOpen, currentRegister, previousDayOpenRegister } = usePDVCashRegister();
+  const { isOpen: isCashRegisterOpen, currentRegister } = usePDVCashRegister();
   const scale = useScale();
   const { orders } = useOrders();
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
@@ -62,14 +59,6 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
     
     setSupabaseConfigured(isConfigured);
   }, []);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -132,26 +121,6 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                 <p className="text-yellow-700 text-sm">
                   O Supabase não está configurado. Algumas funcionalidades estarão limitadas.
                   Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para acesso completo.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Previous Day Open Register Alert */}
-      {supabaseConfigured && previousDayOpenRegister && (
-        <div className="max-w-7xl mx-auto px-4 mt-6 print:hidden">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-red-100 rounded-full p-2">
-                <Clock size={20} className="text-red-600" />
-              </div>
-              <div>
-                <h3 className="font-medium text-red-800">Caixa do Dia Anterior Não Fechado</h3>
-                <p className="text-red-700 text-sm">
-                  Há um caixa aberto desde {formatDate(previousDayOpenRegister.opened_at)} que não foi fechado.
-                  É recomendado fechar este caixa antes de continuar as operações.
                 </p>
               </div>
             </div>
@@ -243,28 +212,15 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                 Vendas Mesas
               </button>
             )}
-            
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                activeTab === 'history'
-                  ? 'bg-orange-500 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <Clock size={20} />
-              Histórico de Vendas
-            </button>
           </div>
         </div>
 
         {/* Content */}
         <div className="transition-all duration-300 print:hidden">
           {activeTab === 'sales' && (isAdmin || hasPermission('can_view_sales')) && <PDVSalesScreen operator={operator} scaleHook={scaleHook || scale} storeSettings={settings} />}
-          {activeTab === 'orders' && <AttendantPanel storeSettings={settings} />}
-          {activeTab === 'cash' && <CashRegisterMenu />}
+          {activeTab === 'orders' && (isAdmin || hasPermission('can_view_orders')) && <AttendantPanel storeSettings={settings} />}
+          {activeTab === 'cash' && (isAdmin || hasPermission('can_view_cash_register')) && <CashRegisterMenu />}
           {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && <TableSalesPanel storeId={1} operatorName={operator?.name} />}
-          {activeTab === 'history' && <SalesHistory storeId={1} />}
         </div>
       </div>
     </div>

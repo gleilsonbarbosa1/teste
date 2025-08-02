@@ -44,38 +44,6 @@ export const usePermissions = (operator?: PDVOperator | Store2User) => {
   const { currentUser } = useStore2Attendance();
 
   const hasPermission = (permission: keyof PermissionKey): boolean => {
-    // Check if user is admin first
-    try {
-      // Check PDV operator admin
-      const storedOperator = localStorage.getItem('pdv_operator');
-      if (storedOperator) {
-        const op = JSON.parse(storedOperator);
-        if (op.code?.toUpperCase() === 'ADMIN' || op.name?.toUpperCase().includes('ADMIN')) {
-          return true; // Admin has all permissions
-        }
-      }
-      
-      // Check attendance session admin
-      const attendanceSession = localStorage.getItem('attendance_session');
-      if (attendanceSession) {
-        const session = JSON.parse(attendanceSession);
-        if (session.user?.role === 'admin' || session.user?.username === 'admin') {
-          return true; // Admin has all permissions
-        }
-      }
-      
-      // Check admin session
-      const adminSession = localStorage.getItem('admin_session');
-      if (adminSession) {
-        const session = JSON.parse(adminSession);
-        if (session.isAuthenticated) {
-          return true; // Admin has all permissions
-        }
-      }
-    } catch (error) {
-      console.error('Error checking admin permissions:', error);
-    }
-
     // Use the passed operator parameter first
     if (operator?.permissions) {
       return operator.permissions[permission] === true;
@@ -86,7 +54,6 @@ export const usePermissions = (operator?: PDVOperator | Store2User) => {
       return currentUser.permissions[permission] === true;
     }
     
-    // Default to false if no permissions found
     return false;
   };
 

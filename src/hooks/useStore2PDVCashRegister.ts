@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { PDVCashRegister, PDVCashRegisterEntry, PDVCashRegisterSummary } from '../types/pdv';
-import { isToday, isYesterday } from 'date-fns';
 
 export const useStore2PDVCashRegister = () => {
   const [currentRegister, setCurrentRegister] = useState<PDVCashRegister | null>(null);
@@ -23,10 +22,8 @@ export const useStore2PDVCashRegister = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [previousDayOpenRegister, setPreviousDayOpenRegister] = useState<PDVCashRegister | null>(null);
 
   const fetchCashRegisterStatus = useCallback(async () => {
-    setPreviousDayOpenRegister(null);
     try {
       setLoading(true);
       setError(null);
@@ -62,25 +59,6 @@ export const useStore2PDVCashRegister = () => {
       }
       
       console.log('🔄 Buscando status do caixa da Loja 2...');
-      
-      // Verificar se há caixa aberto do dia anterior
-      const { data: previousDayRegisters, error: previousDayError } = await supabase
-        .from('pdv2_cash_registers')
-        .select('*')
-        .is('closed_at', null)
-        .order('opened_at', { ascending: false });
-      
-      if (!previousDayError && previousDayRegisters) {
-        const yesterdayRegister = previousDayRegisters.find(register => {
-          const registerDate = new Date(register.opened_at);
-          return isYesterday(registerDate) || (!isToday(registerDate) && registerDate < new Date());
-        });
-        
-        if (yesterdayRegister) {
-          console.log('⚠️ Caixa da Loja 2 aberto do dia anterior encontrado:', yesterdayRegister.id);
-          setPreviousDayOpenRegister(yesterdayRegister);
-        }
-      }
       
       // Verificar se existe um caixa aberto para a Loja 2
       const { data: openRegister, error: openError } = await supabase
@@ -237,7 +215,7 @@ export const useStore2PDVCashRegister = () => {
     }
   }, [fetchCashRegisterStatus]);
 
-  const closeCashRegister = useCallback(async (closingAmount: number, justification?: string) => {
+  const closeCashRegister = useCallback(async (closingAmount: number) => {
     try {
       // Check if Supabase is configured
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -257,9 +235,6 @@ export const useStore2PDVCashRegister = () => {
       }
       
       console.log('🔒 Fechando caixa da Loja 2 com valor:', closingAmount);
-      if (justification) {
-        console.log('📝 Justificativa da Loja 2:', justification);
-      }
       
       const { data, error } = await supabase
         .from('pdv2_cash_registers')
@@ -353,7 +328,6 @@ export const useStore2PDVCashRegister = () => {
   return {
     currentRegister,
     entries,
-    previousDayOpenRegister,
     summary, 
     loading,
     error,

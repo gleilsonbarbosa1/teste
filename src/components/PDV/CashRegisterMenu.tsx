@@ -55,8 +55,6 @@ const CashRegisterMenu: React.FC = () => {
   const [showPrintView, setShowPrintView] = useState(false);
   const [closedRegister, setClosedRegister] = useState<any>(null);
   const [isClosing, setIsClosing] = useState(false);
-  const [billCountingMode, setBillCountingMode] = useState<'open' | 'close' | null>(null);
-  const [justification, setJustification] = useState('');
   
   // Check Supabase configuration on mount
   React.useEffect(() => {
@@ -133,7 +131,7 @@ const CashRegisterMenu: React.FC = () => {
     try {
       console.log('🔒 Fechando caixa com valor:', closingAmount);
       console.log('📊 Summary antes do fechamento:', summary);
-      const result = await closeCashRegister(closingAmount, justification);
+      const result = await closeCashRegister(closingAmount);
       
       if (result.success) {
         // Criar objeto do caixa fechado com todos os dados necessários
@@ -144,8 +142,11 @@ const CashRegisterMenu: React.FC = () => {
           difference: closingAmount - (summary?.expected_balance || 0)
         });
         
-        // Sempre mostrar o diálogo de opções após fechar
-        setShowCloseDialog(true);
+        if (shouldPrint) {
+          setShowPrintView(true);
+        } else {
+          setShowCloseDialog(true);
+        }
       } else {
         alert(`Erro ao fechar caixa: ${result.error}`);
       }
@@ -211,13 +212,12 @@ const CashRegisterMenu: React.FC = () => {
 
   const applyBillTotal = () => {
     const total = calculateBillTotal();
-    if (billCountingMode === 'open') {
-      setOpeningAmount(total.toFixed(2));
-    } else if (billCountingMode === 'close') {
+    if (showCloseRegister) {
       setClosingAmount(total.toFixed(2));
+    } else if (showOpenRegister) {
+      setOpeningAmount(total.toFixed(2));
     }
     setShowBillCounting(false);
-    setBillCountingMode(null);
     resetBillCounts();
   };
 
@@ -230,7 +230,7 @@ const CashRegisterMenu: React.FC = () => {
   }
 
   return (
-    <div>
+    <PermissionGuard hasPermission={hasPermission('can_view_cash_register') || hasPermission('can_view_cash_report')} showMessage={true}>
       <div className="space-y-6">
         {/* Supabase Configuration Warning */}
         {!supabaseConfigured && (
@@ -514,10 +514,7 @@ const CashRegisterMenu: React.FC = () => {
               </div>
 
               <button
-                onClick={() => {
-                  setBillCountingMode('open');
-                  setShowBillCounting(true);
-                }}
+                onClick={() => setShowBillCounting(true)}
                 className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
               >
                 <DollarSign size={16} />
@@ -852,7 +849,7 @@ const CashRegisterMenu: React.FC = () => {
         </div>
       )}
     </div>
-    </div>
+    </PermissionGuard>
   );
 };
 

@@ -194,7 +194,6 @@ const CashRegisterCloseDialog: React.FC<CashRegisterCloseDialogProps> = ({
             <button
               onClick={onPrint}
               className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-105"
-              autoFocus
             >
               <div className="bg-white/20 rounded-full p-2">
                 <Printer size={20} />
