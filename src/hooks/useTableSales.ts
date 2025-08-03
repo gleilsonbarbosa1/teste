@@ -26,7 +26,7 @@ export const useTableSales = (storeId: 1 | 2) => {
       setLoading(true);
       setError(null);
 
-      console.log(`🔄 Carregando mesas da Loja ${storeId}...`);
+      console.log(`🔄 Carregando TODAS as mesas da Loja ${storeId}...`);
 
       const { data, error } = await supabase
         .from(tablesTable)
@@ -34,14 +34,14 @@ export const useTableSales = (storeId: 1 | 2) => {
           *,
           current_sale:${salesTable}!current_sale_id(*)
         `)
-        .eq('is_active', true)
+        // Remover filtro is_active para mostrar todas as mesas
         .order('number');
 
       if (error) throw error;
 
-      console.log(`📊 Dados das mesas carregados:`, data);
+      console.log(`📊 Dados das mesas carregados (${data?.length || 0} mesas):`, data);
       setTables(data || []);
-      console.log(`✅ ${data?.length || 0} mesas carregadas da Loja ${storeId}`);
+      console.log(`✅ ${data?.length || 0} mesas carregadas da Loja ${storeId} (incluindo inativas)`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar mesas';
       console.error(`❌ Erro ao carregar mesas da Loja ${storeId}:`, errorMessage);
