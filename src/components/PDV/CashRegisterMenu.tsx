@@ -455,7 +455,9 @@ const CashRegisterMenu: React.FC = () => {
                         </div>
                       </td>
                       <td className="py-4 px-4">
-                        <span className="text-sm text-gray-800">{entry.description}</span>
+                        <div className="text-sm text-gray-800">
+                          <div className="font-medium">{entry.description}</div>
+                        </div>
                       </td>
                       <td className="py-4 px-4">
                         <span className="text-sm text-gray-600">{getPaymentMethodName(entry.payment_method)}</span>

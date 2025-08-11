@@ -363,16 +363,6 @@ const OrderTrackingPage: React.FC = () => {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => {
-                console.log('Toggling chat visibility from', showChat, 'to', !showChat);
-                setShowChat(prev => !prev);
-              }}
-              className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-            >
-              <MessageCircle size={20} />
-              {showChat ? 'Fechar Chat' : 'Conversar com Atendente'}
-            </button>
             <a
               href={`https://wa.me/5585989041010?text=Olá! Gostaria de falar sobre o pedido ${order.id.slice(-8)}`}
               target="_blank"
@@ -386,26 +376,6 @@ const OrderTrackingPage: React.FC = () => {
             </a>
           </div>
         </div>
-
-        {/* Chat */}
-        {showChat && (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
-            <div className="bg-purple-50 border-b border-purple-200 p-4">
-              <h3 className="font-semibold text-purple-800 flex items-center gap-2">
-                <MessageCircle size={20} />
-                Chat com Atendente
-              </h3>
-              <p className="text-purple-600 text-sm">
-                Tire suas dúvidas sobre o pedido #{order.id.slice(-8)}
-              </p>
-            </div>
-            <OrderChat 
-              orderId={order.id} 
-              customerName={customerName}
-              isAttendant={false}
-            />
-          </div>
-        )}
 
         {/* Order Details */}
         <div className="bg-white rounded-xl shadow-sm p-6">

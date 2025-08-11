@@ -14,6 +14,7 @@ import {
 import Store2PDVSalesScreen from './Store2PDVSalesScreen';
 import Store2CashRegisterMenu from './Store2CashRegisterMenu';
 import TableSalesPanel from '../TableSales/TableSalesPanel';
+import SalesHistoryPanel from '../Orders/SalesHistoryPanel';
 import { useScale } from '../../hooks/useScale';
 import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
 import { PDVOperator } from '../../types/pdv';
@@ -24,7 +25,7 @@ interface Store2UnifiedAttendancePageProps {
 }
 
 const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = ({ operator, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'tables'>('sales');
+  const [activeTab, setActiveTab] = useState<'sales' | 'cash' | 'tables' | 'history'>('sales');
   const { isOpen: isCashRegisterOpen } = useStore2PDVCashRegister();
   const scale = useScale();
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
@@ -168,6 +169,18 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
               <Users size={20} />
               Vendas Mesas
             </button>
+            
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                activeTab === 'history'
+                  ? 'bg-emerald-500 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <ShoppingBag size={20} />
+              Histórico
+            </button>
           </div>
         </div>
 
@@ -176,6 +189,7 @@ const Store2UnifiedAttendancePage: React.FC<Store2UnifiedAttendancePageProps> = 
           {activeTab === 'sales' && <Store2PDVSalesScreen operator={operator} scaleHook={scale} />}
           {activeTab === 'cash' && <Store2CashRegisterMenu />}
           {activeTab === 'tables' && <TableSalesPanel storeId={2} operatorName={operator?.name} />}
+          {activeTab === 'history' && <SalesHistoryPanel storeId={2} />}
         </div>
       </div>
     </div>

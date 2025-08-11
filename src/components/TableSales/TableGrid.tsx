@@ -9,6 +9,20 @@ interface TableGridProps {
 }
 
 const TableGrid: React.FC<TableGridProps> = ({ tables, onTableClick, storeId }) => {
+  // Filtrar para mostrar apenas 3 mesas livres
+  const getFilteredTables = () => {
+    const freeTables = tables.filter(table => table.status === 'livre');
+    const occupiedTables = tables.filter(table => table.status !== 'livre');
+    
+    // Mostrar apenas as primeiras 3 mesas livres + todas as ocupadas/outras
+    const limitedFreeTables = freeTables.slice(0, 3);
+    
+    return [...limitedFreeTables, ...occupiedTables].sort((a, b) => a.number - b.number);
+  };
+
+  const filteredTables = getFilteredTables();
+  const hiddenFreeTablesCount = tables.filter(table => table.status === 'livre').length - 3;
+
   const getStatusColor = (status: RestaurantTable['status']) => {
     switch (status) {
       case 'livre':
@@ -54,7 +68,7 @@ const TableGrid: React.FC<TableGridProps> = ({ tables, onTableClick, storeId }) 
     }
   };
 
-  if (tables.length === 0) {
+  if (filteredTables.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-8 text-center">
         <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,8 +90,21 @@ const TableGrid: React.FC<TableGridProps> = ({ tables, onTableClick, storeId }) 
         Layout das Mesas - Loja {storeId}
       </h3>
       
+      {hiddenFreeTablesCount > 0 && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-blue-700 text-sm">
+              <strong>{hiddenFreeTablesCount} mesa(s) livre(s) oculta(s)</strong> - Exibindo apenas 3 mesas livres para organização
+            </p>
+          </div>
+        </div>
+      )}
+      
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        {tables.map((table) => (
+        {filteredTables.map((table) => (
           <button
             key={table.id}
             onClick={() => onTableClick(table)}

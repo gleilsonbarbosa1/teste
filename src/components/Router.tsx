@@ -20,6 +20,7 @@ import Store2ReportsPage from './Store2/Store2ReportsPage';
 import Store2ManagementPage from './Store2/Store2ManagementPage';
 import TableSalesPanel from './TableSales/TableSalesPanel';
 import PDVPage from './PDV/PDVPage';
+import MonthlyCashFlowPage from './CashFlow/MonthlyCashFlowPage';
 
 const Router: React.FC = () => {
   // Solicitar permissão para notificações ao iniciar o app
@@ -57,6 +58,7 @@ const Router: React.FC = () => {
         <Route path="/gerenciamento_loja2" element={<Store2ManagementPage />} />
         <Route path="/atendimento/mesas" element={<TableSalesPanel storeId={1} />} />
         <Route path="/atendimento2/mesas" element={<TableSalesPanel storeId={2} />} />
+        <Route path="/fluxo-caixa" element={<MonthlyCashFlowPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

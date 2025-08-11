@@ -521,9 +521,6 @@ const DeliveryPage: React.FC = () => {
         </a>
       </div>
 
-      {/* Chatbot */}
-      <AcaiChatbot />
-
       {/* Modais */}
       {selectedProduct && (
         <ProductModal

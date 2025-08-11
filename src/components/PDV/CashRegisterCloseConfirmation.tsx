@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, AlertTriangle, DollarSign, CheckCircle, Printer } from 'lucide-react';
+import { X, AlertTriangle, DollarSign, CheckCircle, Printer, Plus, Minus } from 'lucide-react';
 import { PDVCashRegister, PDVCashRegisterSummary, PDVCashRegisterEntry } from '../../types/pdv';
 import { usePermissions } from '../../hooks/usePermissions';
 
@@ -26,6 +26,38 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
   const [hasInformedAmount, setHasInformedAmount] = useState(false);
   const [justification, setJustification] = useState('');
   const [printMovements, setPrintMovements] = useState(true);
+  const [showBillCounting, setShowBillCounting] = useState(false);
+  const [billCounts, setBillCounts] = useState({
+    '200': 0,
+    '100': 0,
+    '50': 0,
+    '20': 0,
+    '10': 0,
+    '5': 0,
+    '2': 0,
+    '1': 0,
+    '0.50': 0,
+    '0.25': 0,
+    '0.10': 0,
+    '0.05': 0,
+    '0.01': 0
+  });
+
+  const billValues = [
+    { value: '200', label: 'R$ 200,00', color: 'bg-purple-100' },
+    { value: '100', label: 'R$ 100,00', color: 'bg-blue-100' },
+    { value: '50', label: 'R$ 50,00', color: 'bg-yellow-100' },
+    { value: '20', label: 'R$ 20,00', color: 'bg-orange-100' },
+    { value: '10', label: 'R$ 10,00', color: 'bg-red-100' },
+    { value: '5', label: 'R$ 5,00', color: 'bg-green-100' },
+    { value: '2', label: 'R$ 2,00', color: 'bg-gray-100' },
+    { value: '1', label: 'R$ 1,00', color: 'bg-yellow-50' },
+    { value: '0.50', label: 'R$ 0,50', color: 'bg-gray-50' },
+    { value: '0.25', label: 'R$ 0,25', color: 'bg-gray-50' },
+    { value: '0.10', label: 'R$ 0,10', color: 'bg-gray-50' },
+    { value: '0.05', label: 'R$ 0,05', color: 'bg-gray-50' },
+    { value: '0.01', label: 'R$ 0,01', color: 'bg-gray-50' }
+  ];
 
   if (!isOpen) return null;
 
@@ -40,6 +72,44 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
     if (closingAmount > 0) {
       setHasInformedAmount(true);
     }
+  };
+
+  const calculateBillTotal = () => {
+    return Object.entries(billCounts).reduce((total, [value, count]) => {
+      return total + (parseFloat(value) * count);
+    }, 0);
+  };
+
+  const updateBillCount = (value: string, increment: boolean) => {
+    setBillCounts(prev => ({
+      ...prev,
+      [value]: Math.max(0, prev[value] + (increment ? 1 : -1))
+    }));
+  };
+
+  const resetBillCounts = () => {
+    setBillCounts({
+      '200': 0,
+      '100': 0,
+      '50': 0,
+      '20': 0,
+      '10': 0,
+      '5': 0,
+      '2': 0,
+      '1': 0,
+      '0.50': 0,
+      '0.25': 0,
+      '0.10': 0,
+      '0.05': 0,
+      '0.01': 0
+    });
+  };
+
+  const applyBillTotal = () => {
+    const total = calculateBillTotal();
+    setClosingAmount(total);
+    setShowBillCounting(false);
+    resetBillCounts();
   };
 
   const expectedBalance = summary?.expected_balance || 0;
@@ -109,6 +179,15 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
                   Informe o valor total em dinheiro presente no caixa
                 </p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setShowBillCounting(true)}
+                className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
+              >
+                <DollarSign size={16} />
+                Contar Dinheiro
+              </button>
             </div>
           ) : (
             // ETAPA 2: Mostrar comparação e solicitar justificativa se necessário
@@ -260,18 +339,9 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
             ) : (
               <>
                 <button
-                  onClick={() => {
-                    setHasInformedAmount(false);
-                    setJustification('');
-                  }}
-                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors"
-                >
-                  Voltar
-                </button>
-                <button
                   onClick={() => onConfirm(closingAmount, justification || undefined)}
                   disabled={isProcessing || !canProceed}
-                  className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   {isProcessing ? (
                     <>
@@ -298,6 +368,78 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
           )}
         </div>
       </div>
+
+      {/* Bill Counting Modal */}
+      {showBillCounting && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Contagem de Cédulas e Moedas</h3>
+              <button
+                onClick={() => setShowBillCounting(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {billValues.map((bill) => (
+                  <div key={bill.value} className={`flex items-center justify-between p-3 rounded-lg ${bill.color}`}>
+                    <span className="font-medium">{bill.label}</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => updateBillCount(bill.value, false)}
+                        className="p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="w-12 text-center font-semibold">
+                        {billCounts[bill.value]}
+                      </span>
+                      <button
+                        onClick={() => updateBillCount(bill.value, true)}
+                        className="p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t pt-4 mt-4">
+                <div className="flex justify-between items-center text-lg font-semibold">
+                  <span>Total:</span>
+                  <span className="text-green-600">R$ {calculateBillTotal().toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={resetBillCounts}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Limpar
+                </button>
+                <button
+                  onClick={() => setShowBillCounting(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={applyBillTotal}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Aplicar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -30,7 +30,6 @@ const OrderCard: React.FC<OrderCardProps> = ({
   isAttendant = false 
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showChat, setShowChat] = useState(false);
   const [showPrintView, setShowPrintView] = useState(false);
 
   const formatPrice = (price: number) => {
@@ -177,13 +176,6 @@ const OrderCard: React.FC<OrderCardProps> = ({
                   </a>
                 )}
                 <button
-                  onClick={() => setShowChat(!showChat)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm print:hidden"
-                >
-                  <MessageCircle size={16} />
-                  Chat
-                </button>
-                <button
                   onClick={() => setIsExpanded(!isExpanded)}
                   className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm print:hidden"
                 >
@@ -272,16 +264,6 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </div>
         )}
 
-        {/* Chat */}
-        {showChat && (
-          <div className="border-t border-gray-100 print:hidden">
-            <OrderChat 
-              orderId={order.id} 
-              customerName={order.customer_name}
-              isAttendant={isAttendant}
-            />
-          </div>
-        )}
       </div>
 
       {/* Print View Modal */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Users, Plus, Edit3, Trash2, Search, Eye, EyeOff, Lock, Save, User, AlertCircle } from 'lucide-react';
+import { Users, Plus, Edit3, Trash2, Search, Eye, EyeOff, Lock, Save, User, AlertCircle, X } from 'lucide-react';
 
 interface PDVOperator {
   id: string;

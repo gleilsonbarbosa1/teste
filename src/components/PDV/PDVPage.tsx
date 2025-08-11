@@ -10,6 +10,7 @@ import PDVCashReportWithDateFilter from './PDVCashReportWithDateFilter';
 import PDVOperators from './PDVOperators';
 import PDVProductsManager from './PDVProductsManager';
 import PDVReports from './PDVReports';
+import { TrendingUp } from 'lucide-react';
 import PDVSettings from './PDVSettings';
 import PDVSalesReport from './PDVSalesReport';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -29,7 +30,6 @@ import {
   Settings,
   Package,
   Calendar,
-  TrendingUp,
   Truck
 } from 'lucide-react';
 
@@ -181,6 +181,16 @@ const PDVPage: React.FC = () => {
     }
   ].filter(tab => isAdmin || hasPermission(tab.permission as any));
 
+  // Add Cash Flow tab
+  availableTabs.push({
+    id: 'cash_flow' as const,
+    label: 'Fluxo de Caixa',
+    icon: TrendingUp,
+    color: 'bg-emerald-600',
+    permission: 'can_view_cash_report',
+    description: 'Fluxo de caixa mensal'
+  });
+
   const renderContent = () => {
     switch (activeTab) {
       case 'sales':
@@ -205,6 +215,10 @@ const PDVPage: React.FC = () => {
         return <PDVCashReportWithDateFilter />;
       case 'daily_delivery_report':
         return <PDVDailyDeliveryReport />;
+      case 'cash_flow':
+        // Redirect to the dedicated cash flow page
+        window.location.href = '/fluxo-caixa';
+        return null;
       default:
         return <PDVSalesScreen operator={loggedInOperator} scaleHook={scale} storeSettings={storeSettings} />;
     }

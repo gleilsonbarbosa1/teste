@@ -201,10 +201,19 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
         playFallbackSound();
       });
       
+        // Criar descrição com produtos
+        const productNames = orderData.items.map(item => 
+          `${item.product_name} (${item.quantity}x)`
+        ).join(', ');
+        
+        const orderDescription = `Pedido Delivery #${newOrder.id.slice(-8)} - ${productNames}`;
+        
       // Mostrar notificação visual também, se suportado pelo navegador
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Novo Pedido!', {
-          body: 'Um novo pedido está aguardando atendimento.',
+          description: orderDescription.length > 100 ? 
+            `Pedido Delivery #${newOrder.id.slice(-8)} - ${orderData.items.length} item(s)` : 
+            orderDescription,
           icon: '/vite.svg'
         });
       }

@@ -126,7 +126,6 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
       <body>
         <!-- Cabeçalho -->
         <div class="center mb-3 separator">
-          <div class="bold" style="font-size: 16px;">ELITE AÇAÍ</div>
           <div class="small">Relatório de Caixa</div>
           <div class="small">Rua Um, 1614-C</div>
           <div class="small">Residencial 1 - Cágado</div>
@@ -195,34 +194,6 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
             </div>
             ` : ''}
           </div>
-        </div>
-
-        <!-- Movimentações Detalhadas -->
-        <div class="mb-3 separator">
-          <div class="bold small mb-2">MOVIMENTAÇÕES DETALHADAS:</div>
-          
-          ${entries.length === 0 ? `
-          <div class="small center" style="padding: 10px 0;">
-            Nenhuma movimentação registrada
-          </div>
-          ` : entries.map((entry, index) => `
-            <div class="mb-2" style="border-bottom: 1px dotted black; padding-bottom: 5px;">
-              <div class="small">
-                <div class="flex-between bold mb-1">
-                  <span>${index + 1}. ${entry.type === 'income' ? 'ENTRADA' : 'SAÍDA'}</span>
-                  <span>
-                    ${entry.type === 'income' ? '+' : '-'}${formatPrice(entry.amount)}
-                  </span>
-                </div>
-                
-                <div class="ml-2">
-                  <div>Descrição: ${entry.description}</div>
-                  <div>Forma: ${getPaymentMethodLabel(entry.payment_method)}</div>
-                  <div>Data: ${formatDate(entry.created_at)}</div>
-                </div>
-              </div>
-            </div>
-          `).join('')}
         </div>
 
         <!-- Totais por Forma de Pagamento -->
@@ -445,33 +416,6 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
               </div>
               
               <div className="mb-3">
-                <p className="text-xs font-bold">MOVIMENTAÇÕES DETALHADAS:</p>
-                {entries.length === 0 ? (
-                  <div className="text-xs text-center py-2">
-                    Nenhuma movimentação registrada
-                  </div>
-                ) : (
-                  entries.map((entry, index) => (
-                    <div key={entry.id} className="text-xs mb-2 pb-2 border-b border-dotted border-gray-300">
-                      <div className="flex justify-between font-medium mb-1">
-                        <span>{index + 1}. {entry.type === 'income' ? 'ENTRADA' : 'SAÍDA'}</span>
-                        <span>
-                          {entry.type === 'income' ? '+' : '-'}{formatPrice(entry.amount)}
-                        </span>
-                      </div>
-                      
-                      <div className="ml-2 space-y-1">
-                        <div>Descrição: {entry.description}</div>
-                        <div>Forma: {getPaymentMethodLabel(entry.payment_method)}</div>
-                        <div>Data: {formatDate(entry.created_at)}</div>
-                      </div>
-                    </div>
-                  ))
-                )}
-                <p className="text-xs">--------------------------</p>
-              </div>
-              
-              <div className="mb-3">
                 <p className="text-xs font-bold">POR FORMA DE PAGAMENTO:</p>
                 <div className="text-xs space-y-1">
                   {['dinheiro', 'pix', 'cartao_credito', 'cartao_debito'].map(method => {
@@ -591,35 +535,6 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
           </div>
 
           {/* Detailed Movements */}
-          <div style={{ borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px', color: 'black', background: 'white' }}>
-            <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '5px' }}>MOVIMENTAÇÕES DETALHADAS:</p>
-            
-            {entries.length === 0 ? (
-              <div style={{ fontSize: '10px', textAlign: 'center', padding: '10px 0' }}>
-                Nenhuma movimentação registrada
-              </div>
-            ) : (
-              entries.map((entry, index) => (
-                <div key={entry.id} style={{ marginBottom: '8px', borderBottom: '1px dotted black', paddingBottom: '5px' }}>
-                  <div style={{ fontSize: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '2px' }}>
-                      <span>{index + 1}. {entry.type === 'income' ? 'ENTRADA' : 'SAÍDA'}</span>
-                      <span>
-                        {entry.type === 'income' ? '+' : '-'}{formatPrice(entry.amount)}
-                      </span>
-                    </div>
-                    
-                    <div style={{ marginLeft: '8px' }}>
-                      <div>Descrição: {entry.description}</div>
-                      <div>Forma: {getPaymentMethodLabel(entry.payment_method)}</div>
-                      <div>Data: {formatDate(entry.created_at)}</div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
           {/* Payment Methods Summary */}
           <div style={{ borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px', color: 'black', background: 'white' }}>
             <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '5px' }}>POR FORMA DE PAGAMENTO:</p>

@@ -107,9 +107,43 @@ const PDVReports: React.FC = () => {
         console.warn('Erro ao carregar resumo de vendas:', salesError);
       }
 
-      const totalSales = salesData?.reduce((sum, sale) => sum + sale.total_amount, 0) || 0;
-      const salesCount = salesData?.length || 0;
-      const averageTicket = salesCount > 0 ? totalSales / salesCount : 0;
+      // Load delivery orders
+      const { data: deliveryData, error: deliveryError } = await supabase
+        .from('orders')
+        .select('total_price')
+        .gte('created_at', `${today}T00:00:00`)
+        .lte('created_at', `${today}T23:59:59`)
+        .eq('channel', 'delivery')
+        .neq('status', 'cancelled');
+
+      if (deliveryError) {
+        console.warn('Erro ao carregar pedidos de delivery:', deliveryError);
+      }
+
+      // Load table sales
+      const { data: tableData, error: tableError } = await supabase
+        .from('store1_table_sales')
+        .select('total_amount')
+        .gte('created_at', `${today}T00:00:00`)
+        .lte('created_at', `${today}T23:59:59`)
+        .eq('status', 'fechada');
+
+      if (tableError) {
+        console.warn('Erro ao carregar vendas de mesa:', tableError);
+      }
+
+      const pdvSales = salesData?.reduce((sum, sale) => sum + sale.total_amount, 0) || 0;
+      const pdvCount = salesData?.length || 0;
+      
+      const deliverySales = deliveryData?.reduce((sum, order) => sum + order.total_price, 0) || 0;
+      const deliveryCount = deliveryData?.length || 0;
+      
+      const tableSales = tableData?.reduce((sum, sale) => sum + sale.total_amount, 0) || 0;
+      const tableCount = tableData?.length || 0;
+      
+      const totalSales = pdvSales + deliverySales + tableSales;
+      const totalCount = pdvCount + deliveryCount + tableCount;
+      const averageTicket = totalCount > 0 ? totalSales / totalCount : 0;
 
       // Load operator performance
       const { data: operatorData, error: operatorError } = await supabase
@@ -138,7 +172,13 @@ const PDVReports: React.FC = () => {
         lowStockProducts: lowStockData || [],
         salesSummary: {
           totalSales,
-          salesCount,
+          salesCount: totalCount,
+          pdvSales,
+          pdvCount,
+          deliverySales,
+          deliveryCount,
+          tableSales,
+          tableCount,
           averageTicket
         },
         operatorPerformance: Array.from(operatorMap.values())
@@ -295,25 +335,43 @@ const PDVReports: React.FC = () => {
           {/* Resumo Rápido */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Resumo do Dia</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-sm text-green-600 font-medium">Total de Vendas</p>
                 <p className="text-2xl font-bold text-green-700">
                   {formatPrice(reportData.salesSummary.totalSales)}
                 </p>
+                <p className="text-xs text-gray-500">{reportData.salesSummary.salesCount} vendas</p>
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-600 font-medium">Número de Vendas</p>
+                <p className="text-sm text-blue-600 font-medium">Vendas PDV</p>
                 <p className="text-2xl font-bold text-blue-700">
-                  {reportData.salesSummary.salesCount}
+                  {formatPrice(reportData.salesSummary.pdvSales)}
                 </p>
+                <p className="text-xs text-gray-500">{reportData.salesSummary.pdvCount} vendas</p>
               </div>
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <p className="text-sm text-purple-600 font-medium">Ticket Médio</p>
+                <p className="text-sm text-purple-600 font-medium">Vendas Delivery</p>
                 <p className="text-2xl font-bold text-purple-700">
-                  {formatPrice(reportData.salesSummary.averageTicket)}
+                  {formatPrice(reportData.salesSummary.deliverySales)}
                 </p>
+                <p className="text-xs text-gray-500">{reportData.salesSummary.deliveryCount} pedidos</p>
               </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <p className="text-sm text-orange-600 font-medium">Vendas Mesas</p>
+                <p className="text-2xl font-bold text-orange-700">
+                  {formatPrice(reportData.salesSummary.tableSales)}
+                </p>
+                <p className="text-xs text-gray-500">{reportData.salesSummary.tableCount} mesas</p>
+              </div>
+            </div>
+            
+            {/* Ticket Médio */}
+            <div className="mt-4 text-center">
+              <p className="text-sm text-gray-600">Ticket Médio Geral</p>
+              <p className="text-3xl font-bold text-indigo-600">
+                {formatPrice(reportData.salesSummary.averageTicket)}
+              </p>
             </div>
           </div>
 

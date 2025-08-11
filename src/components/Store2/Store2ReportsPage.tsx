@@ -13,10 +13,11 @@ import {
 import PDV2DailyCashReport from '../PDV2/PDV2DailyCashReport';
 import PDV2CashReportWithDetails from '../PDV2/PDV2CashReportWithDetails';
 import PDV2CashReportWithDateFilter from '../PDV2/PDV2CashReportWithDateFilter';
+import Store2SalesReport from './Store2SalesReport';
 
 const Store2ReportsPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeReport, setActiveReport] = useState<'daily' | 'details' | 'period'>('daily');
+  const [activeReport, setActiveReport] = useState<'daily' | 'details' | 'period' | 'sales'>('daily');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -173,6 +174,13 @@ const Store2ReportsPage: React.FC = () => {
       icon: TrendingUp,
       color: 'bg-emerald-600',
       description: 'Análise consolidada por período'
+    },
+    {
+      id: 'sales' as const,
+      label: 'Relatório de Vendas',
+      icon: BarChart3,
+      color: 'bg-purple-600',
+      description: 'Análise de vendas e produtos'
     }
   ];
 
@@ -184,6 +192,8 @@ const Store2ReportsPage: React.FC = () => {
         return <PDV2CashReportWithDetails />;
       case 'period':
         return <PDV2CashReportWithDateFilter />;
+      case 'sales':
+        return <Store2SalesReport />;
       default:
         return <PDV2DailyCashReport />;
     }
@@ -239,14 +249,14 @@ const Store2ReportsPage: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
               <DollarSign size={20} className="text-gray-600" />
-              Relatórios de Caixa
+              Relatórios da Loja 2
             </h2>
             <div className="text-sm text-gray-500">
               Dados exclusivos da Loja 2
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {reports.map((report) => {
               const Icon = report.icon;
               const isActive = activeReport === report.id;

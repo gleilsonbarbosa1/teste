@@ -97,7 +97,6 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
         <!-- QR Code PIX -->
         <div class="center mb-3 separator">
           <div class="bold mb-2">QR CODE PIX</div>
-          <img src="/WhatsApp Image 2025-07-22 at 14.53.40.jpeg" alt="QR Code PIX" style="width: 60mm; height: 60mm;">
           <div class="small">Chave PIX: 85989041010</div>
           <div class="small">Nome: Amanda Suyelen da Costa Pereira</div>
           <div class="bold">Valor: ${formatPrice(order.total_price)}</div>
@@ -344,11 +343,6 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
               {order.payment_method === 'pix' && (
                 <div className="text-center mb-4 pb-2 border-b border-dashed border-gray-400">
                   <div className="font-bold mb-2">QR CODE PIX</div>
-                  <img 
-                    src="/WhatsApp Image 2025-07-22 at 14.53.40.jpeg" 
-                    alt="QR Code PIX" 
-                    className="w-24 h-24 mx-auto mb-2"
-                  />
                   <div className="space-y-1">
                     <div>Chave PIX: 85989041010</div>
                     <div>Nome: Amanda Suyelen da Costa Pereira</div>
@@ -446,11 +440,6 @@ const OrderPrintView: React.FC<OrderPrintViewProps> = ({ order, storeSettings, o
           {order.payment_method === 'pix' && (
             <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '1px dashed black', paddingBottom: '10px', color: 'black', background: 'white' }}>
               <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>QR CODE PIX</p>
-              <img 
-                src="/WhatsApp Image 2025-07-22 at 14.53.40.jpeg" 
-                alt="QR Code PIX" 
-                style={{ width: '80px', height: '80px', margin: '0 auto', display: 'block' }}
-              />
               <p style={{ fontSize: '10px', margin: '5px 0' }}>Chave PIX: 85989041010</p>
               <p style={{ fontSize: '10px', margin: '5px 0' }}>Nome: Grupo Elite</p>
               <p style={{ fontSize: '12px', fontWeight: 'bold', margin: '5px 0' }}>Valor: {formatPrice(order.total_price)}</p>

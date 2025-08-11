@@ -6,6 +6,12 @@ import { supabase } from '../../lib/supabase';
 interface SalesData {
   totalSales: number;
   salesCount: number;
+  pdvSales: number;
+  pdvCount: number;
+  deliverySales: number;
+  deliveryCount: number;
+  tableSales: number;
+  tableCount: number;
   averageTicket: number;
   topProducts: Array<{
     name: string;
@@ -72,15 +78,79 @@ const PDVSalesReport: React.FC = () => {
 
       if (salesError) throw salesError;
 
+      // Get delivery orders data
+      const { data: deliveryData, error: deliveryError } = await supabase
+        .from('orders')
+        .select('*')
+        .gte('created_at', `${dateRange.start}T00:00:00`)
+        .lte('created_at', `${dateRange.end}T23:59:59`)
+        .eq('channel', 'delivery')
+        .neq('status', 'cancelled');
+
+      if (deliveryError) {
+        console.warn('Erro ao carregar pedidos de delivery:', deliveryError);
+      }
+
+      // Get table sales data
+      const { data: tableData, error: tableError } = await supabase
+        .from('store1_table_sales')
+        .select(`
+          *,
+          store1_table_sale_items(*),
+          store1_tables!table_id(number)
+        `)
+        .gte('created_at', `${dateRange.start}T00:00:00`)
+        .lte('created_at', `${dateRange.end}T23:59:59`)
+        .eq('status', 'fechada');
+
+      if (tableError) {
+        console.warn('Erro ao carregar vendas de mesa:', tableError);
+      }
+
       // Process sales data
-      const totalSales = salesData?.reduce((sum, sale) => sum + sale.total_amount, 0) || 0;
-      const salesCount = salesData?.length || 0;
-      const averageTicket = salesCount > 0 ? totalSales / salesCount : 0;
+      const pdvSales = salesData?.reduce((sum, sale) => sum + sale.total_amount, 0) || 0;
+      const pdvCount = salesData?.length || 0;
+      
+      const deliverySales = deliveryData?.reduce((sum, order) => sum + order.total_price, 0) || 0;
+      const deliveryCount = deliveryData?.length || 0;
+      
+      const tableSales = tableData?.reduce((sum, sale) => sum + sale.total_amount, 0) || 0;
+      const tableCount = tableData?.length || 0;
+      
+      const totalSales = pdvSales + deliverySales + tableSales;
+      const totalCount = pdvCount + deliveryCount + tableCount;
+      const averageTicket = totalCount > 0 ? totalSales / totalCount : 0;
 
       // Process top products
       const productMap = new Map();
+      
+      // Add PDV products
       salesData?.forEach(sale => {
         sale.pdv_sale_items?.forEach(item => {
+          const existing = productMap.get(item.product_name) || { quantity: 0, revenue: 0 };
+          productMap.set(item.product_name, {
+            name: item.product_name,
+            quantity: existing.quantity + item.quantity,
+            revenue: existing.revenue + item.subtotal
+          });
+        });
+      });
+      
+      // Add delivery products
+      deliveryData?.forEach(order => {
+        order.items?.forEach(item => {
+          const existing = productMap.get(item.product_name) || { quantity: 0, revenue: 0 };
+          productMap.set(item.product_name, {
+            name: item.product_name,
+            quantity: existing.quantity + item.quantity,
+            revenue: existing.revenue + item.total_price
+          });
+        });
+      });
+      
+      // Add table products
+      tableData?.forEach(sale => {
+        sale.store1_table_sale_items?.forEach(item => {
           const existing = productMap.get(item.product_name) || { quantity: 0, revenue: 0 };
           productMap.set(item.product_name, {
             name: item.product_name,
@@ -96,7 +166,31 @@ const PDVSalesReport: React.FC = () => {
 
       // Process payment methods
       const paymentMap = new Map();
+      
+      // Add PDV payments
       salesData?.forEach(sale => {
+        const method = getPaymentMethodName(sale.payment_type);
+        const existing = paymentMap.get(method) || { amount: 0, count: 0 };
+        paymentMap.set(method, {
+          method,
+          amount: existing.amount + sale.total_amount,
+          count: existing.count + 1
+        });
+      });
+      
+      // Add delivery payments
+      deliveryData?.forEach(order => {
+        const method = getPaymentMethodName(order.payment_method);
+        const existing = paymentMap.get(method) || { amount: 0, count: 0 };
+        paymentMap.set(method, {
+          method,
+          amount: existing.amount + order.total_price,
+          count: existing.count + 1
+        });
+      });
+      
+      // Add table payments
+      tableData?.forEach(sale => {
         const method = getPaymentMethodName(sale.payment_type);
         const existing = paymentMap.get(method) || { amount: 0, count: 0 };
         paymentMap.set(method, {
@@ -110,7 +204,13 @@ const PDVSalesReport: React.FC = () => {
 
       setSalesData({
         totalSales,
-        salesCount,
+        salesCount: totalCount,
+        pdvSales,
+        pdvCount,
+        deliverySales,
+        deliveryCount,
+        tableSales,
+        tableCount,
         averageTicket,
         topProducts,
         paymentMethods
@@ -268,7 +368,7 @@ const PDVSalesReport: React.FC = () => {
       {salesData && !loading && (
         <>
           {/* Cards de Resumo */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -276,6 +376,7 @@ const PDVSalesReport: React.FC = () => {
                   <p className="text-2xl font-bold text-green-600">
                     {formatPrice(salesData.totalSales)}
                   </p>
+                  <p className="text-xs text-gray-500">{salesData.salesCount} vendas</p>
                 </div>
                 <DollarSign className="w-8 h-8 text-green-500" />
               </div>
@@ -284,8 +385,11 @@ const PDVSalesReport: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Número de Vendas</p>
-                  <p className="text-2xl font-bold text-blue-600">{salesData.salesCount}</p>
+                  <p className="text-sm font-medium text-gray-600">Vendas PDV</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatPrice(salesData.pdvSales)}
+                  </p>
+                  <p className="text-xs text-gray-500">{salesData.pdvCount} vendas</p>
                 </div>
                 <Package className="w-8 h-8 text-blue-500" />
               </div>
@@ -294,12 +398,47 @@ const PDVSalesReport: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Ticket Médio</p>
+                  <p className="text-sm font-medium text-gray-600">Vendas Delivery</p>
                   <p className="text-2xl font-bold text-purple-600">
-                    {formatPrice(salesData.averageTicket)}
+                    {formatPrice(salesData.deliverySales)}
                   </p>
+                  <p className="text-xs text-gray-500">{salesData.deliveryCount} pedidos</p>
                 </div>
-                <Users className="w-8 h-8 text-purple-500" />
+                <svg className="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 17l4 4 4-4m-4-5v9m-8-9h16" />
+                </svg>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Vendas Mesas</p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {formatPrice(salesData.tableSales)}
+                  </p>
+                  <p className="text-xs text-gray-500">{salesData.tableCount} mesas</p>
+                </div>
+                <Users className="w-8 h-8 text-orange-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* Resumo Geral */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Resumo Geral</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <p className="text-3xl font-bold text-green-600">{formatPrice(salesData.totalSales)}</p>
+                <p className="text-gray-600">Receita Total</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-blue-600">{salesData.salesCount}</p>
+                <p className="text-gray-600">Total de Vendas</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-purple-600">{formatPrice(salesData.averageTicket)}</p>
+                <p className="text-gray-600">Ticket Médio</p>
               </div>
             </div>
           </div>

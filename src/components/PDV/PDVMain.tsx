@@ -17,6 +17,7 @@ import PDVOperators from './PDVOperators';
 import PDVSalesReport from './PDVSalesReport';
 import CashRegisterMenu from './CashRegisterMenu';
 import AttendantPanel from '../Orders/AttendantPanel';
+import { TrendingUp } from 'lucide-react';
 
 // Define menu items before component to avoid initialization issues
 // Organize menu items by category
@@ -30,6 +31,7 @@ const menuCategories = [
       { id: 'cash_menu' as const, label: 'Caixas', icon: DollarSign, color: 'bg-yellow-500' },
       { id: 'products' as const, label: 'Produtos', icon: Package, color: 'bg-blue-500' },
       { id: 'orders' as const, label: 'Pedidos', icon: Truck, color: 'bg-purple-500' },
+      { id: 'cash_flow' as const, label: 'Fluxo de Caixa', icon: TrendingUp, color: 'bg-emerald-500' },
     ]
   },
   {
@@ -364,6 +366,10 @@ const PDVMain: React.FC<PDVMainProps> = ({ onBack, operator }) => {
         return <PDVDailyDeliveryReport />;
       case 'cash_report_details':
         return <PDVCashReportWithDetails />;
+      case 'cash_flow':
+        // Redirect to the dedicated cash flow page
+        window.location.href = '/fluxo-caixa';
+        return null;
       default:
         return <UnifiedAttendancePage operator={operator} />;
     }
