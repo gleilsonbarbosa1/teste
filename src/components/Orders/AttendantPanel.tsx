@@ -166,17 +166,17 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
         }
       }
       
-      // Verificar se o som está habilitado
-      if (soundEnabled) {
-        playNewOrderSound(latestOrder);
-      } else {
-        console.log('🔕 Som de notificação desabilitado nas configurações');
+        // Verificar se o som está habilitado
+        if (soundEnabled) {
+          playNewOrderSound(latestOrder);
+        } else {
+          console.log('🔕 Som de notificação desabilitado nas configurações');
+        }
       }
     }
     
     // Atualizar contagem para próxima verificação
     setLastOrderCount(currentPendingCount);
-  }, [orders, printerSettings.auto_print_enabled, soundEnabled]);
 
   // Função para tocar som de novo pedido
   const playNewOrderSound = (order: any) => {
