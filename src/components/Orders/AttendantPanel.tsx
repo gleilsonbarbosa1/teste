@@ -164,8 +164,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
             }
           }, 4000);
         }
-      }
-      
+        
         // Verificar se o som está habilitado
         if (soundEnabled) {
           playNewOrderSound(latestOrder);
@@ -177,6 +176,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
     
     // Atualizar contagem para próxima verificação
     setLastOrderCount(currentPendingCount);
+  }, [orders, lastOrderCount, soundEnabled, printerSettings.auto_print_enabled]);
 
   // Função para tocar som de novo pedido
   const playNewOrderSound = (order: any) => {
@@ -281,6 +281,29 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
     
     return encodeURIComponent(message);
   };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(price);
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    const methods: { [key: string]: string } = {
+      'pix': 'PIX',
+      'money': 'Dinheiro',
+      'card': 'Cartão',
+      'credit_card': 'Cartão de Crédito',
+      'debit_card': 'Cartão de Débito'
+    };
+    return methods[method] || method;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('pt-BR');
+  };
+
   const filteredOrders = orders.filter(order => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesSearch = searchTerm === '' || 
@@ -383,131 +406,131 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
                     Admin
                   </button>
                 )}
+                {printerSettings.auto_print_enabled && (
+                  <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-full text-xs">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Auto Print
+                  </div>
+                )}
               </div>
-              {printerSettings.auto_print_enabled && (
-                <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-full text-xs">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Auto Print
-                </div>
-              )}
             </div>
           </div>
         </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6 print:hidden">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1">
-              <div className="relative">
-                <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar por nome, telefone ou ID do pedido..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          {/* Filters */}
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-6 print:hidden">
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1">
+                <div className="relative">
+                  <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Buscar por nome, telefone ou ID do pedido..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              {/* Status Filter */}
+              <div className="lg:w-64">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as OrderStatus | 'all')}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  {statusOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label} ({option.count})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* Status Filter */}
-            <div className="lg:w-64">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as OrderStatus | 'all')}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                {statusOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label} ({option.count})
-                  </option>
-                ))}
-              </select>
+            {/* Status Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mt-4 print:hidden">
+              {statusOptions.map(option => {
+                const Icon = option.icon;
+                const isActive = statusFilter === option.value;
+                
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => setStatusFilter(option.value)}
+                    className={`p-3 rounded-lg border transition-all ${
+                      isActive
+                        ? 'bg-purple-100 border-purple-300 text-purple-700'
+                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Icon size={20} className="mx-auto mb-1" />
+                    <div className="text-xs font-medium">{option.label}</div>
+                    <div className="text-lg font-bold">{option.count}</div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Status Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mt-4 print:hidden">
-            {statusOptions.map(option => {
-              const Icon = option.icon;
-              const isActive = statusFilter === option.value;
-              
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => setStatusFilter(option.value)}
-                  className={`p-3 rounded-lg border transition-all ${
-                    isActive
-                      ? 'bg-purple-100 border-purple-300 text-purple-700'
-                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <Icon size={20} className="mx-auto mb-1" />
-                  <div className="text-xs font-medium">{option.label}</div>
-                  <div className="text-lg font-bold">{option.count}</div>
-                </button>
-              );
-            })}
+          {/* Orders List */}
+          <div className="space-y-4 print:hidden">
+            {filteredOrders.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+                <Package size={48} className="mx-auto text-gray-300 mb-4" />
+                <h3 className="text-lg font-medium text-gray-600 mb-2">
+                  Nenhum pedido encontrado
+                </h3>
+                <p className="text-gray-500">
+                  {searchTerm || statusFilter !== 'all' 
+                    ? 'Tente ajustar os filtros de busca'
+                    : 'Aguardando novos pedidos...'
+                  }
+                </p>
+              </div>
+            ) : (
+              filteredOrders.map(order => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onStatusChange={updateOrderStatus}
+                  isAttendant={true}
+                />
+              ))
+            )}
           </div>
         </div>
-
-        {/* Orders List */}
-        <div className="space-y-4 print:hidden">
-          {filteredOrders.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-              <Package size={48} className="mx-auto text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-600 mb-2">
-                Nenhum pedido encontrado
-              </h3>
-              <p className="text-gray-500">
-                {searchTerm || statusFilter !== 'all' 
-                  ? 'Tente ajustar os filtros de busca'
-                  : 'Aguardando novos pedidos...'
-                }
-              </p>
-            </div>
-          ) : (
-            filteredOrders.map(order => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                onStatusChange={updateOrderStatus}
-                isAttendant={true}
-              />
-            ))
-          )}
-        </div>
+        
+        {/* Manual Order Form */}
+        {showManualOrderForm && (
+          <ManualOrderForm 
+            onClose={() => setShowManualOrderForm(false)}
+            onOrderCreated={() => {
+              // Refresh orders after creating a new one
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
+            }}
+          />
+        )}
+        
+        {/* Print Preview Modal */}
+        {showPrintPreview && newOrder && (
+          <OrderPrintView 
+            order={newOrder} 
+            storeSettings={null}
+            onClose={() => {
+              setShowPrintPreview(false);
+              setNewOrder(null);
+            }} 
+          />
+        )}
       </div>
-      
-      {/* Manual Order Form */}
-      {showManualOrderForm && (
-        <ManualOrderForm 
-          onClose={() => setShowManualOrderForm(false)}
-          onOrderCreated={() => {
-            // Refresh orders after creating a new one
-            setTimeout(() => {
-              window.location.reload();
-            }, 1000);
-          }}
-        />
-      )}
-      
-      {/* Print Preview Modal */}
-      {showPrintPreview && newOrder && (
-        <OrderPrintView 
-          order={newOrder} 
-          storeSettings={null}
-          onClose={() => {
-            setShowPrintPreview(false);
-            setNewOrder(null);
-          }} 
-        />
-      )}
-    </div>
     </PermissionGuard>
   );
 };
