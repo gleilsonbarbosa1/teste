@@ -168,7 +168,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
       
       // Verificar se o som está habilitado
       if (soundEnabled) {
-        playNewOrderSound();
+        playNewOrderSound(latestOrder);
       } else {
         console.log('🔕 Som de notificação desabilitado nas configurações');
       }
@@ -179,7 +179,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
   }, [orders, printerSettings.auto_print_enabled, soundEnabled]);
 
   // Função para tocar som de novo pedido
-  const playNewOrderSound = () => {
+  const playNewOrderSound = (order: any) => {
     console.log('🔊 Tocando som de notificação para novo pedido');
     try {
       // Obter configuração de som do localStorage
@@ -201,21 +201,23 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
         playFallbackSound();
       });
       
-        // Criar descrição com produtos
-        const productNames = orderData.items.map(item => 
+      // Criar descrição com produtos
+      if (order && order.items) {
+        const productNames = order.items.map(item => 
           `${item.product_name} (${item.quantity}x)`
         ).join(', ');
         
-        const orderDescription = `Pedido Delivery #${newOrder.id.slice(-8)} - ${productNames}`;
+        const orderDescription = `Pedido Delivery #${order.id.slice(-8)} - ${productNames}`;
         
-      // Mostrar notificação visual também, se suportado pelo navegador
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Novo Pedido!', {
-          description: orderDescription.length > 100 ? 
-            `Pedido Delivery #${newOrder.id.slice(-8)} - ${orderData.items.length} item(s)` : 
+        // Mostrar notificação visual também, se suportado pelo navegador
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Novo Pedido!', {
+            body: orderDescription.length > 100 ? 
+              `Pedido Delivery #${order.id.slice(-8)} - ${order.items.length} item(s)` : 
             orderDescription,
-          icon: '/vite.svg'
-        });
+            icon: '/vite.svg'
+          });
+        }
       }
     } catch (error) {
       console.error('Erro ao tocar som de notificação:', error);
