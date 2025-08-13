@@ -110,8 +110,8 @@ export const useStore2Attendance = () => {
       // Verify password using RPC function
       const { data: isValid, error: rpcError } = await supabase
         .rpc('verify_store2_user_password', {
-          input_username: username,
-          input_password: password
+          p_username: username,
+          p_password_to_check: password
         });
 
       if (rpcError) {
