@@ -30,6 +30,12 @@ export const useAttendance = () => {
   const [users, setUsers] = useState<AttendanceUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Define admin user credentials
+  const adminUser = {
+    username: 'admin',
+    password: 'elite2024'
+  };
 
   // Check if Supabase is configured
   const isSupabaseConfigured = () => {
