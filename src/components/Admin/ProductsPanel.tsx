@@ -196,8 +196,8 @@ const DEFAULT_COMPLEMENT_GROUPS: ComplementGroup[] = [
 ];
 
 const ProductsPanel: React.FC = () => {
-  const { products, loading: productsLoading, createProduct, updateProduct, deleteProduct, searchProducts } = usePDVProducts();
-  const { products, loading, createProduct, updateProduct, deleteProduct } = useDeliveryProducts();
+  const { products: pdvProducts, loading: productsLoading, createProduct, updateProduct, deleteProduct, searchProducts } = usePDVProducts();
+  const { products: deliveryProducts, loading, createProduct: createDeliveryProduct, updateProduct: updateDeliveryProduct, deleteProduct: deleteDeliveryProduct } = useDeliveryProducts();
   const { uploadImage, uploading, getProductImage } = useImageUpload();
   const [showModal, setShowModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -222,15 +222,15 @@ const ProductsPanel: React.FC = () => {
 
   const filteredProducts = React.useMemo(() => {
     let result = searchTerm 
-      ? searchProducts(searchTerm)
-      : products;
+      ? searchProducts(searchTerm) 
+      : deliveryProducts;
     
     if (selectedCategory !== 'all') {
       result = result.filter(p => p.category === selectedCategory);
     }
     
     return result;
-  }, [products, searchProducts, searchTerm, selectedCategory]);
+  }, [deliveryProducts, searchProducts, searchTerm, selectedCategory]);
 
   // Carregar imagens dos produtos
   useEffect(() => {
