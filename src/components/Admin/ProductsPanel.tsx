@@ -227,16 +227,16 @@ const ProductsPanel: React.FC = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!supabaseUrl || !supabaseKey || 
-          supabaseUrl.includes('placeholder') || 
-          supabaseKey.includes('placeholder')) {
+      if (!envSupabaseUrl || !envSupabaseKey ||
+          envSupabaseUrl.includes('placeholder') || 
+          envSupabaseKey.includes('placeholder')) {
         console.warn('⚠️ Supabase not configured, skipping image loading');
         return;
       }
 
       // Check if Supabase is configured before attempting to load images
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const envSupabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
       if (!supabaseUrl || !supabaseKey || 
           supabaseUrl === 'your_supabase_url_here' || 
