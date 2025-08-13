@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
+import React from 'react';
+import { supabase } from '../lib/supabase';
+
 interface Store2User {
   id: string;
   username: string;
@@ -26,6 +29,17 @@ interface Store2Session {
 }
 
 export const useStore2Attendance = () => {
+  // Check Supabase configuration
+  const supabaseConfigured = React.useMemo(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    return supabaseUrl && supabaseKey && 
+           supabaseUrl !== 'your_supabase_url_here' && 
+           supabaseKey !== 'your_supabase_anon_key_here' &&
+           !supabaseUrl.includes('placeholder');
+  }, []);
+
   const [session, setSession] = useState<Store2Session>({
     isAuthenticated: false,
     user: null
@@ -91,6 +105,117 @@ export const useStore2Attendance = () => {
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      console.log('🔐 Tentando login na Loja 2 com:', { username, password: password ? '***' : 'vazio' });
+
+      if (!supabaseConfigured) {
+        console.warn('⚠️ Supabase não configurado - usando credenciais hardcoded para Loja 2');
+        // Fallback para credenciais hardcoded se Supabase não configurado
+        const hardcodedUser = users.find(u => u.username === username && u.password === password && u.isActive);
+        
+        if (hardcodedUser) {
+          console.log('✅ Login bem-sucedido com credenciais hardcoded da Loja 2:', hardcodedUser.username);
+          const sessionData = {
+            isAuthenticated: true,
+            user: hardcodedUser
+          };
+          setSession(sessionData);
+          localStorage.setItem('store2_attendance_session', JSON.stringify(sessionData));
+          return true;
+        } else {
+          console.log('❌ Credenciais hardcoded inválidas para Loja 2');
+          throw new Error('Credenciais inválidas');
+        }
+      }
+
+      // Tentar buscar usuário no banco de dados primeiro
+      console.log('🔍 Buscando usuário no banco de dados...');
+      const { data: dbUser, error: fetchError } = await supabase
+        .from('attendance_users')
+        .select('*')
+        .eq('username', username.trim())
+        .eq('is_active', true)
+        .single();
+
+      if (dbUser && !fetchError) {
+        console.log('👤 Usuário encontrado no banco:', dbUser.username);
+        
+        // Verificar senha usando função do banco de dados
+        const { data: authData, error: authError } = await supabase.rpc(
+          'verify_attendance_user_password',
+          {
+            user_username: username.trim(),
+            password_to_check: password
+          }
+        );
+
+        if (authData && !authError) {
+          console.log('✅ Senha verificada com sucesso no banco');
+          
+          // Atualizar último login
+          await supabase
+            .from('attendance_users')
+            .update({ last_login: new Date().toISOString() })
+            .eq('id', dbUser.id);
+
+          // Converter usuário do banco para formato esperado
+          const sessionUser: Store2AttendanceUser = {
+            id: dbUser.id,
+            username: dbUser.username,
+            password: '', // Não armazenar senha na sessão
+            name: dbUser.name,
+            role: dbUser.role || 'attendant',
+            isActive: dbUser.is_active,
+            permissions: dbUser.permissions || {
+              can_view_orders: false, // Loja 2 não tem delivery
+              can_update_status: false,
+              can_chat: false,
+              can_create_manual_orders: false,
+              can_print_orders: true
+            },
+            created_at: dbUser.created_at,
+            last_login: new Date().toISOString()
+          };
+
+          const sessionData = {
+            isAuthenticated: true,
+            user: sessionUser
+          };
+          
+          setSession(sessionData);
+          localStorage.setItem('store2_attendance_session', JSON.stringify(sessionData));
+          return true;
+        } else {
+          console.log('❌ Senha incorreta no banco de dados');
+          throw new Error('Senha incorreta');
+        }
+      } else {
+        console.log('👤 Usuário não encontrado no banco, tentando credenciais hardcoded...');
+        
+        // Fallback para credenciais hardcoded se usuário não encontrado no banco
+        const hardcodedUser = users.find(u => u.username === username && u.password === password && u.isActive);
+        
+        if (hardcodedUser) {
+          console.log('✅ Login bem-sucedido com credenciais hardcoded da Loja 2:', hardcodedUser.username);
+          const sessionData = {
+            isAuthenticated: true,
+            user: hardcodedUser
+          };
+          setSession(sessionData);
+          localStorage.setItem('store2_attendance_session', JSON.stringify(sessionData));
+          return true;
+        } else {
+          console.log('❌ Credenciais inválidas (banco e hardcoded)');
+          throw new Error('Credenciais inválidas');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro durante login da Loja 2:', error);
+      throw error;
+    }
+  };
+
+  const loginOld = (username: string, password: string): boolean => {
     try {
       setLoading(true);
 
