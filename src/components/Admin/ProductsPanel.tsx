@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Upload, X, Save, Package, Image as ImageIcon, GripVertical } from 'lucide-react';
+import { usePDVProducts } from '../../hooks/usePDV';
 import { useDeliveryProducts } from '../../hooks/useDeliveryProducts';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import { useProductScheduling } from '../../hooks/useProductScheduling';
@@ -195,6 +196,7 @@ const DEFAULT_COMPLEMENT_GROUPS: ComplementGroup[] = [
 ];
 
 const ProductsPanel: React.FC = () => {
+  const { products, loading: productsLoading, createProduct, updateProduct, deleteProduct, searchProducts } = usePDVProducts();
   const { products, loading, createProduct, updateProduct, deleteProduct } = useDeliveryProducts();
   const { uploadImage, uploading, getProductImage } = useImageUpload();
   const [showModal, setShowModal] = useState(false);
@@ -217,6 +219,18 @@ const ProductsPanel: React.FC = () => {
   const [selectedProductForSchedule, setSelectedProductForSchedule] = useState<any | null>(null);
   
   const { getProductSchedule, saveProductSchedule } = useProductScheduling();
+
+  const filteredProducts = React.useMemo(() => {
+    let result = searchTerm 
+      ? searchProducts(searchTerm)
+      : products;
+    
+    if (selectedCategory !== 'all') {
+      result = result.filter(p => p.category === selectedCategory);
+    }
+    
+    return result;
+  }, [products, searchProducts, searchTerm, selectedCategory]);
 
   // Carregar imagens dos produtos
   useEffect(() => {
