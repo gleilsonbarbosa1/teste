@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 interface AttendanceUser {
   id: string;
   username: string;
-  password: 'elite2024',
+  password: 'elite2024';
   name: string;
   role: 'attendant' | 'admin';
   is_active: boolean;
@@ -31,21 +31,9 @@ export const useAttendance = () => {
   const [session, setSession] = useState<AttendanceSession>({ isAuthenticated: false });
   const [users, setUsers] = useState<AttendanceUser[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // Hardcoded credentials for demo/fallback - MATCHES DOCUMENTATION
   const HARDCODED_CREDENTIALS = {
-    username: 'admin',
-    password: 'elite2024'
-  };
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    return supabaseUrl && supabaseKey && 
-           supabaseUrl !== 'your_supabase_url_here' && 
-           supabaseKey !== 'your_supabase_anon_key_here' &&
-           !supabaseUrl.includes('placeholder');
-  }, []);
-
-  // Define admin user credentials
-  const adminUser = {
     username: 'admin',
     password: 'elite2024'
   };
@@ -59,6 +47,12 @@ export const useAttendance = () => {
            supabaseUrl !== 'your_supabase_url_here' && 
            supabaseKey !== 'your_supabase_anon_key_here' &&
            !supabaseUrl.includes('placeholder');
+  };
+
+  // Define admin user credentials
+  const adminUser = {
+    username: 'admin',
+    password: 'elite2024'
   };
 
   // Initialize session from localStorage
