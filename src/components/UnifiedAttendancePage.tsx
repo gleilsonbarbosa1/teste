@@ -50,7 +50,24 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                   operator.name?.toUpperCase() === 'ADMINISTRADOR' ||
                   operator.username?.toUpperCase() === 'ADMIN' ||
                   operator.username?.toUpperCase().includes('ADMIN') ||
-                  operator.role === 'admin';
+                  operator.role === 'admin' ||
+                  operator.username === 'admin' ||
+                  operator.name === 'admin';
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔍 UnifiedAttendancePage - Operator check:', {
+      operator: operator ? {
+        username: operator.username,
+        name: operator.name,
+        code: operator.code,
+        role: operator.role
+      } : 'No operator',
+      isAdmin,
+      hasOrdersPermission: isAdmin || hasPermission('can_view_orders'),
+      hasCashPermission: isAdmin || hasPermission('can_view_cash_register')
+    });
+  }, [operator, isAdmin]);
 
   const settings = storeSettings || localStoreSettings;
   

@@ -430,16 +430,22 @@ export const useAttendance = () => {
       {
         id: '1',
         username: 'admin',
-        password_hash: 'elite2024',
         name: 'Administrador',
         role: 'admin',
+        password_hash: 'elite2024',
         is_active: true,
         permissions: {
           can_chat: true,
           can_view_orders: true,
           can_print_orders: true,
           can_update_status: true,
-          can_create_manual_orders: true
+          can_create_manual_orders: true,
+          can_view_cash_register: true,
+          can_view_sales: true,
+          can_view_reports: true,
+          can_manage_products: true,
+          can_view_operators: true,
+          can_manage_settings: true
         },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -451,6 +457,12 @@ export const useAttendance = () => {
     return defaultUsers;
   };
 
+      // Save session to localStorage for PermissionGuard
+      localStorage.setItem('attendance_session', JSON.stringify({
+        isAuthenticated: true,
+        user: adminUser
+      }));
+      
   const createLocalStorageUser = (userData: Omit<AttendanceUser, 'id' | 'created_at' | 'updated_at'>): AttendanceUser => {
     const newUser: AttendanceUser = {
       ...userData,

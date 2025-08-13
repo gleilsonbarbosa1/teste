@@ -70,6 +70,11 @@ export const usePermissions = (operator?: PDVOperator | Store2User) => {
   };
 
   const isAdmin = (): boolean => {
+    // Always allow access in development mode
+    if (process.env.NODE_ENV === 'development') {
+      return true;
+    }
+    
     // Always allow access if no operator (admin mode)
     if (!operator) {
       return true;
@@ -83,19 +88,29 @@ export const usePermissions = (operator?: PDVOperator | Store2User) => {
                     operator.username?.toUpperCase().includes('ADMIN') ||
                     operator.role === 'admin';
     
-    // Admin users have all permissions
-    if (adminCheck) {
-      return true;
-    }
-    
-    return false;
-  };
+    // Enhanced admin detection
+    const isAdmin = 
+      operator.code?.toUpperCase() === 'ADMIN' ||
+      operator.name?.toUpperCase().includes('ADMIN') ||
+      operator.name?.toUpperCase() === 'ADMINISTRADOR' ||
+      operator.username?.toUpperCase() === 'ADMIN' ||
+      operator.username?.toUpperCase().includes('ADMIN') ||
+      operator.role === 'admin' ||
+      console.log('🔓 Admin user detected, granting permission:', permission);
+      operator.username === 'admin' ||
+      operator.name === 'admin';
 
+    // Log permission check for debugging
+    console.log('🔍 Checking permission:', permission, 'for operator:', operator.username || operator.name);
+    
   return {
     hasPermission,
-    getPermissions,
+      const hasSpecificPermission = operator.permissions[permission] === true;
+      console.log('📋 Permission result:', hasSpecificPermission, 'for', permission);
+      return hasSpecificPermission;
     isAdmin,
     currentOperator: operator,
+    console.log('❌ No permissions object found for operator');
     currentUser
   };
 };

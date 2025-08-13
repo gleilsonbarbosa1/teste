@@ -16,26 +16,54 @@ const PermissionGuard: React.FC<PermissionGuardProps> = ({
 }) => {
   const navigate = useNavigate();
 
+  // Debug logging
+  console.log('🛡️ PermissionGuard check:', { hasPermission, showMessage });
+
   // 1) Se tem permissão explícita, libera imediatamente
   if (hasPermission) {
+    console.log('✅ Permission granted');
     return <>{children}</>;
   }
 
   // 2) Bypass em desenvolvimento
-  const isDevelopment = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development';
+  const isDevelopment = import.meta.env.DEV || 
+                       import.meta.env.MODE === 'development' ||
+                       window.location.hostname === 'localhost';
 
   // 3) Bypass para admin (via localStorage.pdv_operator)
   let isAdmin = false;
   try {
     if (typeof window !== 'undefined') {
-      const storedOperator = localStorage.getItem('pdv_operator');
+      // Check both pdv_operator and attendance_session
+      const storedOperator = localStorage.getItem('pdv_operator') || 
+                            localStorage.getItem('attendance_session');
       if (storedOperator) {
         const operator = JSON.parse(storedOperator);
-        const code = String(operator?.code || '').toUpperCase();
-        const name = String(operator?.name || '').toUpperCase();
+        
+        // Check if it's a session object with user property
+        const user = operator.user || operator;
+        
+        const code = String(user?.code || '').toUpperCase();
+        const name = String(user?.name || '').toUpperCase();
+        const username = String(user?.username || '').toUpperCase();
+        const role = String(user?.role || '').toUpperCase();
+        
         isAdmin = code === 'ADMIN' || 
                   name.includes('ADMIN') || 
-                  name === 'ADMINISTRADOR';
+                  name === 'ADMINISTRADOR' ||
+                  username === 'ADMIN' ||
+                  username.includes('ADMIN') ||
+                  role === 'ADMIN';
+                  
+        console.log('🔍 Admin check from localStorage:', {
+          user: user ? {
+            username: user.username,
+            name: user.name,
+            code: user.code,
+            role: user.role
+          } : 'No user',
+          isAdmin
+        });
       }
     }
   } catch (err) {
@@ -43,9 +71,12 @@ const PermissionGuard: React.FC<PermissionGuardProps> = ({
   }
 
   if (isDevelopment || isAdmin) {
+    console.log('✅ Access granted via development mode or admin status');
     return <>{children}</>;
   }
 
+  console.log('❌ Access denied, showing fallback');
+  
   // 4) Sem permissão -> mensagem amigável OU redirect
   if (showMessage) {
     return (
