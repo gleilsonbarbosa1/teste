@@ -199,6 +199,8 @@ const ProductsPanel: React.FC = () => {
   const { products: pdvProducts, loading: productsLoading, createProduct, updateProduct, deleteProduct, searchProducts } = usePDVProducts();
   const { products: deliveryProducts, loading, createProduct: createDeliveryProduct, updateProduct: updateDeliveryProduct, deleteProduct: deleteDeliveryProduct } = useDeliveryProducts();
   const { uploadImage, uploading, getProductImage } = useImageUpload();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductFormData | null>(null);
