@@ -243,7 +243,7 @@ export const useAttendance = () => {
             can_view_attendance: true,
             can_manage_settings: true,
             can_use_scale: true,
-            can_view_expected_balance: true
+            can_view_expected_balance: true,
             can_update_status: true,
             can_create_manual_orders: true
           },
