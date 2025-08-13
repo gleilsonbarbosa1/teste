@@ -241,36 +241,24 @@ const ProductsPanel: React.FC = () => {
   useEffect(() => {
     const loadProductImages = async () => {
       // Skip image loading if there are no products or if Supabase is not configured
-      if (filteredProducts.length === 0) return;
+      if (deliveryProducts.length === 0) return;
       
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!envSupabaseUrl || !envSupabaseKey ||
-          envSupabaseUrl.includes('placeholder') || 
-          envSupabaseKey.includes('placeholder')) {
+      if (!supabaseUrl || !supabaseKey ||
+          supabaseUrl.includes('placeholder') || 
+          supabaseKey.includes('placeholder')) {
         console.warn('⚠️ Supabase not configured, skipping image loading');
         return;
       }
 
-      // Check if Supabase is configured before attempting to load images
-      const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const envSupabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey || 
-          supabaseUrl === 'your_supabase_url_here' || 
-          supabaseKey === 'your_supabase_anon_key_here' ||
-          supabaseUrl.includes('placeholder')) {
-        console.warn('⚠️ Supabase não configurado - pulando carregamento de imagens');
-        return;
-      }
-      
       console.log('🔄 Carregando imagens dos produtos...');
       const images: Record<string, string> = {};
       let successCount = 0;
       let errorCount = 0;
       
-      for (const product of products) {
+      for (const product of deliveryProducts) {
         try {
           const savedImage = await getProductImage(product.id);
           if (savedImage) {
@@ -298,10 +286,10 @@ const ProductsPanel: React.FC = () => {
     };
 
     // Only load images if we have products and Supabase is configured
-    if (products.length > 0) {
+    if (deliveryProducts.length > 0) {
       loadProductImages();
     }
-  }, [products, getProductImage]);
+  }, [deliveryProducts, getProductImage]);
 
   const resetForm = () => {
     setFormData({
