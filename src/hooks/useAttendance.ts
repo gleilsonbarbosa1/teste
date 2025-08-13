@@ -230,151 +230,25 @@ export const useAttendance = () => {
   const login = async (username: string, password: string): Promise<boolean> => {
     if (!isSupabaseConfigured()) {
       console.warn('⚠️ Supabase not configured - using localStorage fallback');
-          permissions: {
-      // Check if Supabase is configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      const supabaseConfigured = supabaseUrl && supabaseKey && 
-                                supabaseUrl !== 'your_supabase_url_here' && 
-                                supabaseKey !== 'your_supabase_anon_key_here' &&
-                                !supabaseUrl.includes('placeholder');
-      
-      if (supabaseConfigured) {
-        console.log('🔍 Verificando credenciais no banco de dados...');
-        
-        // Buscar usuário no banco de dados
-        const { data: user, error } = await supabase
-          .from('attendance_users')
-          .select('*')
-          .eq('username', username)
-          .eq('is_active', true)
-          .single();
-
-        if (error || !user) {
-          console.log('❌ Usuário não encontrado no banco:', error?.message);
-          // Fallback para credenciais hardcoded
-          if (username === adminUser.username && password === adminUser.password) {
-            console.log('✅ Login bem-sucedido com credenciais hardcoded (fallback)');
-            setSession({
-              isAuthenticated: true,
-              user: adminUser
-            });
-            return true;
-          }
-          throw new Error('Usuário não encontrado ou inativo');
-        }
-
-        // Verificar senha (assumindo que está em texto plano para simplicidade)
-        if (user.password_hash !== password) {
-          console.log('❌ Senha incorreta para usuário do banco:', username);
-          throw new Error('Senha incorreta');
-        }
-
-        console.log('✅ Login bem-sucedido com usuário do banco:', user.username);
-        
-        // Atualizar último login
-        await supabase
-          .from('attendance_users')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', user.id);
-
-        setSession({
-          isAuthenticated: true,
-          user: {
-            id: user.id,
-            username: user.username,
-            name: user.name,
-            role: user.role,
-            permissions: user.permissions
-          }
-        });
-        
-        return true;
-      } else {
-        console.warn('⚠️ Supabase não configurado - usando credenciais hardcoded');
-        
-        // Fallback para credenciais hardcoded se Supabase não configurado
-        if (username === adminUser.username && password === adminUser.password) {
-          console.log('✅ Login bem-sucedido com credenciais hardcoded');
-          setSession({
-            isAuthenticated: true,
-            user: adminUser
-          });
-          return true;
-        } else {
-          console.log('❌ Credenciais hardcoded incorretas');
-          throw new Error('Credenciais inválidas');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error during login:', error);
-      throw error;
+      return loginWithLocalStorage(username, password);
     }
-  };
 
-  const createUser = async (userData: Omit<AttendanceUser, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      const supabaseConfigured = supabaseUrl && supabaseKey && 
-                                supabaseUrl !== 'your_supabase_url_here' && 
-                                supabaseKey !== 'your_supabase_anon_key_here' &&
-                                !supabaseUrl.includes('placeholder');
-      
-      if (!supabaseConfigured) {
-        throw new Error('Supabase não configurado');
-      }
+      setLoading(true);
+      setError(null);
 
-      console.log('🚀 Criando usuário no banco:', userData.username);
+      console.log('🔍 Attempting login for user:', username);
 
-      const { data, error } = await supabase
-            can_view_cash_register: true,
-            can_view_products: true,
-            can_view_reports: true,
-            can_view_sales_report: true,
-            can_view_cash_report: true,
-            can_view_operators: true,
-            can_view_attendance: true,
-            can_manage_settings: true,
-            can_use_scale: true,
-            can_view_expected_balance: true,
-            can_update_status: true,
-            can_print_orders: true
-          },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        setSession({
-          isAuthenticated: true,
-          user: adminUser
-        });
-        
-        // Save to localStorage as backup
-        localStorage.setItem('attendance_session', JSON.stringify({
-          isAuthenticated: true,
-          user: adminUser
-        }));
-        
-        return true;
-      }
-      
-      if (!supabaseConfigured) {
-        console.warn('⚠️ Supabase não configurado - usando autenticação local');
-        return loginWithLocalStorage(username, password);
-      }
-
-      // First, get the user data
+      // Get user from database
       const { data: userData, error: userError } = await supabase
         .from('attendance_users')
-        .insert([userData])
-        .select()
+        .select('*')
+        .eq('username', username)
+        .eq('is_active', true)
         .single();
 
       if (userError || !userData) {
-        console.log('ℹ️ Usuário não encontrado no banco, tentando criar admin padrão...');
+        console.log('ℹ️ User not found in database, trying to create default admin...');
         
         // Try to create default admin user if it doesn't exist
         if (username === 'admin') {
@@ -399,12 +273,12 @@ export const useAttendance = () => {
               .single();
               
             if (createError) {
-              console.error('❌ Erro ao criar usuário admin:', createError);
-              throw new Error('Erro ao criar usuário administrador');
+              console.error('❌ Error creating admin user:', createError);
+              throw new Error('Error creating admin user');
             }
             
             if (newAdmin && password === 'elite2024') {
-              console.log('✅ Usuário admin criado e login bem-sucedido');
+              console.log('✅ Admin user created and login successful');
               setSession({
                 isAuthenticated: true,
                 user: newAdmin
@@ -414,7 +288,50 @@ export const useAttendance = () => {
                 isAuthenticated: true,
                 user: newAdmin
               }));
-      if (error) throw error;
+              
+              return true;
+            }
+          } catch (createErr) {
+            console.error('❌ Error creating admin user:', createErr);
+          }
+        }
+        
+        // Fallback to hardcoded admin
+        if (username === adminUser.username && password === adminUser.password) {
+          console.log('✅ Login successful with hardcoded admin (fallback)');
+          const adminUserData = {
+            id: 'admin-fallback',
+            username: adminUser.username,
+            name: 'Administrador',
+            role: 'admin' as const,
+            password_hash: adminUser.password,
+            is_active: true,
+            permissions: {
+              can_chat: true,
+              can_view_orders: true,
+              can_print_orders: true,
+              can_update_status: true,
+              can_create_manual_orders: true
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          setSession({
+            isAuthenticated: true,
+            user: adminUserData
+          });
+          
+          localStorage.setItem('attendance_session', JSON.stringify({
+            isAuthenticated: true,
+            user: adminUserData
+          }));
+          
+          return true;
+        }
+        
+        throw new Error('User not found or inactive');
+      }
 
       // Verify password using RPC function
       const { data: isValidPassword, error: authError } = await supabase.rpc(
@@ -426,11 +343,11 @@ export const useAttendance = () => {
       );
 
       if (authError || !isValidPassword) {
-        console.warn('⚠️ Erro na verificação de senha via RPC, tentando fallback:', authError);
+        console.warn('⚠️ Error verifying password via RPC, trying fallback:', authError);
         
         // Fallback: check if it's the admin with hardcoded password
         if (username === 'admin' && password === 'elite2024') {
-          console.log('✅ Login admin via fallback bem-sucedido');
+          console.log('✅ Admin login via fallback successful');
           setSession({
             isAuthenticated: true,
             user: userData
@@ -442,38 +359,18 @@ export const useAttendance = () => {
           }));
           
           return true;
-      console.log('✅ Usuário criado no banco:', data);
-      await fetchUsers(); // Recarregar lista de usuários
-      return data;
-    } catch (err) {
-      console.error('❌ Erro ao criar usuário:', err);
-      throw new Error(err instanceof Error ? err.message : 'Erro ao criar usuário');
-    }
-  const updateUser = async (id: string, updates: Partial<AttendanceUser>) => {
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      const supabaseConfigured = supabaseUrl && supabaseKey && 
-                                supabaseUrl !== 'your_supabase_url_here' && 
-                                supabaseKey !== 'your_supabase_anon_key_here' &&
-                                !supabaseUrl.includes('placeholder');
-      
-      if (!supabaseConfigured) {
-        throw new Error('Supabase não configurado');
+        }
+        
+        throw new Error('Invalid password');
       }
 
-      console.log('✏️ Atualizando usuário:', id);
+      console.log('✅ Login successful for user:', userData.username);
 
-      const { data, error } = await supabase
+      // Update last login
+      await supabase
         .from('attendance_users')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single();
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', userData.id);
 
       // Create session
       const userSession: AttendanceSession = {
@@ -483,46 +380,23 @@ export const useAttendance = () => {
           permissions: userData.permissions || {
             can_chat: true,
             can_view_orders: true,
-      if (error) throw error;
+            can_print_orders: true,
+            can_update_status: true,
+            can_create_manual_orders: false
+          }
+        }
+      };
 
-      console.log('✅ Usuário atualizado:', data);
-      await fetchUsers(); // Recarregar lista de usuários
-      return data;
-    } catch (err) {
-      console.error('❌ Erro ao atualizar usuário:', err);
-      throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar usuário');
-    }
-  };
+      setSession(userSession);
+      localStorage.setItem('attendance_session', JSON.stringify(userSession));
 
-  const deleteUser = async (id: string) => {
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      const supabaseConfigured = supabaseUrl && supabaseKey && 
-                                supabaseUrl !== 'your_supabase_url_here' && 
-                                supabaseKey !== 'your_supabase_anon_key_here' &&
-                                !supabaseUrl.includes('placeholder');
-      
-      if (!supabaseConfigured) {
-        throw new Error('Supabase não configurado');
-      }
-
-      console.log('🗑️ Excluindo usuário:', id);
-
-      const { error } = await supabase
-        .from('attendance_users')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      console.log('✅ Usuário excluído');
-      await fetchUsers(); // Recarregar lista de usuários
-    } catch (err) {
+      return true;
     } catch (err) {
       console.error('❌ Error during login:', err);
+      setError(err instanceof Error ? err.message : 'Login error');
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -568,13 +442,7 @@ export const useAttendance = () => {
           can_view_orders: true,
           can_print_orders: true,
           can_update_status: true,
-          can_create_manual_orders: true,
-          can_view_cash_register: true,
-          can_view_sales: true,
-          can_view_reports: true,
-          can_manage_products: true,
-          can_view_operators: true,
-          can_manage_settings: true
+          can_create_manual_orders: true
         },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
