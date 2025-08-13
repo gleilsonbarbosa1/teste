@@ -275,16 +275,17 @@ const ProductsPanel: React.FC = () => {
           const savedImage = await getProductImage(product.id);
           if (savedImage) {
             images[product.id] = savedImage;
+            successCount++;
+            console.log(`✅ Imagem carregada para produto ${product.name}:`, savedImage.substring(0, 50) + '...');
+          }
+        } catch (error) {
+          errorCount++;
           // Handle network errors gracefully
           if (error instanceof TypeError && error.message === 'Failed to fetch') {
             console.warn(`⚠️ Network error loading image for ${product.name}, skipping`);
           } else {
             console.warn(`⚠️ Error loading image for ${product.name}:`, error);
           }
-            console.log(`✅ Imagem carregada para produto ${product.name}:`, savedImage.substring(0, 50) + '...');
-          }
-        } catch (error) {
-          errorCount++;
           // Silently handle errors since getProductImage already logs them
           console.warn(`⚠️ Erro ao carregar imagem do produto ${product.name} - continuando sem imagem`);
         }
@@ -294,7 +295,7 @@ const ProductsPanel: React.FC = () => {
       if (successCount > 0 || errorCount > 0) {
         console.log(`📊 Carregamento de imagens concluído: ${successCount} sucessos, ${errorCount} erros`);
       }
-  }, [deliveryProducts, getProductImage]);
+    };
 
     // Only load images if we have products and Supabase is configured
     if (products.length > 0) {
@@ -445,8 +446,101 @@ const ProductsPanel: React.FC = () => {
     try {
       console.log('🚀 Iniciando upload de imagem...');
       const uploadedImage = await uploadImage(file);
-  if (loading) {
+      if (uploadedImage) {
+        setFormData(prev => ({ ...prev, image_url: uploadedImage }));
+        console.log('✅ Imagem carregada com sucesso:', uploadedImage);
+      }
+    } catch (error) {
+      console.error('Erro ao fazer upload da imagem:', error);
+      alert('Erro ao fazer upload da imagem. Tente novamente.');
+    }
   };
+
+  const handleImageSelect = (imageUrl: string) => {
+    setFormData(prev => ({ ...prev, image_url: imageUrl }));
+    setShowImageModal(false);
+  };
+
+  const handleDelete = async (product: any) => {
+    if (!confirm(`Tem certeza que deseja excluir o produto "${product.name}"?`)) {
+      return;
+    }
+
+    try {
+      await deleteDeliveryProduct(product.id);
+      
+      // Mostrar feedback de sucesso
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+      successMessage.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Produto excluído com sucesso!
+      `;
+      document.body.appendChild(successMessage);
+      
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
+        }
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Erro ao excluir produto:', error);
+      alert('Erro ao excluir produto. Tente novamente.');
+    }
+  };
+
+  const handleSaveSchedule = async (productId: string, schedule: any) => {
+    try {
+      await saveProductSchedule(productId, schedule);
+      alert('Horário de funcionamento salvo com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar horário:', error);
+      alert('Erro ao salvar horário. Tente novamente.');
+    }
+  };
+
+  const handleGroupDragStart = (e: React.DragEvent, groupIndex: number) => {
+    setDraggedGroupIndex(groupIndex);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleGroupDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleGroupDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    
+    if (draggedGroupIndex === null || draggedGroupIndex === targetIndex) {
+      setDraggedGroupIndex(null);
+      return;
+    }
+
+    const newGroups = [...(formData.complement_groups || [])];
+    const draggedGroup = newGroups[draggedGroupIndex];
+    
+    newGroups.splice(draggedGroupIndex, 1);
+    newGroups.splice(targetIndex, 0, draggedGroup);
+    
+    setFormData(prev => ({
+      ...prev,
+      complement_groups: newGroups
+    }));
+    
+    setDraggedGroupIndex(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   const handleOptionDragStart = (e: React.DragEvent, groupIndex: number, optionIndex: number) => {
     setDraggedOptionIndex({ groupIndex, optionIndex });
@@ -572,14 +666,6 @@ const ProductsPanel: React.FC = () => {
     }));
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-white rounded-xl shadow-sm p-8 text-center">
       <Package size={48} className="mx-auto text-gray-300 mb-4" />
@@ -595,6 +681,181 @@ const ProductsPanel: React.FC = () => {
       >
         Ir para PDV
       </button>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-semibold">
+                {editingProduct ? 'Editar Produto' : 'Novo Produto'}
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* Informações Básicas */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nome do Produto *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Categoria *
+                    </label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="acai">Açaí</option>
+                      <option value="bebidas">Bebidas</option>
+                      <option value="lanches">Lanches</option>
+                      <option value="sobremesas">Sobremesas</option>
+                      <option value="outros">Outros</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Preço (R$) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.price}
+                      onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Preço Original (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.original_price || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, original_price: parseFloat(e.target.value) || undefined }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Descrição
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Imagem */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Imagem do Produto
+                  </label>
+                  <div className="flex items-center gap-4">
+                    {formData.image_url && (
+                      <img
+                        src={formData.image_url}
+                        alt="Preview"
+                        className="w-20 h-20 object-cover rounded-lg border"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowImageModal(true)}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      {formData.image_url ? 'Alterar Imagem' : 'Adicionar Imagem'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Configurações */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Produto Ativo</span>
+                  </label>
+
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_weighable}
+                      onChange={(e) => setFormData(prev => ({ ...prev, is_weighable: e.target.checked }))}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Produto Pesável</span>
+                  </label>
+
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.has_complements}
+                      onChange={(e) => setFormData(prev => ({ ...prev, has_complements: e.target.checked }))}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Tem Complementos</span>
+                  </label>
+                </div>
+
+                {formData.is_weighable && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Preço por Grama (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={formData.price_per_gram || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, price_per_gram: parseFloat(e.target.value) || undefined }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
+
+                {/* Complementos */}
+                <div className={`transition-all duration-300 ${formData.has_complements ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-lg font-medium text-gray-900">Grupos de Complementos</h4>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, complement_groups: DEFAULT_COMPLEMENT_GROUPS }))}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm"
+                      >
+                        <Package className="w-4 h-4" />
                         Aplicar Grupos Padrão
                       </button>
                       <button
