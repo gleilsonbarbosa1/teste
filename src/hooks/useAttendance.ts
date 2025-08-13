@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 interface AttendanceUser {
   id: string;
   username: string;
-  password_hash: string;
+  password: 'elite2024',
   name: string;
   role: 'attendant' | 'admin';
   is_active: boolean;
