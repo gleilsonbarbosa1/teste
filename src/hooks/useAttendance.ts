@@ -229,14 +229,14 @@ export const useAttendance = () => {
   const login = async (username: string, password: string): Promise<boolean> => {
     if (!isSupabaseConfigured()) {
       console.warn('⚠️ Supabase not configured - using localStorage fallback');
-    // Check Supabase configuration
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    const supabaseConfigured = supabaseUrl && supabaseKey && 
-                              supabaseUrl !== 'your_supabase_url_here' && 
-                              supabaseKey !== 'your_supabase_anon_key_here' &&
-                              !supabaseUrl.includes('placeholder');
-    
+      // Check Supabase configuration
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const supabaseConfigured = supabaseUrl && supabaseKey && 
+                                supabaseUrl !== 'your_supabase_url_here' && 
+                                supabaseKey !== 'your_supabase_anon_key_here' &&
+                                !supabaseUrl.includes('placeholder');
+      
       return loginWithLocalStorage(username, password);
     }
 
@@ -271,7 +271,7 @@ export const useAttendance = () => {
             can_use_scale: true,
             can_view_expected_balance: true,
             can_update_status: true,
-            can_view_expected_balance: true,
+            can_print_orders: true
           },
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -355,7 +355,7 @@ export const useAttendance = () => {
           }
         }
         
-        console.error('❌ Usuário não encontrado:', fetchError);
+        console.error('❌ Usuário não encontrado:', userError);
         throw new Error('Usuário não encontrado ou inativo');
       }
 
@@ -376,12 +376,12 @@ export const useAttendance = () => {
           console.log('✅ Login admin via fallback bem-sucedido');
           setSession({
             isAuthenticated: true,
-            user
+            user: userData
           });
           
           localStorage.setItem('attendance_session', JSON.stringify({
             isAuthenticated: true,
-            user
+            user: userData
           }));
           
           return true;
@@ -483,12 +483,6 @@ export const useAttendance = () => {
     return defaultUsers;
   };
 
-      // Save session to localStorage for PermissionGuard
-      localStorage.setItem('attendance_session', JSON.stringify({
-        isAuthenticated: true,
-        user: adminUser
-      }));
-      
   const createLocalStorageUser = (userData: Omit<AttendanceUser, 'id' | 'created_at' | 'updated_at'>): AttendanceUser => {
     const newUser: AttendanceUser = {
       ...userData,
@@ -561,6 +555,6 @@ export const useAttendance = () => {
     fetchUsers,
     createUser,
     updateUser,
-  username: 'admin',
-  password: 'elite2024'
+    deleteUser
+  };
 };
