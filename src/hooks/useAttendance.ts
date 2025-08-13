@@ -31,11 +31,11 @@ export const useAttendance = () => {
   const [session, setSession] = useState<AttendanceSession>({ isAuthenticated: false });
   const [users, setUsers] = useState<AttendanceUser[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Check Supabase configuration
-  const supabaseConfigured = React.useMemo(() => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  // Hardcoded credentials for demo/fallback - MATCHES DOCUMENTATION
+  const HARDCODED_CREDENTIALS = {
+    username: 'admin',
+    password: 'elite2024'
+  };
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
     return supabaseUrl && supabaseKey && 
