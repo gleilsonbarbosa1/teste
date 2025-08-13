@@ -332,7 +332,7 @@ export const useTableSales = (storeId: 1 | 2) => {
     closeSale,
     getSaleDetails,
     updateTableStatus,
-    refetch: fetchTables
+    refetch: fetchTables,
     
   };
 };
