@@ -285,13 +285,13 @@ export const useImageUpload = () => {
       }
 
       // Check if Supabase is properly configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const envSupabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!supabaseUrl || !supabaseKey || 
-          supabaseUrl === 'your_supabase_url_here' || 
-          supabaseKey === 'your_supabase_anon_key_here' ||
-          supabaseUrl.includes('placeholder')) {
+      if (!envSupabaseUrl || !envSupabaseKey || 
+          envSupabaseUrl === 'your_supabase_url_here' || 
+          envSupabaseKey === 'your_supabase_anon_key_here' ||
+          envSupabaseUrl.includes('placeholder')) {
         console.warn('Supabase not configured, using fallback image');
         return null
       }
