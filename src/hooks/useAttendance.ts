@@ -217,6 +217,14 @@ export const useAttendance = () => {
   const login = async (username: string, password: string): Promise<boolean> => {
     if (!isSupabaseConfigured()) {
       console.warn('⚠️ Supabase not configured - using localStorage fallback');
+    // Check Supabase configuration
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const supabaseConfigured = supabaseUrl && supabaseKey && 
+                              supabaseUrl !== 'your_supabase_url_here' && 
+                              supabaseKey !== 'your_supabase_anon_key_here' &&
+                              !supabaseUrl.includes('placeholder');
+    
       return loginWithLocalStorage(username, password);
     }
 
