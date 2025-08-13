@@ -106,11 +106,7 @@ export const usePermissions = (operator?: PDVOperator | Store2User) => {
   }
   return {
     hasPermission,
-      const hasSpecificPermission = operator.permissions[permission] === true;
-      console.log('📋 Permission result:', hasSpecificPermission, 'for', permission);
-      return hasSpecificPermission;
-    isAdmin,
-    currentOperator: operator,
+    };
     console.log('❌ No permissions object found for operator');
     currentUser
   };
