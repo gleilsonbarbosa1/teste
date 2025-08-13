@@ -119,6 +119,15 @@ export const useAttendance = () => {
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       // Check if Supabase is properly configured
+      const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const envSupabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      const supabaseConfigured = envSupabaseUrl && envSupabaseKey && 
+                                envSupabaseUrl !== 'your_supabase_url_here' && 
+                                envSupabaseKey !== 'your_supabase_anon_key_here' &&
+                                !envSupabaseUrl.includes('placeholder');
+
+      // Check if Supabase is properly configured
       const supabaseConfigured = envSupabaseUrl && envSupabaseKey && 
                                  envSupabaseUrl !== 'your_supabase_url_here' && 
                                  envSupabaseKey !== 'your_supabase_anon_key_here' &&
