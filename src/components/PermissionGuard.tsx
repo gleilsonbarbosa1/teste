@@ -8,52 +8,51 @@ interface PermissionGuardProps {
   showMessage?: boolean;
 }
 
-/**
- * A component that guards routes based on user permissions
- * 
- * @param children - The content to render if user has permission
- * @param hasPermission - Boolean indicating if user has permission
- * @param fallbackPath - Path to redirect to if user doesn't have permission (defaults to "/")
- * @param showMessage - Whether to show a message instead of redirecting
- */
 const PermissionGuard: React.FC<PermissionGuardProps> = ({
   children,
   hasPermission,
   fallbackPath = '/acesso-negado',
-  showMessage = false
+  showMessage = false,
 }) => {
   const navigate = useNavigate();
-  
-  // Always allow access in development mode, admin mode, or if user has permission
+
+  // 1) Se tem permissão explícita, libera imediatamente
   if (hasPermission) {
-  }
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
-  // Check if user is admin in multiple ways
-  let isAdmin = false;
-  try {
-    const storedOperator = localStorage.getItem('pdv_operator');
-    if (storedOperator) {
-      const operator = JSON.parse(storedOperator);
-      isAdmin = operator.code?.toUpperCase() === 'ADMIN' || 
-                operator.name?.toUpperCase().includes('ADMIN');
-    }
-  } catch (error) {
-    console.error('Error checking admin status:', error);
-  }
-  
-  // Grant full access in development mode
-  if (hasPermission || isDevelopment || isAdmin) {
     return <>{children}</>;
   }
 
+  // 2) Bypass em desenvolvimento
+  const isDevelopment = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development';
+
+  // 3) Bypass para admin (via localStorage.pdv_operator)
+  let isAdmin = false;
+  try {
+    if (typeof window !== 'undefined') {
+      const storedOperator = localStorage.getItem('pdv_operator');
+      if (storedOperator) {
+        const operator = JSON.parse(storedOperator);
+        const code = String(operator?.code || '').toUpperCase();
+        const name = String(operator?.name || '').toUpperCase();
+        isAdmin = code === 'ADMIN' || name.includes('ADMIN');
+      }
+    }
+  } catch (err) {
+    console.error('Erro ao verificar admin no localStorage:', err);
+  }
+
+  if (isDevelopment || isAdmin) {
+    return <>{children}</>;
+  }
+
+  // 4) Sem permissão -> mensagem amigável OU redirect
   if (showMessage) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
           <div className="bg-red-100 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
             <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Acesso Negado</h2>
