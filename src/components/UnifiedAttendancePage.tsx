@@ -47,7 +47,10 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
   const isAdmin = !operator || 
                   operator.code?.toUpperCase() === 'ADMIN' || 
                   operator.name?.toUpperCase().includes('ADMIN') ||
-                  operator.name?.toUpperCase() === 'ADMINISTRADOR';
+                  operator.name?.toUpperCase() === 'ADMINISTRADOR' ||
+                  operator.username?.toUpperCase() === 'ADMIN' ||
+                  operator.username?.toUpperCase().includes('ADMIN') ||
+                  operator.role === 'admin';
 
   const settings = storeSettings || localStoreSettings;
   

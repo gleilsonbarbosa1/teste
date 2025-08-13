@@ -223,6 +223,8 @@ export const useAttendance = () => {
         const adminUser = {
           id: '1',
           username: 'admin',
+          name: 'Administrador',
+          role: 'admin',
           password_hash: 'elite2024',
           name: 'Administrador',
           role: 'admin' as const,
@@ -230,7 +232,18 @@ export const useAttendance = () => {
           permissions: {
             can_chat: true,
             can_view_orders: true,
-            can_print_orders: true,
+            can_create_manual_orders: true,
+            can_view_sales: true,
+            can_view_cash_register: true,
+            can_view_products: true,
+            can_view_reports: true,
+            can_view_sales_report: true,
+            can_view_cash_report: true,
+            can_view_operators: true,
+            can_view_attendance: true,
+            can_manage_settings: true,
+            can_use_scale: true,
+            can_view_expected_balance: true
             can_update_status: true,
             can_create_manual_orders: true
           },

@@ -15,7 +15,9 @@ const AttendancePage: React.FC = () => {
         operator={session.user ? {
           id: session.user.id,
           name: session.user.username,
+          username: session.user.username,
           code: session.user.username.toUpperCase(),
+          role: session.user.role || 'admin',
           permissions: {
             can_discount: true,
             can_cancel: true,
@@ -27,7 +29,11 @@ const AttendancePage: React.FC = () => {
             can_view_reports: true,
             can_view_sales_report: true,
             can_view_cash_report: true,
-            can_view_operators: true
+            can_view_operators: true,
+            can_view_attendance: true,
+            can_manage_settings: true,
+            can_use_scale: true,
+            can_view_expected_balance: true
           },
           is_active: true,
           created_at: new Date().toISOString(),

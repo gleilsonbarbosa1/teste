@@ -65,8 +65,26 @@ export const usePermissions = (operator?: PDVOperator | Store2User) => {
     if (currentUser?.permissions) {
       return currentUser.permissions;
     }
-    
+export const usePermissions = (operator?: any) => {
     return {};
+    // Always allow access if no operator (admin mode)
+    if (!operator) {
+      return true;
+    }
+    
+    // Check if user is admin by various criteria
+    const isAdmin = operator.code?.toUpperCase() === 'ADMIN' ||
+                    operator.name?.toUpperCase().includes('ADMIN') ||
+                    operator.name?.toUpperCase() === 'ADMINISTRADOR' ||
+                    operator.username?.toUpperCase() === 'ADMIN' ||
+                    operator.username?.toUpperCase().includes('ADMIN') ||
+                    operator.role === 'admin';
+    
+    // Admin users have all permissions
+    if (isAdmin) {
+      return true;
+    }
+    
   };
 
   return {
