@@ -221,6 +221,19 @@ const ProductsPanel: React.FC = () => {
   // Carregar imagens dos produtos
   useEffect(() => {
     const loadProductImages = async () => {
+      // Skip image loading if there are no products or if Supabase is not configured
+      if (filteredProducts.length === 0) return;
+      
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl.includes('placeholder') || 
+          supabaseKey.includes('placeholder')) {
+        console.warn('⚠️ Supabase not configured, skipping image loading');
+        return;
+      }
+
       // Check if Supabase is configured before attempting to load images
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -243,7 +256,12 @@ const ProductsPanel: React.FC = () => {
           const savedImage = await getProductImage(product.id);
           if (savedImage) {
             images[product.id] = savedImage;
-            successCount++;
+          // Handle network errors gracefully
+          if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            console.warn(`⚠️ Network error loading image for ${product.name}, skipping`);
+          } else {
+            console.warn(`⚠️ Error loading image for ${product.name}:`, error);
+          }
             console.log(`✅ Imagem carregada para produto ${product.name}:`, savedImage.substring(0, 50) + '...');
           }
         } catch (error) {

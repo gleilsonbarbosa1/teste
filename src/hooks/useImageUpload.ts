@@ -273,6 +273,17 @@ export const useImageUpload = () => {
 
   const getProductImage = async (productId: string): Promise<string | null> => {
     try {
+      // Check if Supabase is configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl.includes('placeholder') || 
+          supabaseKey.includes('placeholder')) {
+        console.warn('⚠️ Supabase not configured, skipping image fetch');
+        return null;
+      }
+
       // Check if Supabase is properly configured
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -327,7 +338,13 @@ export const useImageUpload = () => {
       } else {
         console.warn(`⚠️ Unexpected error loading image for product ${productId}:`, errorMessage);
       }
+      // Handle network errors gracefully
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.warn('⚠️ Network error when fetching product image, using fallback');
+        return null;
+      }
       
+      console.warn('⚠️ Error fetching product image, using fallback:', error);
       return null;
     }
   };
