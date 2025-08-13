@@ -224,7 +224,10 @@ const ProductsPanel: React.FC = () => {
 
   const filteredProducts = React.useMemo(() => {
     let result = searchTerm 
-      ? searchProducts(searchTerm) 
+      ? deliveryProducts.filter(p => 
+          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.description.toLowerCase().includes(searchTerm.toLowerCase())
+        )
       : deliveryProducts;
     
     if (selectedCategory !== 'all') {
@@ -232,7 +235,7 @@ const ProductsPanel: React.FC = () => {
     }
     
     return result;
-  }, [deliveryProducts, searchProducts, searchTerm, selectedCategory]);
+  }, [deliveryProducts, searchTerm, selectedCategory]);
 
   // Carregar imagens dos produtos
   useEffect(() => {
@@ -291,7 +294,7 @@ const ProductsPanel: React.FC = () => {
       if (successCount > 0 || errorCount > 0) {
         console.log(`📊 Carregamento de imagens concluído: ${successCount} sucessos, ${errorCount} erros`);
       }
-    };
+  }, [deliveryProducts, getProductImage]);
 
     // Only load images if we have products and Supabase is configured
     if (products.length > 0) {
@@ -442,112 +445,7 @@ const ProductsPanel: React.FC = () => {
     try {
       console.log('🚀 Iniciando upload de imagem...');
       const uploadedImage = await uploadImage(file);
-      console.log('✅ Upload concluído:', uploadedImage.url);
-      setFormData(prev => ({ ...prev, image_url: uploadedImage.url }));
-      
-      // Atualizar cache local de imagens
-      if (editingProduct?.id) {
-        setProductImages(prev => ({
-          ...prev,
-          [editingProduct.id!]: uploadedImage.url
-        }));
-      }
-    } catch (error) {
-      console.error('Erro ao fazer upload da imagem:', error);
-      alert('Erro ao fazer upload da imagem. Tente novamente.');
-    }
-  };
-
-  const handleImageSelect = (imageUrl: string) => {
-    console.log('🖼️ Imagem selecionada:', imageUrl.substring(0, 50) + '...');
-    setFormData(prev => ({ ...prev, image_url: imageUrl }));
-    
-    // Atualizar cache local de imagens
-    if (editingProduct?.id) {
-      setProductImages(prev => ({
-        ...prev,
-        [editingProduct.id!]: imageUrl
-      }));
-    }
-    
-    setShowImageModal(false);
-  };
-
-  const handleScheduleProduct = (product: any) => {
-    setSelectedProductForSchedule(product);
-    setShowScheduleModal(true);
-  };
-
-  const handleSaveSchedule = async (productId: string, scheduledDays: any) => {
-    try {
-      await saveProductSchedule(productId, scheduledDays);
-      setShowScheduleModal(false);
-      setSelectedProductForSchedule(null);
-      
-      // Show success message
-      const successMessage = document.createElement('div');
-      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
-      successMessage.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-        </svg>
-        Programação do produto salva com sucesso!
-      `;
-      document.body.appendChild(successMessage);
-      
-      setTimeout(() => {
-        if (document.body.contains(successMessage)) {
-          document.body.removeChild(successMessage);
-        }
-      }, 3000);
-    } catch (error) {
-      console.error('Erro ao salvar programação:', error);
-      alert('Erro ao salvar programação do produto.');
-    }
-  };
-
-  const applyDefaultComplementGroups = () => {
-    setFormData(prev => ({
-      ...prev,
-      has_complements: true,
-      complement_groups: [...DEFAULT_COMPLEMENT_GROUPS]
-    }));
-  };
-
-  const handleGroupDragStart = (e: React.DragEvent, groupIndex: number) => {
-    setDraggedGroupIndex(groupIndex);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleGroupDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleGroupDrop = (e: React.DragEvent, targetGroupIndex: number) => {
-    e.preventDefault();
-    
-    if (draggedGroupIndex === null || draggedGroupIndex === targetGroupIndex) {
-      setDraggedGroupIndex(null);
-      return;
-    }
-
-    const newGroups = [...(formData.complement_groups || [])];
-    const draggedGroup = newGroups[draggedGroupIndex];
-    
-    // Remove o grupo da posição original
-    newGroups.splice(draggedGroupIndex, 1);
-    
-    // Insere na nova posição
-    const insertIndex = draggedGroupIndex < targetGroupIndex ? targetGroupIndex - 1 : targetGroupIndex;
-    newGroups.splice(insertIndex, 0, draggedGroup);
-    
-    setFormData(prev => ({
-      ...prev,
-      complement_groups: newGroups
-    }));
-    
-    setDraggedGroupIndex(null);
+  if (loading) {
   };
 
   const handleOptionDragStart = (e: React.DragEvent, groupIndex: number, optionIndex: number) => {
@@ -683,267 +581,20 @@ const ProductsPanel: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Produtos</h2>
-        <button
-          onClick={handleCreate}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Produto
-        </button>
-      </div>
-      
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={handleRefreshProducts}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          🔄 Recarregar Produtos
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {products.map((product) => (
-          <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-            {product.image_url && (
-              <img
-                src={product.image_url}
-                alt={product.name}
-                className="w-full h-48 object-cover"
-              />
-            )}
-            <div className="p-4">
-              <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
-              <p className="text-gray-600 text-sm mb-2">{product.description}</p>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-lg font-bold text-green-600">
-                  R$ {product.price.toFixed(2)}
-                </span>
-                {product.original_price && (
-                  <span className="text-sm text-gray-500 line-through">
-                    R$ {product.original_price.toFixed(2)}
-                  </span>
-                )}
-              </div>
-              <div className="flex justify-between items-center">
-                <span className={`px-2 py-1 rounded text-xs ${
-                  product.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {product.is_active ? 'Ativo' : 'Inativo'}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEdit(product)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleScheduleProduct(product)}
-                    className="text-orange-600 hover:text-orange-800"
-                    title="Programar disponibilidade"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => deleteProduct(product.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-7xl w-full max-h-[95vh] flex flex-col">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-semibold">
-                {editingProduct ? 'Editar Produto' : 'Novo Produto'}
-              </h3>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Coluna Esquerda - Informações Básicas */}
-                  <div className="space-y-4">
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold mb-4 flex items-center gap-2">
-                        <Package className="w-4 h-4" />
-                        Informações Básicas
-                      </h4>
-                      
-                      {/* Upload de Imagem */}
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Imagem do Produto
-                        </label>
-                        <div className="text-xs text-gray-500 mb-2">
-                          💡 Dica: Clique em "Gerenciar Imagens" para fazer upload ou selecionar uma imagem<br/>
-                          🔄 A imagem será salva automaticamente no banco de dados<br/>
-                          📱 Imagens ficam sincronizadas em todos os dispositivos
-                        </div>
-                        <div className="flex items-center gap-4">
-                          {(formData.image_url || (editingProduct?.id && productImages[editingProduct.id])) ? (
-                            <img
-                              src={formData.image_url || (editingProduct?.id && productImages[editingProduct.id]) || ''}
-                              alt="Preview"
-                              className="w-20 h-20 object-cover rounded-lg border"
-                            />
-                          ) : (
-                            <div className="w-20 h-20 bg-gray-100 rounded-lg border flex items-center justify-center">
-                              <ImageIcon className="w-8 h-8 text-gray-400" />
-                            </div>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setShowImageModal(true)}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                          >
-                            <Upload className="w-4 h-4" />
-                            Gerenciar Imagens
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Nome do Produto *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.name}
-                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Categoria *
-                          </label>
-                          <select
-                            value={formData.category}
-                            onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            required
-                          >
-                            <option value="acai">Açaí</option>
-                            <option value="combo">Combo</option>
-                            <option value="milkshake">Milkshake</option>
-                            <option value="vitamina">Vitamina</option>
-                            <option value="sorvetes">Sorvetes</option>
-                            <option value="bebidas">Bebidas</option>
-                            <option value="complementos">Complementos</option>
-                            <option value="sobremesas">Sobremesas</option>
-                            <option value="outros">Outros</option>
-                          </select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Preço (R$) *
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={formData.price}
-                              onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              required
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Preço Original (R$)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={formData.original_price || ''}
-                              onChange={(e) => setFormData(prev => ({ ...prev, original_price: parseFloat(e.target.value) || undefined }))}
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              placeholder="Para produtos em promoção (preço riscado)"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={formData.is_weighable}
-                              onChange={(e) => setFormData(prev => ({ ...prev, is_weighable: e.target.checked }))}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm font-medium text-gray-700">
-                              Produto pesável (vendido por peso)
-                            </span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Coluna Direita - Tamanhos */}
-                  <div className="space-y-4">
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold mb-4">Tamanhos do Produto</h4>
-                      <p className="text-gray-500 text-sm mb-4">Nenhum tamanho configurado</p>
-                      <button
-                        type="button"
-                        className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 flex items-center gap-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Adicionar Tamanho
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Descrição */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descrição *
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                    required
-                  />
-                </div>
-
-                {/* Grupos de Complementos */}
-                <div className="border rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-semibold">Grupos de Complementos</h4>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={applyDefaultComplementGroups}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
-                      >
+    <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+      <Package size={48} className="mx-auto text-gray-300 mb-4" />
+      <h3 className="text-lg font-medium text-gray-600 mb-2">
+        Painel de Produtos em Desenvolvimento
+      </h3>
+      <p className="text-gray-500">
+        Esta funcionalidade está sendo desenvolvida. Use o PDV para gerenciar produtos.
+      </p>
+      <button
+        onClick={() => window.location.href = '/pdv'}
+        className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+      >
+        Ir para PDV
+      </button>
                         Aplicar Grupos Padrão
                       </button>
                       <button
