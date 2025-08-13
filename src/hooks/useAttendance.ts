@@ -31,6 +31,17 @@ export const useAttendance = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Check Supabase configuration
+  const supabaseConfigured = React.useMemo(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    return supabaseUrl && supabaseKey && 
+           supabaseUrl !== 'your_supabase_url_here' && 
+           supabaseKey !== 'your_supabase_anon_key_here' &&
+           !supabaseUrl.includes('placeholder');
+  }, []);
+
   // Define admin user credentials
   const adminUser = {
     username: 'admin',
