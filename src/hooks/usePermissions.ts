@@ -103,6 +103,7 @@ export const usePermissions = (operator?: PDVOperator | Store2User) => {
     // Log permission check for debugging
     console.log('🔍 Checking permission:', permission, 'for operator:', operator.username || operator.name);
     
+  }
   return {
     hasPermission,
       const hasSpecificPermission = operator.permissions[permission] === true;
