@@ -96,18 +96,20 @@ export const usePermissions = (operator?: PDVOperator | Store2User) => {
       operator.username?.toUpperCase() === 'ADMIN' ||
       operator.username?.toUpperCase().includes('ADMIN') ||
       operator.role === 'admin' ||
-      console.log('🔓 Admin user detected, granting permission:', permission);
+      (console.log('🔓 Admin user detected, granting permission:', permission),
       operator.username === 'admin' ||
-      operator.name === 'admin';
+      operator.name === 'admin');
 
     // Log permission check for debugging
     console.log('🔍 Checking permission:', permission, 'for operator:', operator.username || operator.name);
     
-  }
+    return isAdmin;
+  };
+  
   return {
     hasPermission,
-    };
-    console.log('❌ No permissions object found for operator');
+    getPermissions,
+    isAdmin,
     currentUser
   };
 };
