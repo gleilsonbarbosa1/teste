@@ -128,14 +128,14 @@ export const useAttendance = () => {
                                 !envSupabaseUrl.includes('placeholder');
 
       // Check if Supabase is properly configured
-      const supabaseConfigured = envSupabaseUrl && envSupabaseKey && 
-                                 envSupabaseUrl !== 'your_supabase_url_here' && 
-                                 envSupabaseKey !== 'your_supabase_anon_key_here' &&
-                                 !envSupabaseUrl.includes('placeholder');
+      const isSupabaseConfigured = envSupabaseUrl && envSupabaseKey &&
+                                   envSupabaseUrl !== 'your_supabase_url_here' &&
+                                   envSupabaseKey !== 'your_supabase_anon_key_here' &&
+                                   !envSupabaseUrl.includes('placeholder');
 
       console.log('🔐 Tentando fazer login:', { username, password: password ? '***' : 'vazio' });
       
-      if (!supabaseConfigured) {
+      if (!isSupabaseConfigured) {
         console.warn('⚠️ Supabase não configurado - usando credenciais hardcoded');
         return checkHardcodedCredentials(username, password);
       }
