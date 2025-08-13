@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAttendance } from '../../hooks/useAttendance';
 import { Users, Plus, Edit3, Trash2, Search, Eye, EyeOff, Lock, Save, User } from 'lucide-react';
 
 interface AttendanceUser {
@@ -20,67 +21,11 @@ interface AttendanceUser {
 }
 
 const AttendanceUsersPanel: React.FC = () => {
-  const [users, setUsers] = useState<AttendanceUser[]>([]);
+  const { users, loading, error, createUser, updateUser, deleteUser, fetchUsers } = useAttendance();
   const [searchTerm, setSearchTerm] = useState('');
   const [editingUser, setEditingUser] = useState<AttendanceUser | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  // Load users from localStorage
-  useEffect(() => {
-    const savedUsers = localStorage.getItem('attendance_users');
-    if (savedUsers) {
-      try {
-        const parsedUsers = JSON.parse(savedUsers);
-        // Ensure all users have proper permissions structure
-        const usersWithPermissions = parsedUsers.map(user => ({
-          ...user,
-          permissions: user.permissions || {
-            can_view_orders: true,
-            can_update_status: true,
-            can_chat: true,
-            can_create_manual_orders: false,
-            can_print_orders: true
-          }
-        }));
-        setUsers(usersWithPermissions);
-      } catch (error) {
-        console.error('Erro ao carregar usuários:', error);
-        initializeDefaultUsers();
-      }
-    } else {
-      initializeDefaultUsers();
-    }
-  }, []);
-
-  const initializeDefaultUsers = () => {
-    const defaultUsers: AttendanceUser[] = [
-      {
-        id: '1',
-        username: 'admin',
-        password: 'elite2024',
-        name: 'Administrador',
-        role: 'admin',
-        isActive: true,
-        permissions: {
-          can_view_orders: true,
-          can_update_status: true,
-          can_chat: true,
-          can_create_manual_orders: true,
-          can_print_orders: true
-        },
-        created_at: new Date().toISOString()
-      }
-    ];
-    setUsers(defaultUsers);
-    localStorage.setItem('attendance_users', JSON.stringify(defaultUsers));
-  };
-
-  // Save users to localStorage
-  const saveUsers = (updatedUsers: AttendanceUser[]) => {
-    setUsers(updatedUsers);
-    localStorage.setItem('attendance_users', JSON.stringify(updatedUsers));
-  };
 
   const filteredUsers = searchTerm
     ? users.filter(user => 
@@ -93,23 +38,24 @@ const AttendanceUsersPanel: React.FC = () => {
     setEditingUser({
       id: Date.now().toString(),
       username: '',
-      password: '',
+      password_hash: '',
       name: '',
       role: 'attendant',
-      isActive: true,
+      is_active: true,
       permissions: {
-        can_view_orders: true,
-        can_update_status: true,
         can_chat: true,
-        can_create_manual_orders: false,
-        can_print_orders: true
+        can_view_orders: true,
+        can_print_orders: true,
+        can_update_status: true,
+        can_create_manual_orders: false
       },
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     });
     setIsCreating(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editingUser) return;
 
     if (!editingUser.username.trim() || !editingUser.name.trim()) {
@@ -117,7 +63,7 @@ const AttendanceUsersPanel: React.FC = () => {
       return;
     }
 
-    if (isCreating && !editingUser.password.trim()) {
+    if (isCreating && !editingUser.password_hash.trim()) {
       alert('Senha é obrigatória para novos usuários');
       return;
     }
@@ -133,11 +79,10 @@ const AttendanceUsersPanel: React.FC = () => {
     
     try {
       if (isCreating) {
-        const newUsers = [...users, editingUser];
-        saveUsers(newUsers);
+        const { id, created_at, updated_at, ...userData } = editingUser;
+        await createUser(userData);
       } else {
-        const updatedUsers = users.map(u => u.id === editingUser.id ? editingUser : u);
-        saveUsers(updatedUsers);
+        await updateUser(editingUser.id, editingUser);
       }
       
       setEditingUser(null);
@@ -167,32 +112,54 @@ const AttendanceUsersPanel: React.FC = () => {
     }
   };
 
-  const handleDelete = (id: string, name: string) => {
+  const handleDelete = async (id: string, name: string) => {
     if (id === '1') {
       alert('Não é possível excluir o usuário administrador padrão');
       return;
     }
 
     if (confirm(`Tem certeza que deseja excluir o usuário "${name}"?`)) {
-      const updatedUsers = users.filter(u => u.id !== id);
-      saveUsers(updatedUsers);
+      try {
+        await deleteUser(id);
+      } catch (error) {
+        console.error('Erro ao excluir usuário:', error);
+        alert('Erro ao excluir usuário');
+      }
     }
   };
 
-  const handleToggleActive = (user: AttendanceUser) => {
+  const handleToggleActive = async (user: AttendanceUser) => {
     if (user.id === '1') {
       alert('Não é possível desativar o usuário administrador padrão');
       return;
     }
 
-    const updatedUsers = users.map(u => 
-      u.id === user.id ? { ...u, isActive: !u.isActive } : u
-    );
-    saveUsers(updatedUsers);
+    try {
+      await updateUser(user.id, { is_active: !user.is_active });
+    } catch (error) {
+      console.error('Erro ao alterar status:', error);
+      alert('Erro ao alterar status');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Carregando usuários...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-600">{error}</p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -290,12 +257,12 @@ const AttendanceUsersPanel: React.FC = () => {
                       onClick={() => handleToggleActive(user)}
                       disabled={user.id === '1'}
                       className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                        user.isActive
+                        user.is_active
                           ? 'bg-green-100 text-green-800 hover:bg-green-200'
                           : 'bg-red-100 text-red-800 hover:bg-red-200'
                       } ${user.id === '1' ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      {user.isActive ? (
+                      {user.is_active ? (
                         <>
                           <Eye size={12} />
                           Ativo
@@ -407,10 +374,10 @@ const AttendanceUsersPanel: React.FC = () => {
                   <Lock size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="password"
-                    value={editingUser.password}
+                    value={editingUser.password_hash}
                     onChange={(e) => setEditingUser({
                       ...editingUser,
-                      password: e.target.value
+                      password_hash: e.target.value
                     })}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder={isCreating ? "Senha" : "Nova senha (opcional)"}
@@ -443,6 +410,24 @@ const AttendanceUsersPanel: React.FC = () => {
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
+                      checked={editingUser.permissions?.can_chat || false}
+                      onChange={(e) => setEditingUser({
+                        ...editingUser,
+                        permissions: {
+                          ...editingUser.permissions || {},
+                          can_chat: e.target.checked
+                        }
+                      })}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Conversar com clientes
+                    </span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
                       checked={editingUser.permissions?.can_view_orders || false}
                       onChange={(e) => setEditingUser({
                         ...editingUser,
@@ -455,6 +440,24 @@ const AttendanceUsersPanel: React.FC = () => {
                     />
                     <span className="text-sm text-gray-700">
                       Visualizar pedidos
+                    </span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingUser.permissions?.can_print_orders || false}
+                      onChange={(e) => setEditingUser({
+                        ...editingUser,
+                        permissions: {
+                          ...editingUser.permissions || {},
+                          can_print_orders: e.target.checked
+                        }
+                      })}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Imprimir pedidos
                     </span>
                   </label>
                   
@@ -479,24 +482,6 @@ const AttendanceUsersPanel: React.FC = () => {
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={editingUser.permissions?.can_chat || false}
-                      onChange={(e) => setEditingUser({
-                        ...editingUser,
-                        permissions: {
-                          ...editingUser.permissions || {},
-                          can_chat: e.target.checked
-                        }
-                      })}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Conversar com clientes
-                    </span>
-                  </label>
-                  
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
                       checked={editingUser.permissions?.can_create_manual_orders || false}
                       onChange={(e) => setEditingUser({
                         ...editingUser,
@@ -511,24 +496,6 @@ const AttendanceUsersPanel: React.FC = () => {
                       Criar pedidos manuais
                     </span>
                   </label>
-                  
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingUser.permissions?.can_print_orders || false}
-                      onChange={(e) => setEditingUser({
-                        ...editingUser,
-                        permissions: {
-                          ...editingUser.permissions || {},
-                          can_print_orders: e.target.checked
-                        }
-                      })}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Imprimir pedidos
-                    </span>
-                  </label>
                 </div>
               </div>
 
@@ -536,10 +503,10 @@ const AttendanceUsersPanel: React.FC = () => {
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={editingUser.isActive}
+                    checked={editingUser.is_active}
                     onChange={(e) => setEditingUser({
                       ...editingUser,
-                      isActive: e.target.checked
+                      is_active: e.target.checked
                     })}
                     className="w-4 h-4 text-blue-600"
                   />

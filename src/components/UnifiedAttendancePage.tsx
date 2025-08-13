@@ -44,7 +44,10 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
   const pendingOrdersCount = orders.filter(order => order.status === 'pending').length;
 
   // Check if user is admin
-  const isAdmin = !operator || operator.code?.toUpperCase() === 'ADMIN';
+  const isAdmin = !operator || 
+                  operator.code?.toUpperCase() === 'ADMIN' || 
+                  operator.name?.toUpperCase().includes('ADMIN') ||
+                  operator.name?.toUpperCase() === 'ADMINISTRADOR';
 
   const settings = storeSettings || localStoreSettings;
   

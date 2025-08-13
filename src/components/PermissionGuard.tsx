@@ -33,7 +33,9 @@ const PermissionGuard: React.FC<PermissionGuardProps> = ({
         const operator = JSON.parse(storedOperator);
         const code = String(operator?.code || '').toUpperCase();
         const name = String(operator?.name || '').toUpperCase();
-        isAdmin = code === 'ADMIN' || name.includes('ADMIN');
+        isAdmin = code === 'ADMIN' || 
+                  name.includes('ADMIN') || 
+                  name === 'ADMINISTRADOR';
       }
     }
   } catch (err) {

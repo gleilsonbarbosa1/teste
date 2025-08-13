@@ -303,7 +303,9 @@ const PDVMain: React.FC<PDVMainProps> = ({ onBack, operator }) => {
     }
 
     // Admin user always sees all menu items
-    if (operator.code?.toUpperCase() === 'ADMIN') {
+    if (operator.code?.toUpperCase() === 'ADMIN' || 
+        operator.name?.toUpperCase().includes('ADMIN') ||
+        operator.name?.toUpperCase() === 'ADMINISTRADOR') {
       setFilteredMenuCategories(menuCategories);
       return;
     }

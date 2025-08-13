@@ -57,7 +57,10 @@ const PDVPage: React.FC = () => {
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
 
   // Check if user is admin
-  const isAdmin = !loggedInOperator || loggedInOperator.code?.toUpperCase() === 'ADMIN';
+  const isAdmin = !loggedInOperator || 
+                  loggedInOperator.code?.toUpperCase() === 'ADMIN' ||
+                  loggedInOperator.name?.toUpperCase().includes('ADMIN') ||
+                  loggedInOperator.name?.toUpperCase() === 'ADMINISTRADOR';
 
   // Check Supabase configuration on mount
   React.useEffect(() => {
