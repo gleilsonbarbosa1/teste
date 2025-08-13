@@ -118,55 +118,36 @@ export const useAttendance = () => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      setError(null);
-      console.log('🔐 Tentando login de atendimento:', { username });
-
-      // Check if Supabase is configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      console.log('🔐 Tentando fazer login:', { username, password: password ? '***' : 'vazio' });
       
-      if (!supabaseUrl || !supabaseKey || 
-          supabaseUrl === 'your_supabase_url_here' || 
-          supabaseKey === 'your_supabase_anon_key_here' ||
-          supabaseUrl.includes('placeholder')) {
+      if (!supabaseConfigured) {
         console.warn('⚠️ Supabase não configurado - usando credenciais hardcoded');
-        return handleHardcodedLogin(username, password);
+        return checkHardcodedCredentials(username, password);
       }
 
-      // Try database authentication first
-      try {
-        const { data: user, error: fetchError } = await supabase
-          .from('attendance_users')
-          .select('*')
-          .eq('username', username)
-          .eq('is_active', true)
-          .maybeSingle();
+      // First, try to get the user from database
+      console.log('🔍 Buscando usuário no banco de dados:', username);
+      const { data: user, error: fetchError } = await supabase
+        .from('attendance_users')
+        .select('*')
+        .eq('username', username)
+        .eq('is_active', true)
+        .maybeSingle();
 
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          console.error('Erro ao buscar usuário:', fetchError);
-          throw fetchError;
-        }
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('❌ Erro ao buscar usuário:', fetchError);
+        throw new Error('Erro ao buscar usuário no banco de dados');
+      }
 
-        if (user) {
-          console.log('👤 Usuário encontrado no banco:', user.username);
-          
-          // Verify password using database function
-          const { data: authData, error: authError } = await supabase.rpc(
-            'verify_attendance_user_password',
-            {
-              user_username: username,
-              password_to_check: password
-            }
-          );
-
-          if (authError) {
-            console.warn('Erro na verificação de senha do banco:', authError);
-            // Fallback to hardcoded credentials
-            return handleHardcodedLogin(username, password);
-          }
-
-          if (authData) {
-            console.log('✅ Senha verificada com sucesso no banco');
+      if (user) {
+        console.log('✅ Usuário encontrado no banco:', user.username);
+        
+        // Try to verify password using database function
+        try {
+          // For users created in the admin panel, check if password matches directly
+          // Since the database stores plain text passwords for attendance users
+          if (user.password_hash === password) {
+            console.log('✅ Senha correta para usuário do banco');
             
             // Update last login
             await supabase
@@ -174,32 +155,87 @@ export const useAttendance = () => {
               .update({ last_login: new Date().toISOString() })
               .eq('id', user.id);
 
-            const attendanceSession: AttendanceSession = {
+            setSession({
               isAuthenticated: true,
-              user
-            };
-
-            setSession(attendanceSession);
-            localStorage.setItem('attendance_session', JSON.stringify(attendanceSession));
+              user: {
+                id: user.id,
+                username: user.username,
+                name: user.name,
+                role: user.role,
+                permissions: user.permissions
+              }
+            });
             return true;
           } else {
-            console.log('❌ Senha incorreta no banco, tentando credenciais hardcoded');
-            // Fallback to hardcoded credentials
-            return handleHardcodedLogin(username, password);
+            console.log('❌ Senha incorreta para usuário do banco');
+            // Try hardcoded credentials as fallback
+            if (checkHardcodedCredentials(username, password)) {
+              console.log('✅ Login bem-sucedido com credenciais hardcoded');
+              setSession({
+                isAuthenticated: true,
+                user: {
+                  id: user.id,
+                  username: user.username,
+                  name: user.name,
+                  role: user.role,
+                  permissions: user.permissions
+                }
+              });
+              return true;
+            }
+            throw new Error('Invalid password');
           }
-        } else {
-          console.log('👤 Usuário não encontrado no banco, tentando credenciais hardcoded');
-          // Fallback to hardcoded credentials
-          return handleHardcodedLogin(username, password);
+        } catch (verifyError) {
+          console.warn('⚠️ Erro na verificação de senha:', verifyError);
+          
+          // Try hardcoded credentials as fallback
+          if (checkHardcodedCredentials(username, password)) {
+            console.log('✅ Login bem-sucedido com credenciais hardcoded');
+            setSession({
+              isAuthenticated: true,
+              user: {
+                id: user.id,
+                username: user.username,
+                name: user.name,
+                role: user.role,
+                permissions: user.permissions
+              }
+            });
+            return true;
+          }
+          
+          throw new Error('Invalid password');
         }
-      } catch (dbError) {
-        console.warn('Erro na autenticação do banco, usando fallback:', dbError);
-        return handleHardcodedLogin(username, password);
+      } else {
+        console.log('ℹ️ Usuário não encontrado no banco, tentando credenciais hardcoded');
+        
+        // User not found in database, try hardcoded credentials
+        if (checkHardcodedCredentials(username, password)) {
+          console.log('✅ Login bem-sucedido com credenciais hardcoded');
+          setSession({
+            isAuthenticated: true,
+            user: {
+              id: '1',
+              username: username,
+              name: 'Administrador',
+              role: 'admin',
+              permissions: {
+                can_chat: true,
+                can_view_orders: true,
+                can_print_orders: true,
+                can_update_status: true,
+                can_create_manual_orders: true
+              }
+            }
+          });
+          return true;
+        }
+        
+        throw new Error('User not found or inactive');
       }
     } catch (error) {
       console.error('❌ Error during login:', error);
-      setError(error instanceof Error ? error.message : 'Erro no login');
-      return false;
+      throw error;
     }
   };
 
