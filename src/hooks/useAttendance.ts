@@ -118,6 +118,12 @@ export const useAttendance = () => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
+      // Check if Supabase is properly configured
+      const supabaseConfigured = envSupabaseUrl && envSupabaseKey && 
+                                 envSupabaseUrl !== 'your_supabase_url_here' && 
+                                 envSupabaseKey !== 'your_supabase_anon_key_here' &&
+                                 !envSupabaseUrl.includes('placeholder');
+
       console.log('🔐 Tentando fazer login:', { username, password: password ? '***' : 'vazio' });
       
       if (!supabaseConfigured) {
