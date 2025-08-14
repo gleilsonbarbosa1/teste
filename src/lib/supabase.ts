@@ -285,6 +285,10 @@ const ProductsPanel: React.FC = () => {
        setProductImages(images);
        if (successCount > 0 || errorCount > 0) {
          console.log(`📊 Carregamento de imagens concluído: ${successCount} sucessos, ${errorCount} erros`);
+       }
+     } catch (error) {
+       console.error('Erro geral no carregamento de imagens:', error);
+     }
     };
 
     // Only load images if we have products and Supabase is configured
@@ -387,9 +391,9 @@ const ProductsPanel: React.FC = () => {
         // Tentar recarregar produtos do delivery se o hook estiver disponível
         const deliveryRefresh = (window as any).refreshDeliveryProducts;
         if (deliveryRefresh) {
-          console.log('🔄 Atualizando produtos do delivery após alteração...')
+          console.log('🔄 Atualizando produtos do delivery após alteração...');
           await deliveryRefresh();
-          console.log('✅ Produtos do delivery atualizados')
+          console.log('✅ Produtos do delivery atualizados');
         }
         
         // Mostrar feedback de sucesso
