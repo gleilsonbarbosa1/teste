@@ -8,8 +8,23 @@ const AttendancePage: React.FC = () => {
   const navigate = useNavigate();
   const { session, login, logout } = useAttendance();
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔍 AttendancePage - Session state:', {
+      isAuthenticated: session.isAuthenticated,
+      user: session.user ? {
+        username: session.user.username,
+        name: session.user.name,
+        role: session.user.role,
+        permissions: Object.keys(session.user.permissions).filter(key => 
+          session.user.permissions[key as keyof typeof session.user.permissions]
+        )
+      } : 'No user'
+    });
+  }, [session]);
   // Se o atendente está logado, mostrar painel de atendimento
   if (session.isAuthenticated) {
+    console.log('✅ Usuário autenticado, renderizando UnifiedAttendancePage');
     return (
       <UnifiedAttendancePage 
         operator={session.user ? {
@@ -18,31 +33,13 @@ const AttendancePage: React.FC = () => {
           username: session.user.username,
           code: session.user.username.toUpperCase(),
           role: session.user.role || 'admin',
+          password_hash: session.user.password || '',
           permissions: {
-            can_discount: true,
-            can_cancel: true,
-            can_manage_products: true,
-            can_view_sales: true,
-            can_view_cash_register: true,
-            can_view_products: true,
-            can_view_orders: true,
-            can_view_reports: true,
-            can_view_sales_report: true,
-            can_view_cash_report: true,
-            can_view_operators: true,
-            can_view_attendance: true,
-            can_manage_settings: true,
-            can_use_scale: true,
-           can_view_expected_balance: true,
-           can_chat: true,
-           can_print_orders: true,
-           can_update_status: true,
-           can_create_manual_orders: true
+            ...session.user.permissions
           },
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          password_hash: '',
           last_login: null
         } : undefined}
         onLogout={logout}
@@ -50,11 +47,14 @@ const AttendancePage: React.FC = () => {
     );
   }
 
+  console.log('❌ Usuário não autenticado, renderizando AttendanceLogin');
   // Se não está logado, mostrar tela de login
   return (
     <AttendanceLogin 
       onLogin={(username, password) => {
+        console.log('🔐 Tentativa de login via AttendanceLogin:', { username });
         const success = login(username, password);
+        console.log('🔐 Resultado do login:', success);
         return success;
       }} 
     />

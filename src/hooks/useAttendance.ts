@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useState } from 'react';
 
 interface AttendanceUser {
   id: string;
   username: string;
-  password_hash: string;
+  password: string;
   name: string;
   role: 'attendant' | 'admin';
-  is_active: boolean;
+  isActive: boolean;
   permissions: {
     can_chat: boolean;
     can_view_orders: boolean;
@@ -29,7 +28,6 @@ interface AttendanceUser {
     can_view_expected_balance: boolean;
   };
   created_at: string;
-  updated_at: string;
   last_login?: string;
 }
 
@@ -39,279 +37,42 @@ interface AttendanceSession {
 }
 
 export const useAttendance = () => {
-  const [session, setSession] = useState<AttendanceSession>({ isAuthenticated: false });
-  const [users, setUsers] = useState<AttendanceUser[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Always call all hooks at the top level
-  useEffect(() => {
-    // Check for existing session on mount
-    const checkExistingSession = () => {
-      try {
-        const storedSession = localStorage.getItem('attendance_session');
-        if (storedSession) {
-          const parsedSession = JSON.parse(storedSession);
-          if (parsedSession.isAuthenticated && parsedSession.user) {
-            setSession(parsedSession);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading stored session:', error);
-        localStorage.removeItem('attendance_session');
-      }
-    };
-
-    checkExistingSession();
-  }, []);
-
-  useEffect(() => {
-    // Load users from database or fallback to hardcoded
-    const loadUsers = async () => {
-      try {
-        setLoading(true);
-        
-        // Check if Supabase is configured
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        
-        if (!supabaseUrl || !supabaseKey || 
-            supabaseUrl === 'your_supabase_url_here' || 
-            supabaseKey === 'your_supabase_anon_key_here' ||
-            supabaseUrl.includes('placeholder')) {
-          console.warn('⚠️ Supabase não configurado - usando usuários hardcoded');
-          setUsers(getHardcodedUsers());
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from('attendance_users')
-          .select('*')
-          .eq('is_active', true);
-
-        if (error) {
-          console.warn('Erro ao carregar usuários do banco:', error);
-          setUsers(getHardcodedUsers());
-        } else {
-          console.log(`✅ ${data?.length || 0} usuários carregados do banco`);
-          setUsers(data || []);
-        }
-      } catch (err) {
-        console.error('Erro ao carregar usuários:', err);
-        setUsers(getHardcodedUsers());
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUsers();
-  }, []);
-
-  const getHardcodedUsers = (): AttendanceUser[] => {
-    return [
-      {
-        id: '1',
-        username: 'admin',
-        password_hash: 'elite2024',
-        name: 'Administrador',
-        role: 'admin',
-        is_active: true,
-        permissions: {
-          can_chat: true,
-          can_view_orders: true,
-          can_print_orders: true,
-          can_update_status: true,
-          can_create_manual_orders: true,
-          can_view_cash_register: true,
-          can_view_sales: true,
-          can_view_reports: true,
-          can_view_cash_report: true,
-          can_view_sales_report: true,
-          can_manage_products: true,
-          can_view_operators: true,
-          can_view_attendance: true,
-          can_manage_settings: true,
-          can_use_scale: true,
-          can_discount: true,
-          can_cancel: true,
-          can_view_expected_balance: true
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ];
-  };
-
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const [session, setSession] = useState<AttendanceSession>(() => {
+    // Verificar se há sessão salva
     try {
-      // Check if Supabase is properly configured
-      const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const envSupabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      const supabaseConfigured = envSupabaseUrl && envSupabaseKey && 
-                                envSupabaseUrl !== 'your_supabase_url_here' && 
-                                envSupabaseKey !== 'your_supabase_anon_key_here' &&
-                                !envSupabaseUrl.includes('placeholder');
-
-      // Check if Supabase is properly configured
-      const isSupabaseConfigured = envSupabaseUrl && envSupabaseKey &&
-                                   envSupabaseUrl !== 'your_supabase_url_here' &&
-                                   envSupabaseKey !== 'your_supabase_anon_key_here' &&
-                                   !envSupabaseUrl.includes('placeholder');
-
-      console.log('🔐 Tentando fazer login:', { username, password: password ? '***' : 'vazio' });
-      
-      if (!isSupabaseConfigured) {
-        console.warn('⚠️ Supabase não configurado - usando credenciais hardcoded');
-        return checkHardcodedCredentials(username, password);
-      }
-
-      // First, try to get the user from database
-      console.log('🔍 Buscando usuário no banco de dados:', username);
-      const { data: user, error: fetchError } = await supabase
-        .from('attendance_users')
-        .select('*')
-        .eq('username', username)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('❌ Erro ao buscar usuário:', fetchError);
-        throw new Error('Erro ao buscar usuário no banco de dados');
-      }
-
-      if (user) {
-        console.log('✅ Usuário encontrado no banco:', user.username);
-        
-        // Try to verify password using database function
-        try {
-          // For users created in the admin panel, check if password matches directly
-          // Since the database stores plain text passwords for attendance users
-          if (user.password_hash === password) {
-            console.log('✅ Senha correta para usuário do banco');
-            
-            // Update last login
-            await supabase
-              .from('attendance_users')
-              .update({ last_login: new Date().toISOString() })
-              .eq('id', user.id);
-
-            setSession({
-              isAuthenticated: true,
-              user: {
-                id: user.id,
-                username: user.username,
-                name: user.name,
-                role: user.role,
-                permissions: user.permissions
-              }
-            });
-            return true;
-          } else {
-            console.log('❌ Senha incorreta para usuário do banco');
-            // Try hardcoded credentials as fallback
-            if (checkHardcodedCredentials(username, password)) {
-              console.log('✅ Login bem-sucedido com credenciais hardcoded');
-              setSession({
-                isAuthenticated: true,
-                user: {
-                  id: user.id,
-                  username: user.username,
-                  name: user.name,
-                  role: user.role,
-                  permissions: user.permissions
-                }
-              });
-              return true;
-            }
-            throw new Error('Invalid password');
-          }
-        } catch (verifyError) {
-          console.warn('⚠️ Erro na verificação de senha:', verifyError);
-          
-          // Try hardcoded credentials as fallback
-          if (checkHardcodedCredentials(username, password)) {
-            console.log('✅ Login bem-sucedido com credenciais hardcoded');
-            setSession({
-              isAuthenticated: true,
-              user: {
-                id: user.id,
-                username: user.username,
-                name: user.name,
-                role: user.role,
-                permissions: user.permissions
-              }
-            });
-            return true;
-          }
-          
-          throw new Error('Invalid password');
-        }
-      } else {
-        console.log('ℹ️ Usuário não encontrado no banco, tentando credenciais hardcoded');
-        
-        // User not found in database, try hardcoded credentials
-        if (checkHardcodedCredentials(username, password)) {
-          console.log('✅ Login bem-sucedido com credenciais hardcoded');
-          setSession({
-            isAuthenticated: true,
-            user: {
-              id: '1',
-              username: username,
-              name: 'Administrador',
-              role: 'admin',
-              permissions: {
-                can_chat: true,
-                can_view_orders: true,
-                can_print_orders: true,
-                can_update_status: true,
-                can_create_manual_orders: true,
-                can_view_cash_register: true,
-                can_view_sales: true,
-                can_view_reports: true,
-                can_view_cash_report: true,
-                can_view_sales_report: true,
-                can_manage_products: true,
-                can_view_operators: true,
-                can_view_attendance: true,
-                can_manage_settings: true,
-                can_use_scale: true,
-                can_discount: true,
-                can_cancel: true,
-                can_view_expected_balance: true
-              }
-            }
-          });
-          return true;
-        }
-        
-        throw new Error('User not found or inactive');
+      const savedSession = localStorage.getItem('attendance_session');
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession);
+        console.log('🔄 Sessão de atendimento recuperada:', parsed);
+        return parsed;
       }
     } catch (error) {
-      console.error('❌ Error during login:', error);
-      throw error;
+      console.error('Erro ao recuperar sessão:', error);
+      localStorage.removeItem('attendance_session');
     }
+    return { isAuthenticated: false };
+  });
+
+  // 🔐 CREDENCIAIS DE ACESSO - MODIFIQUE AQUI
+  const CREDENTIALS = {
+    username: 'admin',     // ← ALTERE O USUÁRIO AQUI
+    password: 'elite2024'  // ← ALTERE A SENHA AQUI
   };
 
-  const handleHardcodedLogin = (username: string, password: string): boolean => {
-    console.log('🔐 Verificando credenciais hardcoded');
+  const login = (username: string, password: string): boolean => {
+    console.log('🔐 Tentativa de login no atendimento:', { username, password: password ? '***' : 'vazio' });
     
-    // Hardcoded credentials for demo/fallback
-    const HARDCODED_CREDENTIALS = {
-      username: 'admin',
-      password: 'elite2024'
-    };
-
-    if (username === HARDCODED_CREDENTIALS.username && password === HARDCODED_CREDENTIALS.password) {
-      console.log('✅ Login hardcoded bem-sucedido');
+    // Verificar credenciais hardcoded primeiro
+    if (username === CREDENTIALS.username && password === CREDENTIALS.password) {
+      console.log('✅ Login bem-sucedido com credenciais hardcoded');
       
-      const hardcodedUser: AttendanceUser = {
-        id: 'hardcoded-admin',
-        username: 'admin',
-        password_hash: 'elite2024',
+      const adminUser: AttendanceUser = {
+        id: '1',
+        username: CREDENTIALS.username,
+        password: CREDENTIALS.password,
         name: 'Administrador',
         role: 'admin',
-        is_active: true,
+        isActive: true,
         permissions: {
           can_chat: true,
           can_view_orders: true,
@@ -333,43 +94,135 @@ export const useAttendance = () => {
           can_view_expected_balance: true
         },
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        last_login: new Date().toISOString()
       };
 
-      const attendanceSession: AttendanceSession = {
+      const newSession = {
         isAuthenticated: true,
-        user: hardcodedUser
+        user: adminUser
       };
 
-      setSession(attendanceSession);
-      localStorage.setItem('attendance_session', JSON.stringify(attendanceSession));
+      setSession(newSession);
+      localStorage.setItem('attendance_session', JSON.stringify(newSession));
+      console.log('💾 Sessão salva no localStorage');
       return true;
-    } else {
-      console.log('❌ Credenciais hardcoded inválidas');
-      setError('Invalid password');
-      return false;
     }
+
+    // Verificar usuários criados no painel administrativo
+    try {
+      const savedUsers = localStorage.getItem('attendance_users');
+      if (savedUsers) {
+        const users: AttendanceUser[] = JSON.parse(savedUsers);
+        console.log('👥 Usuários encontrados no localStorage:', users.length);
+        
+        const user = users.find(u => 
+          u.username === username && 
+          u.password === password && 
+          u.isActive
+        );
+
+        if (user) {
+          console.log('✅ Login bem-sucedido com usuário do localStorage:', user.username);
+          
+          // Garantir que o usuário tem todas as permissões necessárias
+          const userWithFullPermissions = {
+            ...user,
+            permissions: {
+              can_chat: true,
+              can_view_orders: true,
+              can_print_orders: true,
+              can_update_status: true,
+              can_create_manual_orders: true,
+              can_view_cash_register: true,
+              can_view_sales: true,
+              can_view_reports: true,
+              can_view_cash_report: true,
+              can_view_sales_report: true,
+              can_manage_products: true,
+              can_view_operators: true,
+              can_view_attendance: true,
+              can_manage_settings: true,
+              can_use_scale: true,
+              can_discount: true,
+              can_cancel: true,
+              can_view_expected_balance: true
+            },
+            last_login: new Date().toISOString()
+          };
+
+          const newSession = {
+            isAuthenticated: true,
+            user: userWithFullPermissions
+          };
+
+          setSession(newSession);
+          localStorage.setItem('attendance_session', JSON.stringify(newSession));
+          
+          // Atualizar o usuário no localStorage com as novas permissões
+          const updatedUsers = users.map(u => 
+            u.id === user.id ? userWithFullPermissions : u
+          );
+          localStorage.setItem('attendance_users', JSON.stringify(updatedUsers));
+          
+          console.log('💾 Sessão e permissões atualizadas');
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar usuários:', error);
+    }
+
+    console.log('❌ Login falhou - credenciais inválidas');
+    return false;
   };
 
   const logout = () => {
-    console.log('🚪 Logout de atendimento');
+    console.log('🚪 Logout do atendimento');
     setSession({ isAuthenticated: false });
     localStorage.removeItem('attendance_session');
-    setError(null);
   };
 
-  const createUser = async (userData: Omit<AttendanceUser, 'id' | 'created_at' | 'updated_at'>) => {
+  // Funções para gerenciar usuários (compatibilidade)
+  const users: AttendanceUser[] = [];
+  const loading = false;
+  const error = null;
+
+  const createUser = async (userData: Omit<AttendanceUser, 'id' | 'created_at'>) => {
     try {
-      const { data, error } = await supabase
-        .from('attendance_users')
-        .insert([userData])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setUsers(prev => [...prev, data]);
-      return data;
+      const savedUsers = localStorage.getItem('attendance_users');
+      const existingUsers: AttendanceUser[] = savedUsers ? JSON.parse(savedUsers) : [];
+      
+      const newUser: AttendanceUser = {
+        ...userData,
+        id: Date.now().toString(),
+        created_at: new Date().toISOString(),
+        permissions: {
+          can_chat: true,
+          can_view_orders: true,
+          can_print_orders: true,
+          can_update_status: true,
+          can_create_manual_orders: true,
+          can_view_cash_register: true,
+          can_view_sales: true,
+          can_view_reports: true,
+          can_view_cash_report: true,
+          can_view_sales_report: true,
+          can_manage_products: true,
+          can_view_operators: true,
+          can_view_attendance: true,
+          can_manage_settings: true,
+          can_use_scale: true,
+          can_discount: true,
+          can_cancel: true,
+          can_view_expected_balance: true
+        }
+      };
+      
+      const updatedUsers = [...existingUsers, newUser];
+      localStorage.setItem('attendance_users', JSON.stringify(updatedUsers));
+      
+      console.log('✅ Usuário criado com permissões completas:', newUser.username);
+      return newUser;
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
       throw error;
@@ -378,20 +231,39 @@ export const useAttendance = () => {
 
   const updateUser = async (id: string, updates: Partial<AttendanceUser>) => {
     try {
-      const { data, error } = await supabase
-        .from('attendance_users')
-        .update({
+      const savedUsers = localStorage.getItem('attendance_users');
+      if (!savedUsers) return;
+      
+      const users: AttendanceUser[] = JSON.parse(savedUsers);
+      const updatedUsers = users.map(user => 
+        user.id === id ? { 
+          ...user, 
           ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setUsers(prev => prev.map(user => user.id === id ? data : user));
-      return data;
+          permissions: {
+            can_chat: true,
+            can_view_orders: true,
+            can_print_orders: true,
+            can_update_status: true,
+            can_create_manual_orders: true,
+            can_view_cash_register: true,
+            can_view_sales: true,
+            can_view_reports: true,
+            can_view_cash_report: true,
+            can_view_sales_report: true,
+            can_manage_products: true,
+            can_view_operators: true,
+            can_view_attendance: true,
+            can_manage_settings: true,
+            can_use_scale: true,
+            can_discount: true,
+            can_cancel: true,
+            can_view_expected_balance: true
+          }
+        } : user
+      );
+      
+      localStorage.setItem('attendance_users', JSON.stringify(updatedUsers));
+      console.log('✅ Usuário atualizado com permissões completas');
     } catch (error) {
       console.error('Erro ao atualizar usuário:', error);
       throw error;
@@ -400,14 +272,14 @@ export const useAttendance = () => {
 
   const deleteUser = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('attendance_users')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setUsers(prev => prev.filter(user => user.id !== id));
+      const savedUsers = localStorage.getItem('attendance_users');
+      if (!savedUsers) return;
+      
+      const users: AttendanceUser[] = JSON.parse(savedUsers);
+      const updatedUsers = users.filter(user => user.id !== id);
+      
+      localStorage.setItem('attendance_users', JSON.stringify(updatedUsers));
+      console.log('✅ Usuário excluído');
     } catch (error) {
       console.error('Erro ao excluir usuário:', error);
       throw error;
@@ -415,31 +287,16 @@ export const useAttendance = () => {
   };
 
   const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('attendance_users')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
-      setError(error instanceof Error ? error.message : 'Erro ao carregar usuários');
-    } finally {
-      setLoading(false);
-    }
+    // Função de compatibilidade - não faz nada pois os dados já estão no localStorage
   };
 
   return {
     session,
+    login,
+    logout,
     users,
     loading,
     error,
-    login,
-    logout,
     createUser,
     updateUser,
     deleteUser,

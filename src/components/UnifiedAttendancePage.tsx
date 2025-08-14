@@ -56,16 +56,19 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
 
   // Debug logging
   React.useEffect(() => {
-    console.log('🔍 UnifiedAttendancePage - Operator check:', {
+    console.log('🔍 UnifiedAttendancePage - Estado completo:', {
       operator: operator ? {
+        id: operator.id,
         username: operator.username,
         name: operator.name,
         code: operator.code,
-        role: operator.role
+        role: operator.role,
+        permissions: operator.permissions
       } : 'No operator',
       isAdmin,
-      hasOrdersPermission: isAdmin || hasPermission('can_view_orders'),
-      hasCashPermission: isAdmin || hasPermission('can_view_cash_register')
+      activeTab,
+      isCashRegisterOpen,
+      pendingOrdersCount
     });
   }, [operator, isAdmin]);
 

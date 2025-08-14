@@ -17,13 +17,17 @@ const AttendanceLogin: React.FC<AttendanceLoginProps> = ({ onLogin }) => {
     setError('');
     setLoading(true);
 
+    console.log('🔐 AttendanceLogin - Tentativa de login:', { username, password: password ? '***' : 'vazio' });
     // Simular delay de autenticação
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     const success = onLogin(username, password);
     
     if (!success) {
+      console.log('❌ AttendanceLogin - Login falhou');
       setError('Credenciais inválidas');
+    } else {
+      console.log('✅ AttendanceLogin - Login bem-sucedido');
     }
     
     setLoading(false);
