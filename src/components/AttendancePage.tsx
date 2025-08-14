@@ -33,7 +33,11 @@ const AttendancePage: React.FC = () => {
             can_view_attendance: true,
             can_manage_settings: true,
             can_use_scale: true,
-            can_view_expected_balance: true
+           can_view_expected_balance: true,
+           can_chat: true,
+           can_print_orders: true,
+           can_update_status: true,
+           can_create_manual_orders: true
           },
           is_active: true,
           created_at: new Date().toISOString(),

@@ -47,7 +47,20 @@ const AttendanceUsersPanel: React.FC = () => {
         can_view_orders: true,
         can_print_orders: true,
         can_update_status: true,
-        can_create_manual_orders: false
+        can_create_manual_orders: true,
+        can_view_cash_register: true,
+        can_view_sales: true,
+        can_view_reports: true,
+        can_view_cash_report: true,
+        can_view_sales_report: true,
+        can_manage_products: true,
+        can_view_operators: true,
+        can_view_attendance: true,
+        can_manage_settings: true,
+        can_use_scale: true,
+        can_discount: true,
+        can_cancel: true,
+        can_view_expected_balance: true
       },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -243,6 +256,21 @@ const AttendanceUsersPanel: React.FC = () => {
                       {user.permissions?.can_print_orders && (
                         <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
                           Imprimir
+                        </span>
+                      )}
+                      {user.permissions?.can_create_manual_orders && (
+                        <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
+                          Manuais
+                        </span>
+                      )}
+                      {user.permissions?.can_view_cash_register && (
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                          Caixa
+                        </span>
+                      )}
+                      {user.permissions?.can_view_sales && (
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                          Vendas
                         </span>
                       )}
                       {user.role === 'admin' && (
@@ -494,6 +522,132 @@ const AttendanceUsersPanel: React.FC = () => {
                     />
                     <span className="text-sm text-gray-700">
                       Criar pedidos manuais
+                    </span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingUser.permissions?.can_view_cash_register || false}
+                      onChange={(e) => setEditingUser({
+                        ...editingUser,
+                        permissions: {
+                          ...editingUser.permissions || {},
+                          can_view_cash_register: e.target.checked
+                        }
+                      })}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Acessar controle de caixa
+                    </span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingUser.permissions?.can_view_sales || false}
+                      onChange={(e) => setEditingUser({
+                        ...editingUser,
+                        permissions: {
+                          ...editingUser.permissions || {},
+                          can_view_sales: e.target.checked
+                        }
+                      })}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Visualizar vendas PDV
+                    </span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingUser.permissions?.can_view_reports || false}
+                      onChange={(e) => setEditingUser({
+                        ...editingUser,
+                        permissions: {
+                          ...editingUser.permissions || {},
+                          can_view_reports: e.target.checked
+                        }
+                      })}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Visualizar relatórios
+                    </span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingUser.permissions?.can_discount || false}
+                      onChange={(e) => setEditingUser({
+                        ...editingUser,
+                        permissions: {
+                          ...editingUser.permissions || {},
+                          can_discount: e.target.checked
+                        }
+                      })}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Aplicar descontos
+                    </span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingUser.permissions?.can_cancel || false}
+                      onChange={(e) => setEditingUser({
+                        ...editingUser,
+                        permissions: {
+                          ...editingUser.permissions || {},
+                          can_cancel: e.target.checked
+                        }
+                      })}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Cancelar vendas
+                    </span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingUser.permissions?.can_use_scale || false}
+                      onChange={(e) => setEditingUser({
+                        ...editingUser,
+                        permissions: {
+                          ...editingUser.permissions || {},
+                          can_use_scale: e.target.checked
+                        }
+                      })}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Usar balança
+                    </span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingUser.permissions?.can_view_expected_balance || false}
+                      onChange={(e) => setEditingUser({
+                        ...editingUser,
+                        permissions: {
+                          ...editingUser.permissions || {},
+                          can_view_expected_balance: e.target.checked
+                        }
+                      })}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Ver saldo esperado no caixa
                     </span>
                   </label>
                 </div>

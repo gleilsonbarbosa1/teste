@@ -53,7 +53,9 @@ const PermissionGuard: React.FC<PermissionGuardProps> = ({
                   name === 'ADMINISTRADOR' ||
                   username === 'ADMIN' ||
                   username.includes('ADMIN') ||
-                  role === 'ADMIN';
+                 role === 'ADMIN' ||
+                 name.toLowerCase().includes('administrador') ||
+                 username.toLowerCase().includes('administrador');
                   
         console.log('🔍 Admin check from localStorage:', {
           user: user ? {

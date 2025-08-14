@@ -14,6 +14,19 @@ interface AttendanceUser {
     can_print_orders: boolean;
     can_update_status: boolean;
     can_create_manual_orders: boolean;
+    can_view_cash_register: boolean;
+    can_view_sales: boolean;
+    can_view_reports: boolean;
+    can_view_cash_report: boolean;
+    can_view_sales_report: boolean;
+    can_manage_products: boolean;
+    can_view_operators: boolean;
+    can_view_attendance: boolean;
+    can_manage_settings: boolean;
+    can_use_scale: boolean;
+    can_discount: boolean;
+    can_cancel: boolean;
+    can_view_expected_balance: boolean;
   };
   created_at: string;
   updated_at: string;
@@ -108,7 +121,20 @@ export const useAttendance = () => {
           can_view_orders: true,
           can_print_orders: true,
           can_update_status: true,
-          can_create_manual_orders: true
+          can_create_manual_orders: true,
+          can_view_cash_register: true,
+          can_view_sales: true,
+          can_view_reports: true,
+          can_view_cash_report: true,
+          can_view_sales_report: true,
+          can_manage_products: true,
+          can_view_operators: true,
+          can_view_attendance: true,
+          can_manage_settings: true,
+          can_use_scale: true,
+          can_discount: true,
+          can_cancel: true,
+          can_view_expected_balance: true
         },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -239,7 +265,20 @@ export const useAttendance = () => {
                 can_view_orders: true,
                 can_print_orders: true,
                 can_update_status: true,
-                can_create_manual_orders: true
+                can_create_manual_orders: true,
+                can_view_cash_register: true,
+                can_view_sales: true,
+                can_view_reports: true,
+                can_view_cash_report: true,
+                can_view_sales_report: true,
+                can_manage_products: true,
+                can_view_operators: true,
+                can_view_attendance: true,
+                can_manage_settings: true,
+                can_use_scale: true,
+                can_discount: true,
+                can_cancel: true,
+                can_view_expected_balance: true
               }
             }
           });
@@ -278,7 +317,20 @@ export const useAttendance = () => {
           can_view_orders: true,
           can_print_orders: true,
           can_update_status: true,
-          can_create_manual_orders: true
+          can_create_manual_orders: true,
+          can_view_cash_register: true,
+          can_view_sales: true,
+          can_view_reports: true,
+          can_view_cash_report: true,
+          can_view_sales_report: true,
+          can_manage_products: true,
+          can_view_operators: true,
+          can_view_attendance: true,
+          can_manage_settings: true,
+          can_use_scale: true,
+          can_discount: true,
+          can_cancel: true,
+          can_view_expected_balance: true
         },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

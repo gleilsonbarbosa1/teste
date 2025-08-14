@@ -92,7 +92,8 @@ export const usePermissions = (operator?: PDVOperator | Store2User) => {
     const isAdmin = 
       operator.code?.toUpperCase() === 'ADMIN' ||
       operator.name?.toUpperCase().includes('ADMIN') ||
-      operator.name?.toUpperCase() === 'ADMINISTRADOR' ||
+                  operator.name === 'admin' ||
+                  operator.name?.toLowerCase().includes('administrador');
       operator.username?.toUpperCase() === 'ADMIN' ||
       operator.username?.toUpperCase().includes('ADMIN') ||
       operator.role === 'admin' ||
