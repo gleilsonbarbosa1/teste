@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAttendance } from '../../hooks/useAttendance';
-import { Users, Plus, Edit3, Trash2, Search, Eye, EyeOff, Lock, Save, User } from 'lucide-react';
+import { Users, Plus, Edit3, Trash2, Search, Eye, EyeOff, Lock, Save, User, AlertCircle } from 'lucide-react';
 
 interface AttendanceUser {
   id: string;
@@ -26,6 +26,31 @@ const AttendanceUsersPanel: React.FC = () => {
   const [editingUser, setEditingUser] = useState<AttendanceUser | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [supabaseConfigured, setSupabaseConfigured] = useState(true);
+
+  // Check Supabase configuration
+  useEffect(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    const isConfigured = supabaseUrl && supabaseKey && 
+                        supabaseUrl !== 'your_supabase_url_here' && 
+                        supabaseKey !== 'your_supabase_anon_key_here' &&
+                        !supabaseUrl.includes('placeholder');
+    
+    setSupabaseConfigured(isConfigured);
+  }, []);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 AttendanceUsersPanel - Estado atual:', {
+      usersCount: users.length,
+      loading,
+      error,
+      supabaseConfigured,
+      users: users.map(u => ({ id: u.id, username: u.username, name: u.name, is_active: u.is_active }))
+    });
+  }, [users, loading, error, supabaseConfigured]);
 
   const filteredUsers = searchTerm
     ? users.filter(user => 
@@ -36,7 +61,7 @@ const AttendanceUsersPanel: React.FC = () => {
 
   const handleCreate = () => {
     setEditingUser({
-      id: Date.now().toString(),
+      id: '',
       username: '',
       password_hash: '',
       name: '',
@@ -93,9 +118,11 @@ const AttendanceUsersPanel: React.FC = () => {
     try {
       if (isCreating) {
         const { id, created_at, updated_at, ...userData } = editingUser;
-        await createUser(userData);
+        const newUser = await createUser(userData);
+        console.log('✅ Usuário criado com sucesso:', newUser);
       } else {
-        await updateUser(editingUser.id, editingUser);
+        const updatedUser = await updateUser(editingUser.id, editingUser);
+        console.log('✅ Usuário atualizado com sucesso:', updatedUser);
       }
       
       setEditingUser(null);
@@ -166,6 +193,23 @@ const AttendanceUsersPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Supabase Configuration Warning */}
+      {!supabaseConfigured && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-yellow-100 rounded-full p-2">
+              <AlertCircle size={20} className="text-yellow-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-yellow-800">Modo Demonstração</h3>
+              <p className="text-yellow-700 text-sm">
+                Supabase não configurado. Usuários salvos apenas localmente.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Error Display */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -180,7 +224,9 @@ const AttendanceUsersPanel: React.FC = () => {
             <Users size={24} className="text-blue-600" />
             Usuários de Atendimento
           </h2>
-          <p className="text-gray-600">Gerencie usuários que acessam o sistema de atendimento</p>
+          <p className="text-gray-600">
+            Gerencie usuários que acessam o sistema de atendimento ({users.length} usuário(s))
+          </p>
         </div>
         <button
           onClick={handleCreate}
@@ -344,9 +390,21 @@ const AttendanceUsersPanel: React.FC = () => {
         {filteredUsers.length === 0 && (
           <div className="text-center py-12">
             <Users size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500">
+            <h3 className="text-lg font-medium text-gray-600 mb-2">
               {searchTerm ? 'Nenhum usuário encontrado' : 'Nenhum usuário cadastrado'}
-            </p>
+            </h3>
+            {!searchTerm && (
+              <div className="space-y-2">
+                <p className="text-gray-500">
+                  Clique em "Novo Usuário" para criar o primeiro usuário de atendimento.
+                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 max-w-md mx-auto">
+                  <p className="text-blue-700 text-sm">
+                    <strong>Usuário padrão:</strong> admin / elite2024
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -683,7 +741,7 @@ const AttendanceUsersPanel: React.FC = () => {
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving || !editingUser.username.trim() || !editingUser.name.trim()}
+                disabled={saving || !editingUser.username.trim() || !editingUser.name.trim() || (isCreating && !editingUser.password_hash.trim())}
                 className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded-lg transition-colors flex items-center gap-2"
               >
                 {saving ? (
@@ -699,6 +757,20 @@ const AttendanceUsersPanel: React.FC = () => {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Debug Info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <h4 className="font-medium text-gray-800 mb-2">🐛 Debug Info</h4>
+          <div className="text-sm text-gray-600 space-y-1">
+            <p>Total de usuários: {users.length}</p>
+            <p>Supabase configurado: {supabaseConfigured ? 'Sim' : 'Não'}</p>
+            <p>Loading: {loading ? 'Sim' : 'Não'}</p>
+            <p>Error: {error || 'Nenhum'}</p>
+            <p>Usuários carregados: {users.map(u => u.username).join(', ')}</p>
           </div>
         </div>
       )}
