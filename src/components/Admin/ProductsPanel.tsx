@@ -240,49 +240,55 @@ const ProductsPanel: React.FC = () => {
   // Carregar imagens dos produtos
   useEffect(() => {
     const loadProductImages = async () => {
-      // Skip image loading if there are no products or if Supabase is not configured
-      if (deliveryProducts.length === 0) return;
-      
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey ||
-          supabaseUrl.includes('placeholder') || 
-          supabaseKey.includes('placeholder')) {
-        console.warn('⚠️ Supabase not configured, skipping image loading');
-        return;
-      }
+     try {
+       // Skip image loading if there are no products
+       if (deliveryProducts.length === 0) return;
+       
+       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+       
+       // Check if Supabase is properly configured
+       if (!supabaseUrl || !supabaseKey ||
+           supabaseUrl.includes('placeholder') || 
+           supabaseKey.includes('placeholder') ||
+           supabaseUrl === 'your_supabase_url_here' ||
+           supabaseKey === 'your_supabase_anon_key_here') {
+         console.warn('⚠️ Supabase not configured, skipping image loading');
+         return;
+       }
 
-      console.log('🔄 Carregando imagens dos produtos...');
-      const images: Record<string, string> = {};
-      let successCount = 0;
-      let errorCount = 0;
-      
-      for (const product of deliveryProducts) {
-        try {
-          const savedImage = await getProductImage(product.id);
-          if (savedImage) {
-            images[product.id] = savedImage;
-            successCount++;
-            console.log(`✅ Imagem carregada para produto ${product.name}:`, savedImage.substring(0, 50) + '...');
-          }
-        } catch (error) {
-          errorCount++;
-          // Handle network errors gracefully
-          if (error instanceof TypeError && error.message === 'Failed to fetch') {
-            console.warn(`⚠️ Network error loading image for ${product.name}, skipping`);
-          } else {
-            console.warn(`⚠️ Error loading image for ${product.name}:`, error);
-          }
-          // Silently handle errors since getProductImage already logs them
-          console.warn(`⚠️ Erro ao carregar imagem do produto ${product.name} - continuando sem imagem`);
-        }
-      }
-      
-      setProductImages(images);
-      if (successCount > 0 || errorCount > 0) {
-        console.log(`📊 Carregamento de imagens concluído: ${successCount} sucessos, ${errorCount} erros`);
-      }
+       console.log('🔄 Carregando imagens dos produtos...');
+       const images: Record<string, string> = {};
+       let successCount = 0;
+       let errorCount = 0;
+       
+       for (const product of deliveryProducts) {
+         try {
+           const savedImage = await getProductImage(product.id);
+           if (savedImage) {
+             images[product.id] = savedImage;
+             successCount++;
+             console.log(`✅ Imagem carregada para produto ${product.name}`);
+           }
+         } catch (error) {
+           errorCount++;
+           // Handle network errors gracefully
+           if (error instanceof TypeError && error.message === 'Failed to fetch') {
+             console.warn(`⚠️ Network error loading image for ${product.name}, using fallback`);
+           } else {
+             console.warn(`⚠️ Error loading image for ${product.name}:`, error);
+           }
+           // Continue without the image - don't break the component
+         }
+       }
+       
+       setProductImages(images);
+       if (successCount > 0 || errorCount > 0) {
+         console.log(`📊 Carregamento de imagens concluído: ${successCount} sucessos, ${errorCount} erros`);
+       }
+     } catch (error) {
+       console.error('Erro geral no carregamento de imagens:', error);
+     }
     };
 
     // Only load images if we have products and Supabase is configured
@@ -385,9 +391,9 @@ const ProductsPanel: React.FC = () => {
         // Tentar recarregar produtos do delivery se o hook estiver disponível
         const deliveryRefresh = (window as any).refreshDeliveryProducts;
         if (deliveryRefresh) {
-          console.log('🔄 Atualizando produtos do delivery após alteração...')
+          console.log('🔄 Atualizando produtos do delivery após alteração...');
           await deliveryRefresh();
-          console.log('✅ Produtos do delivery atualizados')
+          console.log('✅ Produtos do delivery atualizados');
         }
         
         // Mostrar feedback de sucesso
