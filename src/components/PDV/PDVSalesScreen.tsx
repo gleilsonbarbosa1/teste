@@ -1099,7 +1099,8 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
                       { value: 'pix', label: 'PIX' },
                       { value: 'cartao_credito', label: 'Cartão de Crédito' },
                       { value: 'cartao_debito', label: 'Cartão de Débito' },
-                      { value: 'voucher', label: 'Voucher' }
+                      { value: 'voucher', label: 'Voucher' },
+                      { value: 'misto', label: 'Pagamento Misto' }
                     ].map(method => (
                       <label key={method.value} className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-all duration-200">
                         <input
