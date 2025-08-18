@@ -49,6 +49,12 @@ const PDVSalesReport: React.FC = () => {
         setSalesData({
           totalSales: 2450.80,
           salesCount: 45,
+          pdvSales: 1800.60,
+          pdvCount: 30,
+          deliverySales: 450.20,
+          deliveryCount: 10,
+          tableSales: 200.00,
+          tableCount: 5,
           averageTicket: 54.46,
           topProducts: [
             { name: 'Açaí 500ml', quantity: 15, revenue: 344.85 },
@@ -218,7 +224,7 @@ const PDVSalesReport: React.FC = () => {
 
       console.log('✅ Dados de vendas carregados:', {
         totalSales,
-        salesCount,
+        salesCount: totalCount,
         averageTicket,
         topProducts: topProducts.length,
         paymentMethods: paymentMethods.length
