@@ -210,6 +210,28 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId }) => {
 
       console.log(`🔄 Carregando vendas da Loja ${storeId} para a data: ${dateFilter}`);
 
+      // Converter data para fuso horário do Brasil (UTC-3)
+      const selectedDate = new Date(dateFilter + 'T00:00:00');
+      const brasiliaOffset = -3; // UTC-3
+      
+      // Calcular início e fim do dia no fuso horário do Brasil
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      // Ajustar para UTC considerando o fuso horário do Brasil
+      const startUTC = new Date(startOfDay.getTime() - (brasiliaOffset * 60 * 60 * 1000));
+      
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      // Ajustar para UTC considerando o fuso horário do Brasil
+      const endUTC = new Date(endOfDay.getTime() - (brasiliaOffset * 60 * 60 * 1000));
+      
+      console.log(`📅 Filtro de data corrigido para fuso horário do Brasil:`, {
+        dateFilter,
+        startOfDay: startOfDay.toISOString(),
+        endOfDay: endOfDay.toISOString(),
+        startUTC: startUTC.toISOString(),
+        endUTC: endUTC.toISOString()
+      });
       // Buscar vendas do PDV
       const { data: pdvSales, error: pdvError } = await supabase
         .from(salesTable)
@@ -217,8 +239,8 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId }) => {
           *,
           ${itemsTable}(*)
         `)
-        .gte('created_at', `${dateFilter}T00:00:00.000Z`)
-        .lt('created_at', `${new Date(new Date(dateFilter).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]}T00:00:00.000Z`)
+        .gte('created_at', startUTC.toISOString())
+        .lt('created_at', endUTC.toISOString())
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -234,8 +256,8 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId }) => {
           ${tableItemsTable}(*),
           ${tablesTable}!table_id(number)
         `)
-        .gte('created_at', `${dateFilter}T00:00:00.000Z`)
-        .lt('created_at', `${new Date(new Date(dateFilter).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]}T00:00:00.000Z`)
+        .gte('created_at', startUTC.toISOString())
+        .lt('created_at', endUTC.toISOString())
         .eq('status', 'fechada')
         .order('created_at', { ascending: false })
         .limit(50);

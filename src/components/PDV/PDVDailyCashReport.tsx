@@ -93,12 +93,31 @@ const PDVDailyCashReport: React.FC = () => {
   const fetchDailyReport = async () => {
     setLoading(true);
     try {
+      // Converter data para fuso horário do Brasil (UTC-3)
+      const selectedDate = new Date(date + 'T00:00:00');
+      const brasiliaOffset = -3; // UTC-3
+      
+      // Calcular início e fim do dia no fuso horário do Brasil
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const startUTC = new Date(startOfDay.getTime() - (brasiliaOffset * 60 * 60 * 1000));
+      
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      const endUTC = new Date(endOfDay.getTime() - (brasiliaOffset * 60 * 60 * 1000));
+      
+      console.log(`📅 Relatório diário - Filtro corrigido para fuso horário do Brasil:`, {
+        date,
+        startUTC: startUTC.toISOString(),
+        endUTC: endUTC.toISOString()
+      });
+
       // Get active cash register for the selected date
       const { data, error } = await supabase
         .from('pdv_cash_registers')
         .select('*')
-        .gte('opened_at', `${date}T00:00:00`)
-        .lte('opened_at', `${date}T23:59:59`)
+        .gte('opened_at', startUTC.toISOString())
+        .lte('opened_at', endUTC.toISOString())
         .order('opened_at', { ascending: false });
 
       if (error) throw error;
@@ -114,8 +133,8 @@ const PDVDailyCashReport: React.FC = () => {
       const { data: pdvSales, error: pdvError } = await supabase
         .from('pdv_sales')
         .select('total_amount, payment_type')
-        .gte('created_at', `${date}T00:00:00`)
-        .lte('created_at', `${date}T23:59:59`)
+        .gte('created_at', startUTC.toISOString())
+        .lte('created_at', endUTC.toISOString())
         .eq('is_cancelled', false);
 
       if (pdvError) {
@@ -127,8 +146,8 @@ const PDVDailyCashReport: React.FC = () => {
       const { data: deliveryOrders, error: deliveryError } = await supabase
         .from('orders')
         .select('total_price, payment_method')
-        .gte('created_at', `${date}T00:00:00`)
-        .lte('created_at', `${date}T23:59:59`)
+        .gte('created_at', startUTC.toISOString())
+        .lte('created_at', endUTC.toISOString())
         .eq('channel', 'delivery')
         .neq('status', 'cancelled');
 
@@ -140,8 +159,8 @@ const PDVDailyCashReport: React.FC = () => {
       const { data: tableSales, error: tableError } = await supabase
         .from('store1_table_sales')
         .select('total_amount, payment_type')
-        .gte('created_at', `${date}T00:00:00`)
-        .lte('created_at', `${date}T23:59:59`)
+        .gte('created_at', startUTC.toISOString())
+        .lte('created_at', endUTC.toISOString())
         .eq('status', 'fechada');
 
       if (tableError) {
