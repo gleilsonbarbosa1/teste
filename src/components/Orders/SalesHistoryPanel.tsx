@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SalePrintView from '../PDV/SalePrintView';
-import SalePrintView from '/PDV/SalePrintView';
+import SalePrintView from '../../PDV/SalePrintView';
 import SalePrintView from '../PDV/SalePrintView';
 import SalePrintView from '../PDV/SalePrintView';
 import SalePrintView from '../PDV/SalePrintView';
