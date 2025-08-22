@@ -512,11 +512,35 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
                   <button
                     onClick={() => window.print()}
                     onClick={() => {
-                      if (lastSaleData) {
-                        setShowPrintView(true);
-                      } else {
-                        alert('Nenhuma venda disponível para impressão');
-                      }
+                      // Criar dados de venda atual para impressão
+                      const currentSaleData = {
+                        sale: {
+                          sale_number: Date.now(), // Número temporário
+                          operator_name: operator?.name || 'Sistema',
+                          customer_name: paymentInfo.customerName || '',
+                          customer_phone: paymentInfo.customerPhone || '',
+                          subtotal: getSubtotal(),
+                          discount_amount: getDiscountAmount(),
+                          total_amount: getTotal(),
+                          payment_type: paymentInfo.method,
+                          payment_details: paymentInfo.method === 'misto' ? {
+                            mixed_payments: paymentInfo.mixedPayments
+                          } : undefined,
+                          change_amount: paymentInfo.changeFor ? Math.max(0, paymentInfo.changeFor - getTotal()) : 0,
+                          created_at: new Date().toISOString()
+                        },
+                        items: items.map(item => ({
+                          product_name: item.product.name,
+                          quantity: item.quantity,
+                          weight_kg: item.weight,
+                          unit_price: item.product.unit_price,
+                          price_per_gram: item.product.price_per_gram,
+                          subtotal: item.subtotal
+                        }))
+                      };
+                      
+                      setLastSaleData(currentSaleData);
+                      setShowPrintView(true);
                     }}
                     className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                   >
