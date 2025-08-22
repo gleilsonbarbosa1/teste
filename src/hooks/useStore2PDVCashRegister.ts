@@ -337,4 +337,4 @@ export const useStore2PDVCashRegister = () => {
     addCashEntry,
     refreshData: fetchCashRegisterStatus
   };
-};
+}; 
