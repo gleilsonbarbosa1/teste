@@ -3,6 +3,14 @@ import { supabase } from '../lib/supabase';
 import { RestaurantTable, TableSale, TableSaleItem, TableCartItem } from '../types/table-sales';
 import { usePDVCashRegister } from './usePDVCashRegister';
 
+// Hook para Loja 2 (placeholder - implementar quando necessário)
+const useStore2PDVCashRegister = () => {
+  return {
+    currentRegister: null,
+    isOpen: false,
+    refreshData: async () => {}
+  };
+};
 
 export const useTableSales = (storeId: 1 | 2) => {
   const [tables, setTables] = useState<RestaurantTable[]>([]);

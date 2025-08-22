@@ -3,6 +3,13 @@ import { X, Search, Plus, Scale } from 'lucide-react';
 import { TableCartItem } from '../../types/table-sales';
 import { usePDVProducts } from '../../hooks/usePDV';
 
+// Hook para produtos da Loja 2 (placeholder - implementar quando necessário)
+const useStore2Products = () => {
+  return {
+    products: [],
+    loading: false
+  };
+};
 
 interface AddItemModalProps {
   isOpen: boolean;
