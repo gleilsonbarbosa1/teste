@@ -526,7 +526,7 @@ const Store2PDVSalesScreen: React.FC<Store2PDVSalesScreenProps> = ({ operator, s
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
             <Calculator size={24} className="text-blue-600" />
-            Vendas - Loja 2
+            Vendas - Loja 1
           </h2>
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <span>Vendas: {summary.sales_count}</span>
