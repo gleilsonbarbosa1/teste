@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import SalePrintView from '../PDV/SalePrintView';
-import { supabase } from '../../lib/supabase'; 
+import { supabase } from '../../lib/supabase';
 import { 
   ShoppingBag, 
   Calendar, 
@@ -16,8 +15,7 @@ import {
   ChevronUp,
   AlertCircle,
   TrendingUp,
-  Users,
-  Printer
+  Users
 } from 'lucide-react';
 
 interface Sale {
