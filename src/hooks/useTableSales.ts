@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { RestaurantTable, TableSale, TableSaleItem, TableCartItem } from '../types/table-sales';
 import { usePDVCashRegister } from './usePDVCashRegister';
-import { useStore2PDVCashRegister } from './useStore2PDVCashRegister';
+
 
 export const useTableSales = (storeId: 1 | 2) => {
   const [tables, setTables] = useState<RestaurantTable[]>([]);

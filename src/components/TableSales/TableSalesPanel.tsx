@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTableSales } from '../../hooks/useTableSales';
 import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
-import { useStore2PDVCashRegister } from '../../hooks/useStore2PDVCashRegister';
+
 import { RestaurantTable, TableSale } from '../../types/table-sales';
 import TableGrid from './TableGrid';
 import TableSaleModal from './TableSaleModal';

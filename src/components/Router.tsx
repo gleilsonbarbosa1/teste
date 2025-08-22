@@ -6,7 +6,6 @@ import OrderLookup from './Customer/OrderLookup';
 import CustomerCashbackPage from './Customer/CustomerCashbackPage';
 import AdminPage from './Admin/AdminPage';
 import AttendancePage from './AttendancePage';
-import Store2AttendancePage from './Store2/Store2AttendancePage';
 import AccessDeniedPage from './AccessDeniedPage';
 import { useState } from 'react';
 import PDVLogin from './PDV/PDVLogin';
@@ -16,11 +15,12 @@ import NotFoundPage from './NotFoundPage';
 import DeliveryLogin from './DeliveryDriver/DeliveryLogin';
 import DeliveryOrdersPage from './DeliveryDriver/DeliveryOrdersPage';
 import ProtectedRoute from './DeliveryDriver/ProtectedRoute';
-import Store2ReportsPage from './Store2/Store2ReportsPage';
-import Store2ManagementPage from './Store2/Store2ManagementPage';
 import TableSalesPanel from './TableSales/TableSalesPanel';
 import PDVPage from './PDV/PDVPage';
 import MonthlyCashFlowPage from './CashFlow/MonthlyCashFlowPage';
+import Store2AttendancePage from './Store2/Store2AttendancePage';
+import Store2ReportsPage from './Store2/Store2ReportsPage';
+import Store2ManagementPage from './Store2/Store2ManagementPage';
 
 const Router: React.FC = () => {
   // Solicitar permissão para notificações ao iniciar o app

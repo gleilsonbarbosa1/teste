@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Search, Plus, Scale } from 'lucide-react';
 import { TableCartItem } from '../../types/table-sales';
 import { usePDVProducts } from '../../hooks/usePDV';
-import { useStore2Products } from '../../hooks/useStore2Products';
+
 
 interface AddItemModalProps {
   isOpen: boolean;
