@@ -39,8 +39,6 @@ const Cart: React.FC<CartProps> = ({
   const [showOrderTracking, setShowOrderTracking] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [showPrintOption, setShowPrintOption] = useState(false);
-  const [completedOrder, setCompletedOrder] = useState<any>(null);
   const { isOpen: isCashRegisterOpen } = usePDVCashRegister();
   const [customerBalance, setCustomerBalance] = useState<CustomerBalance | null>(null);
   const [appliedCashback, setAppliedCashback] = useState(0);
@@ -394,7 +392,6 @@ const Cart: React.FC<CartProps> = ({
 
       const newOrder = await createOrder(orderData);
       setOrderId(newOrder.id);
-      setCompletedOrder(newOrder);
 
       let cashbackEarned = 0;
 
@@ -436,7 +433,7 @@ const Cart: React.FC<CartProps> = ({
 
       onClearCart();
       setShowCheckout(false);
-      setShowPrintOption(true);
+      setShowOrderTracking(true);
       
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
@@ -447,122 +444,6 @@ const Cart: React.FC<CartProps> = ({
       setShowCheckout(false);
       onClose();
     }
-  };
-
-  const handlePrintDecision = (shouldPrint: boolean) => {
-    if (shouldPrint && completedOrder) {
-      // Criar janela de impressão
-      const printWindow = window.open('', '_blank', 'width=300,height=600');
-      if (printWindow) {
-        const printContent = generatePrintContent(completedOrder);
-        printWindow.document.write(printContent);
-        printWindow.document.close();
-        
-        printWindow.onload = () => {
-          setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-          }, 500);
-        };
-      }
-    }
-    
-    setShowPrintOption(false);
-    setShowOrderTracking(true);
-  };
-
-  const generatePrintContent = (order: any) => {
-    const formatPrice = (price: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
-    const getPaymentMethodLabel = (method: string) => method === 'money' ? 'Dinheiro' : method === 'pix' ? 'PIX' : method === 'card' ? 'Cartão' : method;
-
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Pedido #${order.id.slice(-8)}</title>
-        <style>
-          @page { size: 80mm auto; margin: 0; }
-          * { margin: 0; padding: 0; box-sizing: border-box; color: black !important; background: white !important; }
-          body { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.3; padding: 2mm; width: 76mm; }
-          .center { text-align: center; }
-          .bold { font-weight: bold; }
-          .small { font-size: 10px; }
-          .separator { border-bottom: 1px dashed black; margin: 5px 0; padding-bottom: 5px; }
-          .flex-between { display: flex; justify-content: space-between; align-items: center; }
-          .mb-1 { margin-bottom: 2px; }
-          .mb-2 { margin-bottom: 5px; }
-          .mb-3 { margin-bottom: 8px; }
-          .ml-2 { margin-left: 8px; }
-        </style>
-      </head>
-      <body>
-        <div class="center mb-3 separator">
-          <div class="bold" style="font-size: 16px;">ELITE AÇAÍ</div>
-          <div class="small">Pedido para Entrega</div>
-          <div class="small">Tel: (85) 98904-1010</div>
-        </div>
-        
-        <div class="mb-3 separator">
-          <div class="bold center mb-2">=== PEDIDO #${order.id.slice(-8)} ===</div>
-          <div class="small">Data: ${new Date(order.created_at).toLocaleDateString('pt-BR')}</div>
-          <div class="small">Hora: ${new Date(order.created_at).toLocaleTimeString('pt-BR')}</div>
-        </div>
-        
-        <div class="mb-3 separator">
-          <div class="bold mb-1">CLIENTE:</div>
-          <div class="small">Nome: ${order.customer_name}</div>
-          <div class="small">Telefone: ${order.customer_phone}</div>
-          <div class="small">Endereço: ${order.customer_address}</div>
-          <div class="small">Bairro: ${order.customer_neighborhood}</div>
-          ${order.customer_complement ? `<div class="small">Complemento: ${order.customer_complement}</div>` : ''}
-        </div>
-        
-        <div class="mb-3 separator">
-          <div class="bold mb-1">ITENS:</div>
-          ${order.items.map((item: any, index: number) => `
-            <div class="mb-2">
-              <div class="bold">${item.product_name}</div>
-              ${item.selected_size ? `<div class="small">Tamanho: ${item.selected_size}</div>` : ''}
-              <div class="flex-between">
-                <span class="small">${item.quantity}x ${formatPrice(item.unit_price)}</span>
-                <span class="small">${formatPrice(item.total_price)}</span>
-              </div>
-              ${item.complements && item.complements.length > 0 ? `
-                <div class="ml-2">
-                  <div class="small">Complementos:</div>
-                  ${item.complements.map((comp: any) => `
-                    <div class="small ml-2">• ${comp.name}${comp.price > 0 ? ` (+${formatPrice(comp.price)})` : ''}</div>
-                  `).join('')}
-                </div>
-              ` : ''}
-              ${item.observations ? `<div class="small ml-2">Obs: ${item.observations}</div>` : ''}
-            </div>
-          `).join('')}
-        </div>
-        
-        <div class="mb-3 separator">
-          <div class="bold mb-1">TOTAL:</div>
-          <div class="flex-between bold">
-            <span>VALOR:</span>
-            <span>${formatPrice(order.total_price)}</span>
-          </div>
-        </div>
-        
-        <div class="mb-3 separator">
-          <div class="bold mb-1">PAGAMENTO:</div>
-          <div class="small">Forma: ${getPaymentMethodLabel(order.payment_method)}</div>
-          ${order.change_for ? `<div class="small">Troco para: ${formatPrice(order.change_for)}</div>` : ''}
-        </div>
-        
-        <div class="center small">
-          <div class="bold mb-2">Elite Açaí</div>
-          <div>Entrega confirmada</div>
-          <div>Impresso: ${new Date().toLocaleString('pt-BR')}</div>
-        </div>
-      </body>
-      </html>
-    `;
   };
 
   const isFormValid = () => {
