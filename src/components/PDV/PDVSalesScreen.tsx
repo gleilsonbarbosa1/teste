@@ -635,7 +635,7 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
                     Venda finalizada com sucesso!
                   </p>
                   <p className="text-lg font-semibold text-green-600">
-                    Total: {formatPrice(getTotal())}
+                   Total: {formatPrice(lastSaleData?.sale?.total_amount || getTotal())}
                   </p>
                 </div>
 
