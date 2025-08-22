@@ -15,7 +15,6 @@ import {
 import AttendantPanel from './Orders/AttendantPanel'; 
 import PDVSalesScreen from './PDV/PDVSalesScreen';
 import CashRegisterMenu from './PDV/CashRegisterMenu';
-import TableSalesPanel from './TableSales/TableSalesPanel';
 import SalesHistoryPanel from './Orders/SalesHistoryPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import { useScale } from '../hooks/useScale';
@@ -228,20 +227,6 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
             
             {(isAdmin || hasPermission('can_view_sales')) && (
               <button
-                onClick={() => setActiveTab('tables')}
-                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'tables'
-                    ? 'bg-indigo-500 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Users size={20} />
-                Vendas Mesas
-              </button>
-            )}
-            
-            {(isAdmin || hasPermission('can_view_sales')) && (
-              <button
                 onClick={() => setActiveTab('history')}
                 className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
                   activeTab === 'history'
@@ -261,7 +246,6 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
           {activeTab === 'sales' && (isAdmin || hasPermission('can_view_sales')) && <PDVSalesScreen operator={operator} scaleHook={scaleHook || scale} storeSettings={settings} />}
           {activeTab === 'orders' && (isAdmin || hasPermission('can_view_orders')) && <AttendantPanel storeSettings={settings} />}
           {activeTab === 'cash' && (isAdmin || hasPermission('can_view_cash_register')) && <CashRegisterMenu />}
-          {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && <TableSalesPanel storeId={1} operatorName={operator?.name} />}
           {activeTab === 'history' && (isAdmin || hasPermission('can_view_sales')) && <SalesHistoryPanel storeId={1} />}
         </div>
       </div>
