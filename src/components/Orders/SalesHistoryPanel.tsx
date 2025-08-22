@@ -3,6 +3,7 @@ import SalePrintView from '../PDV/SalePrintView';
 import SalePrintView from '../PDV/SalePrintView';
 import SalePrintView from '../PDV/SalePrintView';
 import SalePrintView from '../PDV/SalePrintView';
+import SalePrintView from '../PDV/SalePrintView';
 import { supabase } from '../../lib/supabase';
 import { 
   ShoppingBag, 
