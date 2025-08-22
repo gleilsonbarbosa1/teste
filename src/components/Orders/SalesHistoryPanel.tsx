@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import SalePrintView from '../PDV/SalePrintView';
+import SalePrintView from '../PDV/SalePrintView';
+import SalePrintView from '../PDV/SalePrintView';
 import { supabase } from '../../lib/supabase';
 import { 
   ShoppingBag, 
@@ -15,7 +18,8 @@ import {
   ChevronUp,
   AlertCircle,
   TrendingUp,
-  Users
+  Users,
+  Printer
 } from 'lucide-react';
 
 interface Sale {
