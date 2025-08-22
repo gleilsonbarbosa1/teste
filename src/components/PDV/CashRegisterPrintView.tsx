@@ -236,7 +236,7 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
                     const difference = (register.closing_amount || 0) - (summary?.expected_balance || 0);
                     return difference < 0 ? '(falta)' : difference > 0 ? '(sobra)' : '(exato)';
                   })()}
-                </span>
+                  <span class="value" style="margin-left: 6px;">
               </span>
             </div>
             ` : ''}
@@ -447,9 +447,13 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
                           {(() => {
                             const difference = (register.closing_amount || 0) - (summary?.expected_balance || 0);
                             const color = difference === 0 ? 'text-gray-900' : difference > 0 ? 'text-green-700' : 'text-red-700';
-                            return `<span class="${color}">${formatPrice(difference)}</span>`;
+                            return (
+                              <span className={color}>
+                                {formatPrice(difference)}
+                              </span>
+                            );
                           })()}
-                          <span className="text-xs ml-1">
+                          <span className="text-xs ml-2">
                             {(() => {
                               const difference = (register.closing_amount || 0) - (summary?.expected_balance || 0);
                               return difference < 0 ? '(falta)' : difference > 0 ? '(sobra)' : '(exato)';
@@ -569,7 +573,7 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
                         const difference = (register.closing_amount || 0) - (summary?.expected_balance || 0);
                         return formatPrice(difference);
                       })()}
-                      <span style={{ fontSize: '8px', marginLeft: '4px' }}>
+                      <span style={{ fontSize: '10px', marginLeft: '6px' }}>
                         {(() => {
                           const difference = (register.closing_amount || 0) - (summary?.expected_balance || 0);
                           return difference < 0 ? '(falta)' : difference > 0 ? '(sobra)' : '(exato)';
