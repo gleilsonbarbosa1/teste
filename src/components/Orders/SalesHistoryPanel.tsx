@@ -17,6 +17,7 @@ import {
   TrendingUp,
   Users
 } from 'lucide-react';
+import SalePrintView from '../PDV/SalePrintView';
 
 interface Sale {
   id: string;
@@ -61,6 +62,8 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId }) => {
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedSaleForPrint, setSelectedSaleForPrint] = useState<Sale | null>(null);
+  const [showPrintView, setShowPrintView] = useState(false);
 
   const salesTable = storeId === 1 ? 'pdv_sales' : 'store2_sales';
   const itemsTable = storeId === 1 ? 'pdv_sale_items' : 'store2_sale_items';
@@ -330,6 +333,12 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId }) => {
       'misto': 'Pagamento Misto'
     };
     return methodNames[method] || method;
+  };
+
+  const handlePrintSale = (sale: Sale) => {
+    console.log('🖨️ Preparando impressão da venda:', sale.sale_number);
+    setSelectedSaleForPrint(sale);
+    setShowPrintView(true);
   };
 
   const toggleSaleExpansion = (saleId: string) => {
