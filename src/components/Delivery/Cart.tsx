@@ -453,6 +453,26 @@ const Cart: React.FC<CartProps> = ({
            deliveryInfo.neighborhood;
   };
 
+  const handlePayment = () => {
+    // Lógica para processar pagamento
+    console.log('Processando pagamento...');
+  };
+
+  const handleDiscount = () => {
+    // Lógica para aplicar desconto
+    console.log('Aplicando desconto...');
+  };
+
+  const handlePrint = () => {
+    // Lógica para imprimir
+    window.print();
+  };
+
+  const handleSplit = () => {
+    // Lógica para dividir conta
+    console.log('Dividindo conta...');
+  };
+
   const handleContinueShopping = () => {
     onClose();
   };
@@ -798,149 +818,6 @@ const Cart: React.FC<CartProps> = ({
                 />
               )}
 
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">
-                  Forma de pagamento *
-                </label>
-                <div className="grid grid-cols-1 gap-3">
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="money"
-                      checked={deliveryInfo.paymentMethod === 'money'}
-                      onChange={(e) => setDeliveryInfo(prev => ({ ...prev, paymentMethod: e.target.value as any }))}
-                      className="text-purple-600 h-5 w-5"
-                    />
-                    <div className="flex items-center gap-2">
-                      <Banknote size={20} className="text-green-600" />
-                      <span className="font-medium">Dinheiro</span>
-                    </div>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="pix"
-                      checked={deliveryInfo.paymentMethod === 'pix'}
-                      onChange={(e) => setDeliveryInfo(prev => ({ ...prev, paymentMethod: e.target.value as any }))}
-                      className="text-purple-600 h-5 w-5"
-                    />
-                    <div className="flex items-center gap-2">
-                      <QrCode size={20} className="text-blue-600" />
-                      <span className="font-medium">PIX</span>
-                    </div>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="card"
-                      checked={deliveryInfo.paymentMethod === 'card'}
-                      onChange={(e) => setDeliveryInfo(prev => ({ ...prev, paymentMethod: e.target.value as any }))}
-                      className="text-purple-600 h-5 w-5"
-                    />
-                    <div className="flex items-center gap-2">
-                      <CreditCard size={20} className="text-purple-600" />
-                      <span className="font-medium">Cartão</span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {deliveryInfo.paymentMethod === 'pix' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 my-4">
-                  <h4 className="font-medium text-blue-800 mb-4 flex items-center gap-2">
-                    <QrCode size={20} className="text-blue-600" />
-                    Dados para PIX
-                  </h4>
-                  
-                  <div className="space-y-4">
-                    <div className="bg-white rounded-xl p-4 border border-blue-300 shadow-sm text-center">
-                      <div className="mb-3">
-                        <p className="text-sm font-medium text-blue-700 mb-2">QR Code PIX:</p>
-                        <img 
-                          src="/WhatsApp%20Image%202025-07-22%20at%2014.53.40.jpeg" 
-                          alt="QR Code PIX" 
-                          className="w-32 h-32 mx-auto border border-gray-200 rounded-lg object-contain"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const fallback = document.createElement('div');
-                            fallback.className = 'w-32 h-32 mx-auto border border-gray-200 rounded-lg bg-gray-100 flex items-center justify-center';
-                            fallback.innerHTML = '<p class="text-gray-500 text-sm">QR Code<br/>Indisponível</p>';
-                            target.parentNode?.insertBefore(fallback, target);
-                          }}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="bg-white rounded-xl p-4 border border-blue-300 shadow-sm">
-                      <div className="grid grid-cols-1 gap-2">
-                        <div>
-                          <p className="text-sm font-medium text-blue-700 mb-1">Chave PIX:</p>
-                          <div className="flex items-center gap-2">
-                            <p className="font-mono text-xl font-bold text-blue-900">85989041010</p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                navigator.clipboard.writeText('85989041010');
-                                const btn = event?.target as HTMLElement;
-                                const originalText = btn.textContent;
-                                btn.textContent = 'Copiado!';
-                                setTimeout(() => {
-                                  btn.textContent = originalText;
-                                }, 2000);
-                              }}
-                              className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-lg transition-colors font-medium"
-                            >
-                              Copiar
-                            </button>
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-blue-700 mb-1">Nome:</p>
-                          <p className="font-semibold text-blue-900">Amanda Suyelen da Costa Pereira</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-blue-700 mb-1">Valor:</p>
-                          <p className="font-bold text-xl text-green-600">
-                            {formatPrice(getTotalWithCashback())}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 shadow-sm">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle size={20} className="text-yellow-600 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium text-yellow-800">Importante:</p>
-                          <p className="text-sm text-yellow-700">
-                            Após fazer o PIX, envie o comprovante pelo WhatsApp para confirmar seu pedido.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {deliveryInfo.paymentMethod === 'money' && (
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Troco para quanto?
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={deliveryInfo.changeFor || ''}
-                    onChange={(e) => setDeliveryInfo(prev => ({ ...prev, changeFor: parseFloat(e.target.value) || undefined }))}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
-                    placeholder="Valor para troco"
-                  />
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -998,17 +875,62 @@ const Cart: React.FC<CartProps> = ({
               <div className="space-y-2">
                 <button
                   onClick={handleSendOrder}
-                  disabled={!isFormValid() || disabled || !isCashRegisterOpen}
+                  disabled={disabled || !isCashRegisterOpen}
                   className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
                 >
                   <MessageCircle size={20} />
                   {disabled ? 'Loja Fechada' : !isCashRegisterOpen ? 'Caixa Fechado' : 'Finalizar Pedido'}
                 </button>
+                
+                {/* Botões de Ação */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handlePayment}
+                    disabled={disabled}
+                    className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <CreditCard size={16} />
+                    Pagamento
+                  </button>
+                  <button
+                    onClick={handleDiscount}
+                    disabled={disabled}
+                    className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Gift size={16} />
+                    Desconto
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handlePrint}
+                    disabled={disabled}
+                    className="bg-gray-500 hover:bg-gray-600 disabled:bg-gray-300 text-white py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Imprimir
+                  </button>
+                  <button
+                    onClick={handleSplit}
+                    disabled={disabled}
+                    className="bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Dividir
+                  </button>
+                </div>
+                
                 {!isCashRegisterOpen && !disabled && (
                   <div className="text-xs text-red-600 text-center mt-2 bg-red-50 p-2 rounded-lg">
                     Não é possível finalizar pedidos sem um caixa aberto
                   </div>
                 )}
+                
                 <button
                   onClick={() => setShowCheckout(false)}
                   className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 mt-2"

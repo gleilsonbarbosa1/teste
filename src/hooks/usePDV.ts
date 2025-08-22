@@ -380,18 +380,20 @@ export const usePDVCart = () => {
   });
 
   const addItem = useCallback((product: PDVProduct, quantity: number = 1, weight?: number) => {
-    const existingIndex = items.findIndex(item => item.product.id === product.id);
+    // Para produtos pesáveis, sempre adicionar como novo item (não agrupar)
+    // Para produtos unitários, agrupar se for o mesmo produto
+    const existingIndex = product.is_weighable ? -1 : items.findIndex(item => item.product.id === product.id);
     
     if (existingIndex >= 0) {
       // Atualizar item existente
       setItems(prev => prev.map((item, index) => {
         if (index === existingIndex) {
           const newQuantity = item.quantity + quantity;
-          const newWeight = weight ? (item.weight || 0) + weight : item.weight;
+          const newWeight = item.weight; // Manter peso original para produtos unitários
           return {
             ...item,
             quantity: newQuantity,
-            weight: newWeight,
+            weight: newWeight, 
             subtotal: calculateItemSubtotal(item.product, newQuantity, newWeight, item.discount)
           };
         }
@@ -400,6 +402,7 @@ export const usePDVCart = () => {
     } else {
       // Adicionar novo item
       const newItem: PDVCartItem = {
+        id: `${product.id}-${Date.now()}-${Math.random()}`, // ID único para cada item
         product,
         quantity,
         weight,

@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import PaymentModal from '../Delivery/PaymentModal';
+import DiscountModal from '../Delivery/DiscountModal';
+import SplitModal from '../Delivery/SplitModal';
 import { Calculator, Package, BarChart3, Settings, Users, ArrowLeft, DollarSign, Bell, FileText, LogOut, User, Layers, ChevronUp, ChevronDown, Truck, ShoppingBag, MessageSquare, Search, Plus, Minus, Trash2, Scale, X, Check, AlertCircle, RefreshCw, CreditCard, Percent, Printer, Split } from 'lucide-react';
 import { usePDVProducts, usePDVSales, usePDVCart } from '../../hooks/usePDV';
 import { useScale } from '../../hooks/useScale';
@@ -45,19 +48,20 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [selectedWeighableProduct, setSelectedWeighableProduct] = useState<PDVProduct | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [showSplitModal, setShowSplitModal] = useState(false);
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [isProcessingSale, setIsProcessingSale] = useState(false);
-  const [showDiscountModal, setShowDiscountModal] = useState(false);
-  const [showSplitModal, setShowSplitModal] = useState(false);
   const [showMixedPaymentModal, setShowMixedPaymentModal] = useState(false);
   const [mixedPayments, setMixedPayments] = useState<Array<{
     method: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito';
     amount: number;
   }>>([
     { method: 'dinheiro', amount: 0 },
-    { method: 'cartao_credito', amount: 0 }
+    { method: 'pix', amount: 0 }
   ]);
+  const [mixedPaymentError, setMixedPaymentError] = useState('');
   const [discountType, setDiscountType] = useState<'percentage' | 'amount'>('percentage');
   const [discountValue, setDiscountValue] = useState('');
   const [splitParts, setSplitParts] = useState(2);
@@ -65,6 +69,72 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
   const [showPrintAfterSale, setShowPrintAfterSale] = useState(false);
   const [draggedProduct, setDraggedProduct] = useState<PDVProduct | null>(null);
   const [dragOverCart, setDragOverCart] = useState(false);
+  const [appliedDiscount, setAppliedDiscount] = useState({ type: 'none' as 'none' | 'percentage' | 'amount', value: 0 });
+  const [splitInfo, setSplitInfo] = useState({ enabled: false, parts: 2, amounts: [] as number[] });
+
+  // Função para calcular total do pagamento misto
+  const calculateMixedPaymentTotal = () => {
+    return mixedPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  };
+
+  // Função para validar pagamento misto
+  const validateMixedPayment = () => {
+    const total = calculateMixedPaymentTotal();
+    const saleTotal = getTotal();
+    const hasValidAmounts = mixedPayments.every(p => (Number(p.amount) || 0) > 0);
+    const isCorrectTotal = Math.abs(total - saleTotal) < 0.01;
+    
+    return {
+      isValid: hasValidAmounts && isCorrectTotal,
+      total,
+      saleTotal,
+      hasValidAmounts,
+      isCorrectTotal
+    };
+  };
+
+  // Função para fechar modal de pagamento misto
+  const closeMixedPaymentModal = () => {
+    console.log('🚪 Fechando modal de pagamento misto');
+    setShowMixedPaymentModal(false);
+    setMixedPayments([
+      { method: 'dinheiro', amount: 0 },
+      { method: 'pix', amount: 0 }
+    ]);
+    setMixedPaymentError('');
+  };
+
+  // Função para confirmar pagamento misto
+  const confirmMixedPayment = () => {
+    console.log('✅ Confirmando pagamento misto');
+    
+    const validation = validateMixedPayment();
+    
+    if (!validation.hasValidAmounts) {
+      setMixedPaymentError('Todos os valores devem ser maiores que zero');
+      return;
+    }
+    
+    if (!validation.isCorrectTotal) {
+      setMixedPaymentError(`Total deve ser R$ ${validation.saleTotal.toFixed(2)}`);
+      return;
+    }
+    
+    // Se chegou aqui, está tudo válido
+    console.log('🚪 Fechando modal de pagamento misto...');
+    setMixedPaymentError('');
+    setShowMixedPaymentModal(false);
+    setMixedPayments([
+      { method: 'dinheiro', amount: '' },
+      { method: 'pix', amount: '' }
+    ]);
+    setMixedPaymentError('');
+    console.log('✅ Modal fechado via close function');
+    console.log('✅ Modal fechado e estado limpo');
+    
+    // Processar venda com pagamento misto
+    handleFinalizeSale('misto');
+  };
 
   // Detectar quando pagamento misto é selecionado
   useEffect(() => {
@@ -121,11 +191,11 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
   };
 
   const handleCloseMixedPaymentModal = () => {
-    console.log('❌ Fechando modal de pagamento misto');
+    console.log('🚪 Fechando modal de pagamento misto');
     try {
       setShowMixedPaymentModal(false);
-      setPaymentInfo(prev => ({ ...prev, method: 'dinheiro' }));
       setMixedPayments([]);
+      setPaymentMethod('dinheiro');
       console.log('✅ Modal fechado com sucesso');
     } catch (error) {
       console.error('❌ Erro ao fechar modal:', error);
@@ -133,37 +203,16 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
   };
 
   const handleConfirmMixedPayment = () => {
-    console.log('🔄 Confirmando pagamento misto...');
-    console.log('💳 Pagamentos configurados:', mixedPayments);
-    
+    console.log('✅ Confirmando pagamento misto');
     try {
-      // Validações detalhadas
-      if (mixedPayments.length < 2) {
-        alert('Configure pelo menos 2 formas de pagamento');
-        return;
+      if (isMixedPaymentValid()) {
+        setShowMixedPaymentModal(false);
+        console.log('✅ Modal fechado após confirmação');
+      } else {
+        alert('Configure o pagamento misto corretamente antes de confirmar');
       }
-      
-      const hasInvalidAmount = mixedPayments.some(p => !p.amount || p.amount <= 0);
-      if (hasInvalidAmount) {
-        alert('Todos os valores devem ser maiores que zero');
-        return;
-      }
-      
-      const totalConfigured = getMixedPaymentTotal();
-      const saleTotal = getTotal();
-      const difference = Math.abs(totalConfigured - saleTotal);
-      
-      if (difference > 0.01) {
-        alert(`Total configurado (${formatPrice(totalConfigured)}) deve ser igual ao total da venda (${formatPrice(saleTotal)})`);
-        return;
-      }
-      
-      console.log('✅ Validações passaram, confirmando pagamento');
-      setShowMixedPaymentModal(false);
-      console.log('✅ Modal fechado após confirmação');
     } catch (error) {
-      console.error('❌ Erro ao confirmar pagamento misto:', error);
-      alert('Erro ao confirmar pagamento. Tente novamente.');
+      console.error('❌ Erro ao confirmar pagamento:', error);
     }
   };
   
@@ -281,26 +330,26 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
     setSelectedWeighableProduct(null);
   };
 
-  const handleApplyDiscount = () => {
-    const value = parseFloat(discountValue);
-    if (isNaN(value) || value <= 0) {
-      alert('Digite um valor válido para o desconto');
-      return;
-    }
-
-    if (discountType === 'percentage' && value > 100) {
-      alert('Desconto percentual não pode ser maior que 100%');
-      return;
-    }
-
-    if (discountType === 'amount' && value > getTotal()) {
-      alert('Desconto em valor não pode ser maior que o total');
-      return;
-    }
-
-    setDiscount({ type: discountType, value });
+  const handleApplyDiscount = (type: 'percentage' | 'amount', value: number) => {
+    setAppliedDiscount({ type, value });
     setShowDiscountModal(false);
-    setDiscountValue('');
+  };
+
+  const handleApplySplit = (splitData: { parts: number; amounts: number[] }) => {
+    setSplitInfo({ enabled: true, ...splitData });
+    setShowSplitModal(false);
+  };
+
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount({ type: 'none', value: 0 });
+  };
+
+  const handleRemoveSplit = () => {
+    setSplitInfo({ enabled: false, parts: 2, amounts: [] });
+  };
+
+  const getFinalTotal = () => {
+    return Math.max(0, getSubtotal() - getDiscountAmount());
   };
 
   const handleSplitPayment = () => {
@@ -322,13 +371,23 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
     setSplitAmounts(newAmounts);
   };
 
-  // Funções do pagamento misto
+  // Funções simplificadas para pagamento misto
+    console.log('🚪 Fechando modal via função close...');
+  const resetMixedPayments = () => {
+    setMixedPayments([
+      { method: 'dinheiro', amount: 0 },
+      { method: 'pix', amount: 0 }
+    ]);
+  };
+
   const addMixedPayment = () => {
-    setMixedPayments(prev => [...prev, { method: 'pix', amount: 0 }]);
+    setMixedPayments(prev => [...prev, { method: 'dinheiro', amount: 0 }]);
   };
 
   const removeMixedPayment = (index: number) => {
-    setMixedPayments(prev => prev.filter((_, i) => i !== index));
+    if (mixedPayments.length > 2) {
+      setMixedPayments(prev => prev.filter((_, i) => i !== index));
+    }
   };
 
   const updateMixedPayment = (index: number, field: 'method' | 'amount', value: any) => {
@@ -336,6 +395,7 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
       i === index ? { ...payment, [field]: value } : payment
     ));
   };
+
 
   const getPaymentMethodName = (method: string) => {
     const labels: Record<string, string> = {
@@ -353,9 +413,9 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
     return Math.max(0, paymentAmount - getTotal());
   };
 
-  const handlePrintReceipt = () => {
+  const handlePrint = () => {
     if (items.length === 0) {
-      alert('Adicione produtos ao carrinho para imprimir');
+      alert('Adicione itens ao carrinho para imprimir');
       return;
     }
 
@@ -438,9 +498,9 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
     };
   };
 
-  const handleFinalizeSale = () => {
+  const handleFinalizeSale = async () => {
     if (items.length === 0) {
-      alert('Adicione produtos ao carrinho antes de finalizar a venda');
+      alert('Adicione pelo menos um item ao carrinho');
       return;
     }
 
@@ -449,25 +509,28 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
       return;
     }
 
-    setShowPaymentModal(true);
-  };
-
-  const handleConfirmSale = async () => {
-    // Validate operator before proceeding with sale creation
-    if (!operator || !operator.id) {
-      alert('Erro: Operador não identificado. Por favor, faça login novamente.');
-      console.error('❌ Tentativa de venda sem operador válido:', { operator });
-      return;
-    }
-
+    // Verificar se tem forma de pagamento definida
     if (!paymentInfo.method) {
-      alert('Selecione uma forma de pagamento');
+      alert('Defina a forma de pagamento antes de finalizar a venda');
       return;
     }
 
     setIsProcessingSale(true);
 
     try {
+      // Preparar detalhes do pagamento
+      let paymentDetails: any = null;
+      
+      if (paymentInfo.method === 'misto') {
+        paymentDetails = {
+          payments: mixedPayments.map(p => ({
+            method: p.method,
+            amount: Number(p.amount)
+          })),
+          total: calculateMixedPaymentTotal()
+        };
+      }
+
       // Preparar dados da venda
       const saleData = {
         operator_id: operator?.id,
@@ -525,8 +588,14 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
       // Limpar carrinho e fechar modal
       clearCart();
       setShowPaymentModal(false);
+      setShowMixedPaymentModal(false);
       setCustomerPhone('');
       setCustomerName('');
+      setMixedPayments([
+        { method: 'dinheiro', amount: 0 },
+        { method: 'pix', amount: 0 }
+      ]);
+      setMixedPaymentError('');
 
     } catch (error) {
       console.error('Erro ao finalizar venda:', error);
@@ -1044,29 +1113,87 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
                 </div>
               ) : (
                 <>
-                  {/* Cart Actions */}
-                  <div className="flex gap-2 mb-4">
+                  {/* Botões de Ação */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <button
+                      onClick={() => setShowPaymentModal(true)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 9V6a3 3 0 116 0v3M5 21h14a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2z" />
+                      </svg>
+                      Pagamento
+                    </button>
                     <button
                       onClick={() => setShowDiscountModal(true)}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 px-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+                      className="bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                     >
-                      <Percent size={16} />
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
                       Desconto
                     </button>
                     <button
-                      onClick={handlePrintReceipt}
-                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+                      onClick={handlePrint}
+                      className="bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                     >
-                      <Printer size={16} />
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                      </svg>
                       Imprimir
                     </button>
                     <button
                       onClick={() => setShowSplitModal(true)}
-                      className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 px-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+                      className="bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                     >
-                      <Split size={16} />
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
                       Dividir
                     </button>
+                  </div>
+
+                  {/* Status dos Botões */}
+                  <div className="space-y-2 mb-4">
+                    {paymentInfo.method && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center justify-between">
+                        <span className="text-blue-700 text-sm">Pagamento: {getPaymentMethodName(paymentInfo.method)}</span>
+                        <button
+                          onClick={() => updatePaymentInfo({ method: 'dinheiro' })}
+                          className="text-blue-600 hover:text-blue-800 text-xs"
+                        >
+                          Alterar
+                        </button>
+                      </div>
+                    )}
+                    
+                    {appliedDiscount.type !== 'none' && appliedDiscount.value > 0 && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 flex items-center justify-between">
+                        <span className="text-orange-700 text-sm">
+                          Desconto: {appliedDiscount.type === 'percentage' ? `${appliedDiscount.value}%` : formatPrice(appliedDiscount.value)}
+                        </span>
+                        <button
+                          onClick={handleRemoveDiscount}
+                          className="text-orange-600 hover:text-orange-800 text-xs"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    )}
+                    
+                    {splitInfo.enabled && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 flex items-center justify-between">
+                        <span className="text-purple-700 text-sm">
+                          Dividido em {splitInfo.parts} partes
+                        </span>
+                        <button
+                          onClick={handleRemoveSplit}
+                          className="text-purple-600 hover:text-purple-800 text-xs"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4 mb-6 max-h-80 overflow-y-auto">
@@ -1112,42 +1239,56 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
                 </>
               )}
 
-              {/* Cart Summary */}
-              {items.length > 0 && (
-                <div className="border-t border-gray-200 pt-6 space-y-3">
-                  <div className="flex justify-between text-sm">
+              {/* Resumo do Pedido */}
+              <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                <h4 className="font-semibold text-gray-800 mb-3">Resumo do Pedido</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span className="font-medium">{formatPrice(getSubtotal())}</span>
+                    <span>{formatPrice(getSubtotal())}</span>
                   </div>
-                  
-                  {getDiscountAmount() > 0 && (
-                    <div className="flex justify-between text-red-600 text-sm font-semibold">
+                  {appliedDiscount.type !== 'none' && appliedDiscount.value > 0 && (
+                    <div className="flex justify-between text-orange-600">
                       <span>Desconto:</span>
-                      <span className="font-medium text-red-600">-{formatPrice(getDiscountAmount())}</span>
+                      <span>-{formatPrice(getDiscountAmount())}</span>
                     </div>
                   )}
-                  
-                  <div className="flex justify-between font-bold text-xl border-t border-gray-200 pt-3">
+                  <div className="border-t border-gray-200 my-2 pt-2"></div>
+                  <div className="flex justify-between font-bold text-lg">
                     <span>Total:</span>
-                    <span className="text-green-600">{formatPrice(getTotal())}</span>
+                    <span className="text-green-600">{formatPrice(getFinalTotal())}</span>
                   </div>
+                  {splitInfo.enabled && (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <p className="text-xs text-purple-600 font-medium mb-1">Divisão da conta:</p>
+                      {splitInfo.amounts.map((amount, index) => (
+                        <div key={index} className="flex justify-between text-xs">
+                          <span>Pessoa {index + 1}:</span>
+                          <span>{formatPrice(amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                  <div className="space-y-2 mt-4">
-                    <button
-                      onClick={handleFinalizeSale}
-                      disabled={!isCashRegisterOpen || isProcessingSale}
-                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 text-white py-4 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-                    >
-                      {!isCashRegisterOpen ? 'Caixa Fechado' : 'Finalizar Venda'}
-                    </button>
-                    
-                    <button
-                      onClick={clearCart}
-                      className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 shadow-md hover:shadow-lg"
-                    >
-                      Limpar Carrinho
-                    </button>
-                  </div>
+              {/* Cart Summary */}
+              {items.length > 0 && (
+                <div className="space-y-2 mt-4">
+                  <button
+                    onClick={handleFinalizeSale}
+                    disabled={!paymentInfo.method || isProcessingSale || items.length === 0}
+                    className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-4 rounded-xl font-semibold text-lg transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                  >
+                    {!isCashRegisterOpen ? 'Caixa Fechado' : 'Finalizar Venda'}
+                  </button>
+                  
+                  <button
+                    onClick={clearCart}
+                    className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 shadow-md hover:shadow-lg"
+                  >
+                    Limpar Carrinho
+                  </button>
                 </div>
               )}
             </div>
@@ -1168,266 +1309,36 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
 
         {/* Payment Modal */}
         {showPaymentModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl">
-              <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-white/20 rounded-xl p-3 backdrop-blur-sm">
-                      <ShoppingBag size={28} className="text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold">Finalizar Venda</h2>
-                      <p className="text-green-100 text-sm">Complete os dados para processar a venda</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowPaymentModal(false)}
-                    className="p-3 hover:bg-white/20 rounded-full transition-colors"
-                  >
-                    <X size={24} className="text-white" />
-                  </button>
-                </div>
-              </div>
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={() => setShowPaymentModal(false)}
+            onConfirm={(method, changeFor) => {
+              updatePaymentInfo({ method, changeFor });
+              setShowPaymentModal(false);
+            }}
+            totalAmount={getFinalTotal()}
+          />
+        )}
 
-              <div className="p-8 space-y-6 max-h-[calc(90vh-200px)] overflow-y-auto">
-                {/* Customer Info */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <User size={20} className="text-blue-600" />
-                    Dados do Cliente (Opcional)
-                  </h3>
-                  
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Nome
-                    </label>
-                    <input
-                      type="text"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 shadow-sm"
-                      placeholder="Nome do cliente"
-                    />
-                  </div>
+        {/* Discount Modal */}
+        {showDiscountModal && (
+          <DiscountModal
+            isOpen={showDiscountModal}
+            onClose={() => setShowDiscountModal(false)}
+            onApply={handleApplyDiscount}
+            subtotal={getSubtotal()}
+            currentDiscount={appliedDiscount}
+          />
+        )}
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Telefone
-                    </label>
-                    <input
-                      type="tel"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 shadow-sm"
-                      placeholder="(85) 99999-9999"
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      Para cashback automático
-                    </p>
-                  </div>
-                </div>
-
-                {/* Payment Method */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <CreditCard size={20} className="text-purple-600" />
-                    Forma de Pagamento
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 gap-3">
-                    {[
-                      { value: 'dinheiro', label: 'Dinheiro' },
-                      { value: 'pix', label: 'PIX' },
-                      { value: 'cartao_credito', label: 'Cartão de Crédito' },
-                      { value: 'cartao_debito', label: 'Cartão de Débito' },
-                      { value: 'voucher', label: 'Voucher' },
-                      { value: 'misto', label: 'Pagamento Misto' }
-                    ].map(method => (
-                      <label key={method.value} className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-all duration-200">
-                        <input
-                          type="radio"
-                          name="payment"
-                          value={method.value}
-                          checked={paymentInfo.method === method.value}
-                          onChange={(e) => {
-                            const selectedMethod = e.target.value as any;
-                            updatePaymentInfo({ method: selectedMethod });
-                            
-                            // Se for pagamento misto, inicializar com valores padrão
-                            if (selectedMethod === 'misto') {
-                              const total = getTotal();
-                              setMixedPayments([
-                                { method: 'dinheiro', amount: total / 2 },
-                                { method: 'cartao_credito', amount: total / 2 }
-                              ]);
-                            }
-                          }}
-                          className="text-green-600 w-5 h-5"
-                        />
-                        <span className="font-medium text-gray-800">{method.label}</span>
-                        {method.value === 'misto' && paymentInfo.method === 'misto' && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowMixedPaymentModal(true);
-                            }}
-                            className="ml-auto bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
-                          >
-                            Editar
-                          </button>
-                        )}
-                      </label>
-                    ))}
-                  </div>
-
-                  {/* Resumo do Pagamento Misto */}
-                  {paymentInfo.method === 'misto' && mixedPayments.length > 0 && (
-                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                      <h4 className="font-medium text-purple-800 mb-3 flex items-center gap-2">
-                        <Split size={16} />
-                        Pagamentos Configurados
-                      </h4>
-                      <div className="space-y-2">
-                        {mixedPayments.map((payment, index) => (
-                          <div key={index} className="flex justify-between text-sm">
-                            <span className="text-purple-700">
-                              {getPaymentMethodLabel(payment.method)}:
-                            </span>
-                            <span className="font-medium text-purple-800">
-                              {formatPrice(payment.amount)}
-                            </span>
-                          </div>
-                        ))}
-                        <div className="border-t border-purple-200 pt-2 mt-2">
-                          <div className="flex justify-between font-bold">
-                            <span className="text-purple-800">Total:</span>
-                            <span className={`${
-                              isMixedPaymentValid() ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {formatPrice(getMixedPaymentTotal())}
-                            </span>
-                          </div>
-                          {!isMixedPaymentValid() && (
-                            <p className="text-red-600 text-xs mt-1">
-                              ⚠️ Total deve ser {formatPrice(getTotal())}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {paymentInfo.method === 'dinheiro' && (
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Troco para quanto?
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={paymentInfo.changeFor || ''}
-                        onChange={(e) => {
-                          const value = parseFloat(e.target.value) || undefined;
-                          updatePaymentInfo({ changeFor: value });
-                        }}
-                        className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 shadow-sm"
-                        placeholder="Valor para troco"
-                      />
-                      {paymentInfo.changeFor && paymentInfo.changeFor > getTotal() && (
-                        <div className="mt-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-md">
-                          <div className="flex items-center gap-2">
-                            <DollarSign size={20} className="text-green-600" />
-                            <div>
-                              <p className="text-lg font-bold text-green-800">
-                                💰 Troco: {formatPrice(calculateChange(paymentInfo.changeFor))}
-                              </p>
-                              <p className="text-sm text-green-700 font-medium">
-                                Cliente paga: {formatPrice(paymentInfo.changeFor)} • Total: {formatPrice(getTotal())}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {paymentInfo.method === 'misto' && (
-                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-semibold text-purple-800">Pagamento Misto Configurado</h4>
-                        <button
-                          onClick={() => setShowMixedPaymentModal(true)}
-                          className="text-purple-600 hover:text-purple-800 text-sm font-medium"
-                        >
-                          Editar
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {mixedPayments.map((payment, index) => (
-                          <div key={index} className="flex justify-between text-sm">
-                            <span className="text-purple-700">{getPaymentMethodName(payment.method)}:</span>
-                            <span className="font-medium">{formatPrice(payment.amount)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Sale Summary */}
-                <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-6 border border-gray-200">
-                  <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <BarChart3 size={20} className="text-indigo-600" />
-                    Resumo da Venda
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Subtotal:</span>
-                      <span className="font-semibold">{formatPrice(getSubtotal())}</span>
-                    </div>
-                    {getDiscountAmount() > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Desconto:</span>
-                        <span className="font-semibold">-{formatPrice(getDiscountAmount())}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between font-bold text-xl border-t border-gray-300 pt-3">
-                      <span>Total:</span>
-                      <span className="text-green-600">{formatPrice(getTotal())}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-8 border-t border-gray-200 bg-gray-50 flex gap-4">
-                <button
-                  onClick={() => setShowPaymentModal(false)}
-                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-4 rounded-xl font-semibold transition-all duration-300 shadow-md hover:shadow-lg"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleConfirmSale}
-                  disabled={isProcessingSale || !paymentInfo.method || (paymentInfo.method === 'misto' && !isMixedPaymentValid())}
-                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 text-white py-4 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
-                >
-                  {isProcessingSale ? (
-                    <>
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <Check size={20} />
-                      Confirmar Venda
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Split Modal */}
+        {showSplitModal && (
+          <SplitModal
+            isOpen={showSplitModal}
+            onClose={() => setShowSplitModal(false)}
+            onConfirm={handleApplySplit}
+            totalAmount={getFinalTotal()}
+          />
         )}
       </div>
 
@@ -1437,132 +1348,129 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
 
       {/* Mixed Payment Modal */}
       {showMixedPaymentModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
-            <div className="bg-gradient-to-r from-purple-500 to-indigo-500 p-6 text-white rounded-t-2xl">
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowMixedPaymentModal(false);
+              setPaymentMethod('dinheiro');
+              resetMixedPayments();
+            }
+          }}
+        >
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 rounded-xl p-2">
-                    <CreditCard size={24} className="text-white" />
-                  </div>
-                  <h2 className="text-xl font-bold">Configurar Pagamento Misto</h2>
-                </div>
+                <h2 className="text-xl font-bold text-gray-800">Configurar Pagamento Misto</h2>
                 <button
-                  onClick={handleCloseMixedPaymentModal}
-                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
                   type="button"
+                  onClick={closeMixedPaymentModal}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  aria-label="Fechar modal"
                 >
                   <X size={20} />
                 </button>
               </div>
             </div>
 
-            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-blue-800 text-sm">
-                  <strong>Total da venda:</strong> {formatPrice(getTotal())}
-                </p>
-                <p className="text-blue-700 text-xs mt-1">
-                  Configure como será dividido o pagamento entre diferentes formas
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              {mixedPaymentError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-red-600 text-sm font-medium">{mixedPaymentError}</p>
+                </div>
+              )}
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CreditCard size={20} className="text-blue-600" />
+                  <h4 className="font-medium text-blue-800">Total da Venda</h4>
+                </div>
+                <p className="text-2xl font-bold text-blue-900">
+                  {formatPrice(getTotal())}
                 </p>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-800">Formas de Pagamento</h4>
-                  <button
-                    onClick={addMixedPayment}
-                    disabled={mixedPayments.length >= 5}
-                    className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
-                  >
-                    <Plus size={14} />
-                    Adicionar
-                  </button>
+              {mixedPayments.map((payment, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-gray-800">
+                      {getPaymentMethodName(payment.method)}
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (mixedPayments.length > 1) {
+                          setMixedPayments(prev => prev.filter((_, i) => i !== index));
+                        }
+                      }}
+                      disabled={mixedPayments.length <= 1}
+                      className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                      aria-label="Remover forma de pagamento"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={payment.amount}
+                    onChange={(e) => {
+                      setMixedPaymentError(''); // Limpar erro ao digitar
+                      const newAmount = parseFloat(e.target.value) || 0;
+                      setMixedPayments(prev => 
+                        prev.map((p, i) => i === index ? { ...p, amount: newAmount } : p)
+                      );
+                    }}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0,00"
+                  />
                 </div>
+              ))}
 
-                {mixedPayments.map((payment, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                    <div className="flex items-center gap-3">
-                      <select
-                        value={payment.method}
-                        onChange={(e) => updateMixedPayment(index, 'method', e.target.value)}
-                        className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                      >
-                        <option value="dinheiro">Dinheiro</option>
-                        <option value="pix">PIX</option>
-                        <option value="cartao_credito">Cartão de Crédito</option>
-                        <option value="cartao_debito">Cartão de Débito</option>
-                        <option value="voucher">Voucher</option>
-                      </select>
-                      
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={payment.amount}
-                        onChange={(e) => updateMixedPayment(index, 'amount', parseFloat(e.target.value) || 0)}
-                        className="w-24 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                        placeholder="0,00"
-                      />
-                      
-                      <button
-                        onClick={() => removeMixedPayment(index)}
-                        disabled={mixedPayments.length <= 2}
-                        className="text-red-500 hover:text-red-700 disabled:text-gray-300 p-1"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setMixedPayments(prev => [...prev, { method: 'cartao_credito', amount: 0 }]);
+                }}
+                className="w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors"
+              >
+                + Adicionar Forma de Pagamento
+              </button>
 
-              {/* Resumo */}
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-purple-700">Total dos pagamentos:</span>
-                    <span className="font-medium">
-                      {formatPrice(mixedPayments.reduce((sum, p) => sum + p.amount, 0))}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-purple-700">Total da venda:</span>
-                    <span className="font-medium">{formatPrice(getTotal())}</span>
-                  </div>
-                  <div className="flex justify-between font-bold border-t border-purple-200 pt-2">
-                    <span className="text-purple-800">Diferença:</span>
-                    <span className={`${
-                      Math.abs(mixedPayments.reduce((sum, p) => sum + p.amount, 0) - getTotal()) < 0.01
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}>
-                      {formatPrice(mixedPayments.reduce((sum, p) => sum + p.amount, 0) - getTotal())}
-                    </span>
-                  </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-gray-700">Total Informado:</span>
+                  <span className={`text-xl font-bold ${validateMixedPayment().isCorrectTotal ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatPrice(calculateMixedPaymentTotal())}
+                  </span>
                 </div>
+                {!validateMixedPayment().isCorrectTotal && (
+                  <p className="text-sm text-red-600 mt-1">
+                    Diferença: {formatPrice(Math.abs(calculateMixedPaymentTotal() - getTotal()))}
+                  </p>
+                )}
               </div>
             </div>
 
+            {/* Footer */}
             <div className="p-6 border-t border-gray-200 flex gap-3">
               <button
                 type="button"
-                onClick={handleCloseMixedPaymentModal}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                onClick={closeMixedPaymentModal}
+                className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                onClick={handleConfirmMixedPayment}
-                disabled={
-                  mixedPayments.length < 2 ||
-                  mixedPayments.some(p => !p.amount || p.amount <= 0) ||
-                  Math.abs(getMixedPaymentTotal() - getTotal()) > 0.01
-                }
-                className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white rounded-lg transition-colors"
+                onClick={confirmMixedPayment}
+                disabled={!validateMixedPayment().isValid}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors"
               >
-                Confirmar Pagamento
+                Confirmar
               </button>
             </div>
           </div>
@@ -1716,6 +1624,19 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
       )}
     </>
   );
+};
+
+// Helper function to get payment method display name
+const getPaymentMethodName = (method: string) => {
+  const methodNames: Record<string, string> = {
+    'dinheiro': 'Dinheiro',
+    'pix': 'PIX',
+    'cartao_credito': 'Cartão de Crédito',
+    'cartao_debito': 'Cartão de Débito',
+    'voucher': 'Voucher',
+    'misto': 'Pagamento Misto'
+  };
+  return methodNames[method] || method;
 };
 
 export default PDVSalesScreen;

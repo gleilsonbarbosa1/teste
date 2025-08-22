@@ -82,6 +82,7 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
           @page {
             size: 80mm auto;
             margin: 0;
+            padding: 0;
           }
           
           * {
@@ -94,58 +95,78 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
           
           body {
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+           font-size: 16px;
+           font-weight: bold;
             line-height: 1.3;
             color: black;
             background: white;
-            padding: 2mm;
-            width: 76mm;
+            padding: 1mm;
+            width: 78mm;
+            margin: 0 auto;
           }
           
           .center { text-align: center; }
-          .bold { font-weight: bold; }
-          .small { font-size: 10px; }
+         .bold { font-weight: 900; color: #000000; }
+         .small { font-size: 14px; font-weight: bold; color: #000000; }
           .separator { 
-            border-bottom: 1px dashed black; 
-            margin: 5px 0; 
-            padding-bottom: 5px; 
+           border-bottom: 2px solid black; 
+            margin: 3px 0; 
+            padding-bottom: 3px; 
           }
           .flex-between { 
             display: flex; 
             justify-content: space-between; 
             align-items: center;
+            width: 100%;
+           font-weight: bold;
+           color: #000000;
           }
           .mb-1 { margin-bottom: 2px; }
-          .mb-2 { margin-bottom: 5px; }
-          .mb-3 { margin-bottom: 8px; }
+          .mb-2 { margin-bottom: 3px; }
+          .mb-3 { margin-bottom: 5px; }
           .mt-1 { margin-top: 2px; }
-          .mt-2 { margin-top: 5px; }
-          .ml-2 { margin-left: 8px; }
+          .mt-2 { margin-top: 3px; }
+          .ml-2 { margin-left: 5px; }
+         
+         /* Força texto mais escuro */
+         * {
+           color: #000000 !important;
+           -webkit-print-color-adjust: exact !important;
+           print-color-adjust: exact !important;
+         }
+         
+         /* Texto importante em negrito */
+         .important {
+           font-weight: 900 !important;
+           color: #000000 !important;
+           font-size: 16px !important;
+         }
         </style>
       </head>
       <body>
         <!-- Cabeçalho -->
-        <div class="center mb-3 separator">
-          <div class="small">Relatório de Caixa</div>
-          <div class="small">Rua Um, 1614-C</div>
-          <div class="small">Residencial 1 - Cágado</div>
-          <div class="small">Tel: (85) 98904-1010</div>
-          <div class="small">CNPJ: 38.130.139/0001-22</div>
+       <div class="center mb-3 separator">
+         <div class="bold important" style="font-size: 18px;">ELITE AÇAÍ</div>
+         <div class="bold">Relatório de Caixa</div>
+         <div class="small">Rua Um, 1614-C</div>
+         <div class="small">Residencial 1 - Cágado</div>
+         <div class="small">Tel: (85) 98904-1010</div>
+         <div class="small">CNPJ: 38.130.139/0001-22</div>
         </div>
         
         <!-- Dados do Caixa -->
         <div class="mb-3 separator">
-          <div class="bold center mb-2">=== MOVIMENTAÇÕES DO CAIXA ===</div>
-          <div class="small">Caixa: #${register.id.slice(-8)}</div>
-          <div class="small">Data: ${new Date(register.opened_at).toLocaleDateString('pt-BR')}</div>
-          <div class="small">Abertura: ${formatDate(register.opened_at)}</div>
+         <div class="bold center mb-2 important">=== MOVIMENTAÇÕES DO CAIXA ===</div>
+         <div class="bold">Caixa: #${register.id.slice(-8)}</div>
+         <div class="bold">Data: ${new Date(register.opened_at).toLocaleDateString('pt-BR')}</div>
+         <div class="bold">Abertura: ${formatDate(register.opened_at)}</div>
           ${register.closed_at ? `<div class="small">Fechamento: ${formatDate(register.closed_at)}</div>` : ''}
         </div>
         
         <!-- Resumo Financeiro -->
         <div class="mb-3 separator">
-          <div class="bold small mb-1">RESUMO FINANCEIRO:</div>
-          <div class="small">
+         <div class="bold important mb-1">RESUMO FINANCEIRO:</div>
+         <div class="bold">
             <div class="flex-between">
               <span>Valor de Abertura:</span>
               <span>${formatPrice(register.opening_amount || 0)}</span>
@@ -166,8 +187,8 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
               <span>Saídas:</span>
               <span>${formatPrice(summary?.total_expense || 0)}</span>
             </div>
-            <div style="border-top: 1px solid black; padding-top: 3px; margin-top: 3px;">
-              <div class="flex-between bold">
+           <div style="border-top: 3px solid black; padding-top: 3px; margin-top: 3px;">
+             <div class="flex-between important">
                 <span>SALDO ESPERADO:</span>
                 <span>${formatPrice(summary?.expected_balance || 0)}</span>
               </div>
@@ -177,14 +198,14 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
               <span>Valor de Fechamento:</span>
               <span>${formatPrice(register.closing_amount)}</span>
             </div>
-            <div class="flex-between">
+           <div class="flex-between important">
               <span>Diferença:</span>
-              <span class="bold">
+             <span class="important">
                 ${(() => {
                   const difference = (register.closing_amount || 0) - (summary?.expected_balance || 0);
                   return formatPrice(difference);
                 })()}
-                <span class="small">
+               <span class="bold">
                   ${(() => {
                     const difference = (register.closing_amount || 0) - (summary?.expected_balance || 0);
                     return difference < 0 ? '(falta)' : difference > 0 ? '(sobra)' : '(exato)';
@@ -198,8 +219,8 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
 
         <!-- Totais por Forma de Pagamento -->
         <div class="mb-3 separator">
-          <div class="bold small mb-1">POR FORMA DE PAGAMENTO:</div>
-          <div class="small">
+         <div class="bold important mb-1">POR FORMA DE PAGAMENTO:</div>
+         <div class="bold">
             ${['dinheiro', 'pix', 'cartao_credito', 'cartao_debito'].map(method => {
               const methodEntries = entries.filter(e => e.payment_method === method);
               const income = methodEntries.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
@@ -220,21 +241,21 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
         </div>
 
         <!-- Rodapé -->
-        <div class="center small" style="border-top: 1px dashed black; padding-top: 5px;">
+       <div class="center bold" style="border-top: 3px solid black; padding-top: 5px;">
           <div class="mb-2">
-            <div class="bold">RELATÓRIO DE CAIXA</div>
-            <div>Elite Açaí - Sistema PDV</div>
+           <div class="important">RELATÓRIO DE CAIXA</div>
+           <div class="bold">Elite Açaí - Sistema PDV</div>
           </div>
           
           <div class="mb-2">
-            <div>Operador: Sistema</div>
-            <div>Impresso: ${new Date().toLocaleString('pt-BR')}</div>
+           <div class="bold">Operador: Sistema</div>
+           <div class="bold">Impresso: ${new Date().toLocaleString('pt-BR')}</div>
           </div>
 
-          <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid black;">
-            <div>Elite Açaí - CNPJ: 38.130.139/0001-22</div>
-            <div>Este é um relatório interno</div>
-            <div>Não é um documento fiscal</div>
+         <div style="margin-top: 8px; padding-top: 5px; border-top: 2px solid black;">
+           <div class="bold">Elite Açaí - CNPJ: 38.130.139/0001-22</div>
+           <div class="bold">Este é um relatório interno</div>
+           <div class="bold">Não é um documento fiscal</div>
           </div>
         </div>
       </body>
@@ -458,30 +479,30 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
       <div className="hidden print:block print:w-full print:h-full print:bg-white print:text-black thermal-print-content">
         <div style={{ fontFamily: 'Courier New, monospace', fontSize: '12px', lineHeight: '1.3', color: 'black', background: 'white', padding: '2mm', margin: '0' }}>
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '1px dashed black', paddingBottom: '10px', color: 'black', background: 'white' }}>
-            <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 5px 0' }}>ELITE AÇAÍ</h1>
-            <p style={{ fontSize: '10px', margin: '2px 0' }}>Relatório de Caixa</p>
-            <p style={{ fontSize: '10px', margin: '2px 0' }}>Rua Dois, 2130-A</p>
-            <p style={{ fontSize: '10px', margin: '2px 0' }}>Residencial 1 - Cágado</p>
-            <p style={{ fontSize: '10px', margin: '2px 0' }}>Tel: (85) 98904-1010</p>
-            <p style={{ fontSize: '10px', margin: '2px 0' }}>CNPJ: 00.000.000/0001-00</p>
+          <div style={{ textAlign: 'center', marginBottom: '10px', borderBottom: '1px dashed black', paddingBottom: '5px', color: 'black', background: 'white' }}>
+            <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 3px 0' }}>ELITE AÇAÍ</h1>
+            <p style={{ fontSize: '12px', margin: '1px 0' }}>Relatório de Caixa</p>
+            <p style={{ fontSize: '12px', margin: '1px 0' }}>Rua Um, 1614-C</p>
+            <p style={{ fontSize: '12px', margin: '1px 0' }}>Residencial 1 - Cágado</p>
+            <p style={{ fontSize: '12px', margin: '1px 0' }}>Tel: (85) 98904-1010</p>
+            <p style={{ fontSize: '12px', margin: '1px 0' }}>CNPJ: 38.130.139/0001-22</p>
           </div>
 
           {/* Order Info */}
-          <div style={{ marginBottom: '15px', color: 'black', background: 'white' }}>
-            <p style={{ fontSize: '10px', fontWeight: 'bold', textAlign: 'center', marginBottom: '10px' }}>=== MOVIMENTAÇÕES DO CAIXA ===</p>
-            <p style={{ fontSize: '10px', margin: '2px 0' }}>Caixa: #{register.id.slice(-8)}</p>
-            <p style={{ fontSize: '10px', margin: '2px 0' }}>Data: {new Date(register.opened_at).toLocaleDateString('pt-BR')}</p>
-            <p style={{ fontSize: '10px', margin: '2px 0' }}>Abertura: {formatDate(register.opened_at)}</p>
+          <div style={{ marginBottom: '10px', color: 'black', background: 'white' }}>
+            <p style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', marginBottom: '5px' }}>=== MOVIMENTAÇÕES DO CAIXA ===</p>
+            <p style={{ fontSize: '12px', margin: '1px 0' }}>Caixa: #{register.id.slice(-8)}</p>
+            <p style={{ fontSize: '12px', margin: '1px 0' }}>Data: {new Date(register.opened_at).toLocaleDateString('pt-BR')}</p>
+            <p style={{ fontSize: '12px', margin: '1px 0' }}>Abertura: {formatDate(register.opened_at)}</p>
             {register.closed_at && (
-              <p style={{ fontSize: '10px', margin: '2px 0' }}>Fechamento: {formatDate(register.closed_at)}</p>
+              <p style={{ fontSize: '12px', margin: '1px 0' }}>Fechamento: {formatDate(register.closed_at)}</p>
             )}
           </div>
 
           {/* Financial Summary */}
-          <div style={{ borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px', color: 'black', background: 'white' }}>
-            <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '5px' }}>RESUMO FINANCEIRO:</p>
-            <div style={{ fontSize: '10px' }}>
+          <div style={{ borderBottom: '1px dashed black', paddingBottom: '5px', marginBottom: '10px', color: 'black', background: 'white' }}>
+            <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '3px' }}>RESUMO FINANCEIRO:</p>
+            <div style={{ fontSize: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', margin: '2px 0' }}>
                 <span>Valor de Abertura:</span>
                 <span>{formatPrice(register.opening_amount || 0)}</span>
@@ -502,7 +523,7 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
                 <span>Saídas:</span>
                 <span>{formatPrice(summary?.total_expense || 0)}</span>
               </div>
-              <div style={{ borderTop: '1px solid black', paddingTop: '5px', marginTop: '5px' }}>
+              <div style={{ borderTop: '1px solid black', paddingTop: '3px', marginTop: '3px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                   <span>SALDO ESPERADO:</span>
                   <span>{formatPrice(summary?.expected_balance || 0)}</span>
@@ -536,9 +557,9 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
 
           {/* Detailed Movements */}
           {/* Payment Methods Summary */}
-          <div style={{ borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px', color: 'black', background: 'white' }}>
-            <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '5px' }}>POR FORMA DE PAGAMENTO:</p>
-            <div style={{ fontSize: '10px' }}>
+          <div style={{ borderBottom: '1px dashed black', paddingBottom: '5px', marginBottom: '10px', color: 'black', background: 'white' }}>
+            <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '3px' }}>POR FORMA DE PAGAMENTO:</p>
+            <div style={{ fontSize: '12px' }}>
               {['dinheiro', 'pix', 'cartao_credito', 'cartao_debito'].map(method => {
                 const methodEntries = entries.filter(e => e.payment_method === method);
                 const income = methodEntries.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
@@ -559,15 +580,15 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
           </div>
 
           {/* Footer */}
-          <div style={{ textAlign: 'center', fontSize: '10px', borderTop: '1px dashed black', paddingTop: '10px', color: 'black', background: 'white' }}>
-            <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>RELATÓRIO DE CAIXA</p>
-            <p style={{ margin: '2px 0' }}>Elite Açaí - Sistema PDV</p>
-            <p style={{ margin: '2px 0' }}>Operador: Sistema</p>
-            <p style={{ margin: '2px 0' }}>Impresso: {new Date().toLocaleString('pt-BR')}</p>
-            <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid black' }}>
-              <p style={{ margin: '2px 0' }}>Elite Açaí - CNPJ: 38.130.139/0001-22</p>
-              <p style={{ margin: '2px 0' }}>Este é um relatório interno</p>
-              <p style={{ margin: '2px 0' }}>Não é um documento fiscal</p>
+          <div style={{ textAlign: 'center', fontSize: '12px', borderTop: '1px dashed black', paddingTop: '5px', color: 'black', background: 'white' }}>
+            <p style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '14px' }}>RELATÓRIO DE CAIXA</p>
+            <p style={{ margin: '1px 0' }}>Elite Açaí - Sistema PDV</p>
+            <p style={{ margin: '1px 0' }}>Operador: Sistema</p>
+            <p style={{ margin: '1px 0' }}>Impresso: {new Date().toLocaleString('pt-BR')}</p>
+            <div style={{ marginTop: '8px', paddingTop: '5px', borderTop: '1px solid black' }}>
+              <p style={{ margin: '1px 0' }}>Elite Açaí - CNPJ: 38.130.139/0001-22</p>
+              <p style={{ margin: '1px 0' }}>Este é um relatório interno</p>
+              <p style={{ margin: '1px 0' }}>Não é um documento fiscal</p>
             </div>
           </div>
         </div>
@@ -583,13 +604,13 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
           
           html, body {
             font-family: 'Courier New', monospace !important;
-            font-size: 12px !important;
+            font-size: 14px !important;
             line-height: 1.3 !important;
             color: black !important;
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 100% !important;
+            width: 80mm !important;
             height: auto !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -613,7 +634,7 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
           }
           
           .print\\:w-full {
-            width: 100% !important;
+            width: 80mm !important;
           }
           
           .print\\:h-full {
@@ -633,15 +654,15 @@ const CashRegisterPrintView: React.FC<CashRegisterPrintViewProps> = ({
             display: block !important;
             visibility: visible !important;
             position: static !important;
-            width: 100% !important;
+            width: 80mm !important;
             height: auto !important;
             overflow: visible !important;
             font-family: 'Courier New', monospace !important;
-            font-size: 12px !important;
+            font-size: 14px !important;
             line-height: 1.3 !important;
             color: black !important;
             background: white !important;
-            padding: 2mm !important;
+            padding: 1mm !important;
             margin: 0 !important;
           }
           
