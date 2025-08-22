@@ -6,6 +6,7 @@ import { PesagemModal } from './PesagemModal';
 import PaymentModal from '../Delivery/PaymentModal';
 import DiscountModal from '../Delivery/DiscountModal';
 import SplitModal from '../Delivery/SplitModal';
+import SalePrintView from './SalePrintView';
 import { 
   Search, 
   ShoppingCart, 
@@ -68,6 +69,9 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
     method: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher';
     amount: number;
   }>>([]);
+  const [showPrintConfirmation, setShowPrintConfirmation] = useState(false);
+  const [lastSaleData, setLastSaleData] = useState<any>(null);
+  const [showPrintView, setShowPrintView] = useState(false);
 
   // Check Supabase configuration
   useEffect(() => {
@@ -228,13 +232,20 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
         subtotal: item.subtotal
       }));
 
-      await createSale(saleData, saleItems);
+      const createdSale = await createSale(saleData, saleItems);
+      
+      // Salvar dados da venda para impressão
+      setLastSaleData({
+        sale: { ...saleData, ...createdSale },
+        items: saleItems
+      });
       
       // Limpar carrinho após venda bem-sucedida
       clearCart();
       setMixedPayments([]);
       
-      alert('Venda realizada com sucesso!');
+      // Perguntar se quer imprimir
+      setShowPrintConfirmation(true);
     } catch (error) {
       console.error('Erro ao finalizar venda:', error);
       alert('Erro ao finalizar venda. Tente novamente.');
@@ -500,6 +511,13 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
                   
                   <button
                     onClick={() => window.print()}
+                    onClick={() => {
+                      if (lastSaleData) {
+                        setShowPrintView(true);
+                      } else {
+                        alert('Nenhuma venda disponível para impressão');
+                      }
+                    }}
                     className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                   >
                     <Printer size={16} />
@@ -594,6 +612,81 @@ const PDVSalesScreen: React.FC<PDVSalesScreenProps> = ({ operator, scaleHook, st
           />
         )}
 
+        {/* Print Confirmation Modal */}
+        {showPrintConfirmation && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full shadow-xl">
+              {/* Header */}
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <div className="bg-green-100 rounded-full p-2">
+                      <Check size={24} className="text-green-600" />
+                    </div>
+                    Venda Realizada!
+                  </h2>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-4">
+                <div className="text-center">
+                  <p className="text-gray-600 mb-4">
+                    Venda finalizada com sucesso!
+                  </p>
+                  <p className="text-lg font-semibold text-green-600">
+                    Total: {formatPrice(getTotal())}
+                  </p>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2">
+                    <Printer size={20} className="text-blue-600" />
+                    <p className="text-blue-800 font-medium">
+                      Deseja imprimir o comprovante da venda?
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-gray-200 flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowPrintConfirmation(false);
+                    setLastSaleData(null);
+                  }}
+                  className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Não Imprimir
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPrintConfirmation(false);
+                    setShowPrintView(true);
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <Printer size={16} />
+                  Sim, Imprimir
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Print View Modal */}
+        {showPrintView && lastSaleData && (
+          <SalePrintView
+            sale={lastSaleData.sale}
+            items={lastSaleData.items}
+            storeSettings={storeSettings}
+            onClose={() => {
+              setShowPrintView(false);
+              setLastSaleData(null);
+            }}
+          />
+        )}
         {/* Mixed Payment Modal */}
         {showMixedPaymentModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
