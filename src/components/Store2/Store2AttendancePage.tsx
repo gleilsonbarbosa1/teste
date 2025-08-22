@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Calculator, ArrowLeft, User, LogOut, AlertCircle } from 'lucide-react';
 import { useStore2Attendance } from '../../hooks/useStore2Attendance';
 import Store2Login from './Store2Login';
-import Store2AttendancePanel from './Store2AttendancePanel';
+
 
 const Store2AttendancePage: React.FC = () => {
   const navigate = useNavigate();
