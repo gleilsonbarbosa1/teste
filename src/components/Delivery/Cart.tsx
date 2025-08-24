@@ -332,6 +332,76 @@ const DeliveryOrdersPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
             <div className="flex items-center gap-3">
+        {/* Tela de Sucesso */}
+        {orderSuccess && createdOrderId && (
+          <div className="absolute inset-0 bg-white z-10 flex flex-col">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-800 text-center">
+                🎉 Pedido Realizado com Sucesso!
+              </h2>
+            </div>
+            
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+              <div className="bg-green-100 rounded-full p-4 w-20 h-20 mb-6 flex items-center justify-center">
+                <CheckCircle size={40} className="text-green-600" />
+              </div>
+              
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                Pedido Confirmado!
+              </h3>
+              
+              <p className="text-gray-600 mb-4">
+                Seu pedido foi recebido e está sendo processado.
+              </p>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 w-full">
+                <p className="text-blue-800 font-medium">
+                  📋 Número do Pedido:
+                </p>
+                <p className="text-blue-900 font-bold text-lg">
+                  #{createdOrderId.slice(-8)}
+                </p>
+                <p className="text-blue-700 text-sm mt-2">
+                  Use este número para acompanhar seu pedido
+                </p>
+              </div>
+              
+              <div className="space-y-3 w-full">
+                <button
+                  onClick={handleOrderComplete}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  <Package size={20} />
+                  Acompanhar Pedido
+                </button>
+                
+                <button
+                  onClick={() => {
+                    onClearCart();
+                    setOrderSuccess(false);
+                    setCreatedOrderId(null);
+                    setShowCheckout(false);
+                  }}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  <ShoppingCart size={20} />
+                  Fazer Novo Pedido
+                </button>
+                
+                <a
+                  href={`https://wa.me/5585989041010?text=Olá! Acabei de fazer o pedido ${createdOrderId.slice(-8)} e gostaria de confirmar.`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  <MessageCircle size={20} />
+                  Falar no WhatsApp
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
               <div className="bg-blue-100 rounded-full p-2">
                 <Truck size={24} className="text-blue-600" />
               </div>
