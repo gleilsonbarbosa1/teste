@@ -246,7 +246,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
 
 
 
-import { useScale } from '../../hooks/useScale'; 
+
 import { useOrders } from '../../hooks/useOrders';
 import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
 import { useStoreHours } from '../../hooks/useStoreHours';
