@@ -246,7 +246,7 @@ export const useTableSales = (storeId: 1 | 2) => {
     stats,
     createTableSale,
     addItemToSale,
-    addItemToSale,
+    removeItemFromSale,
     closeSale,
     getSaleDetails,
     updateTableStatus,
