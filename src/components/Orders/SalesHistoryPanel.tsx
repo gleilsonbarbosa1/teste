@@ -13,6 +13,7 @@ import {
 import { usePermissions } from '../../hooks/usePermissions';
 import { PDVOperator } from '../../types/pdv';
 import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 interface SalesHistoryPanelProps {
   storeId: number;
@@ -30,11 +31,13 @@ interface Sale {
   items_count: number;
   is_cancelled: boolean;
   channel?: string;
+  channel?: string;
 }
 
 const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator }) => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('today');
@@ -191,77 +194,155 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
         pdvSales.forEach(sale => {
           allSales.push({
             id: sale.id,
-            sale_number: sale.sale_number,
-            operator_name: sale.pdv_operators?.name || 'Desconhecido',
-            customer_name: sale.customer_name,
-            total_amount: sale.total_amount,
-            payment_type: sale.payment_type,
-            created_at: sale.created_at,
-            items_count: 0, // Will be calculated from items
-            is_cancelled: sale.is_cancelled,
-            channel: sale.channel || 'pdv'
-          });
-        });
-      }
+    try {
+      setLoading(true);
+      setError(null);
       
-      // Add delivery orders
-      if (deliveryOrders) {
-        deliveryOrders.forEach(order => {
-          allSales.push({
-            id: order.id,
-            sale_number: order.order_number || 0,
-            operator_name: 'Sistema Delivery',
-            customer_name: order.customer_name,
-            total_amount: order.total_amount,
-            payment_type: order.payment_method || 'não informado',
-            created_at: order.created_at,
-            items_count: order.items?.length || 0,
+      // Check if Supabase is configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl === 'your_supabase_url_here' || 
+          supabaseKey === 'your_supabase_anon_key_here' ||
+          supabaseUrl.includes('placeholder')) {
+        console.warn('⚠️ Supabase não configurado - usando dados de demonstração');
+        
+        // Mock data for demonstration when Supabase is not configured
+        const mockSales: Sale[] = [
+          {
+            id: '1',
+            sale_number: 1001,
+            operator_name: 'Administrador',
+            customer_name: 'Maria Santos',
+            total_amount: 25.50,
+            payment_type: 'dinheiro',
+            created_at: new Date().toISOString(),
+            items_count: 3,
             is_cancelled: false,
-            channel: 'delivery'
-          });
-        });
+            channel: 'pdv'
+          },
+          {
+            id: '2',
+            sale_number: 1002,
+            operator_name: 'Administrador',
+            customer_name: 'Pedro Oliveira',
+            total_amount: 18.00,
+            payment_type: 'pix',
+            created_at: new Date(Date.now() - 3600000).toISOString(),
+            items_count: 2,
+            is_cancelled: false,
+            channel: 'pdv'
+          }
+        ];
+        
+        setSales(mockSales);
+        setLoading(false);
+        return;
       }
       
-      // Add table sales
-      if (tableSales) {
-        tableSales.forEach(sale => {
+      // Calculate date range based on filter
+      let startDate: string;
+      let endDate: string;
+      
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      switch (dateFilter) {
+        case 'today':
+          startDate = today.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+          break;
+        case 'yesterday':
+          const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+          startDate = yesterday.toISOString();
+          endDate = today.toISOString();
+          break;
+        case 'week':
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - today.getDay());
+          startDate = weekStart.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+          break;
+        case 'month':
+          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+          startDate = monthStart.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+          break;
+        default:
+          startDate = today.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+      }
+      
+      console.log('📊 Buscando vendas do período:', { startDate, endDate, dateFilter });
+      
+      // Fetch PDV sales
+      const { data: pdvSales, error: pdvError } = await supabase
+        .from('pdv_sales')
+        .select(`
+          id,
+          sale_number,
+          total_amount,
+          payment_type,
+          customer_name,
+          customer_phone,
+          is_cancelled,
+          created_at,
+          channel,
+          pdv_operators!operator_id(name)
+        `)
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .order('created_at', { ascending: false });
+      
+      if (pdvError) {
+        console.error('❌ Erro ao buscar vendas PDV:', pdvError);
+        throw pdvError;
+      }
+      
+      // Fetch delivery orders
+      const { data: deliveryOrders, error: deliveryError } = await supabase
+        .from('orders')
+        .select('*')
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false });
+      
+      if (deliveryError) {
+        console.warn('⚠️ Erro ao buscar pedidos delivery:', deliveryError);
+      }
+      
+      // Fetch table sales for store 1
+      const { data: tableSales, error: tableError } = await supabase
+        .from('store1_table_sales')
+        .select(`
+          id,
+          sale_number,
+          total_amount,
+          payment_type,
+          customer_name,
+          customer_count,
+          is_cancelled,
+          created_at,
+          operator_name
+        `)
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .order('created_at', { ascending: false });
+      
+      if (tableError) {
+        console.warn('⚠️ Erro ao buscar vendas de mesa:', tableError);
+      }
+      
+      // Process and combine all sales
+      const allSales: Sale[] = [];
+      
+      // Add PDV sales
+      if (pdvSales) {
+        pdvSales.forEach(sale => {
           allSales.push({
             id: sale.id,
-            sale_number: sale.sale_number,
-            operator_name: sale.operator_name || 'Desconhecido',
-            customer_name: sale.customer_name,
-            total_amount: sale.total_amount,
-            payment_type: sale.payment_type,
-            created_at: sale.created_at,
-            items_count: 0, // Will be calculated from items
-            is_cancelled: sale.is_cancelled,
-            channel: 'mesa'
-          });
-        });
-      }
-      
-      // Sort by creation date (newest first)
-      allSales.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      
-      console.log('✅ Vendas carregadas:', allSales.length);
-      setSales(allSales);
-      
-    } catch (error) {
-      console.error('❌ Erro ao buscar vendas:', error);
-      setError('Erro ao carregar histórico de vendas');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRefresh = () => {
-    fetchSales();
-  };
-
-  useEffect(() => {
-    fetchSales();
-  }, [dateFilter]);
-
   useEffect(() => {
     const mockSales: Sale[] = [
       {
@@ -544,8 +625,20 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatCurrency(sale.total_amount)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {getPaymentTypeLabel(sale.payment_type)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        sale.channel === 'pdv' ? 'bg-green-100 text-green-800' :
+                        sale.channel === 'delivery' ? 'bg-blue-100 text-blue-800' :
+                        sale.channel === 'mesa' ? 'bg-purple-100 text-purple-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {sale.channel === 'pdv' ? 'PDV' :
+                         sale.channel === 'delivery' ? 'Delivery' :
+                         sale.channel === 'mesa' ? 'Mesa' :
+                         sale.channel || 'PDV'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
