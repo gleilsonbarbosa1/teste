@@ -193,7 +193,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       alert('Erro ao fechar mesa. Tente novamente.');
     }
   };
-  
   const handleAddProduct = async (product: PDVProduct, quantity: number = 1, weight?: number) => {
     if (!selectedTable?.current_sale_id) return;
 
