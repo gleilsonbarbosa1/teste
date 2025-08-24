@@ -72,7 +72,17 @@ export const useTableSales = (storeId: 1 | 2) => {
   // Add item to sale
   const addItemToSale = async (
     saleId: string,
-    item: Omit<TableCartItem, 'id' | 'created_at'>
+    item: {
+      product_code: string;
+      product_name: string;
+      quantity: number;
+      weight_kg?: number;
+      unit_price?: number;
+      price_per_gram?: number;
+      discount_amount: number;
+      subtotal: number;
+      notes?: string;
+    }
   ) => {
     try {
       const { error } = await supabase
@@ -85,7 +95,7 @@ export const useTableSales = (storeId: 1 | 2) => {
           weight_kg: item.weight_kg,
           unit_price: item.unit_price,
           price_per_gram: item.price_per_gram,
-          discount_amount: item.discount_amount || 0,
+          discount_amount: item.discount_amount,
           subtotal: item.subtotal,
           notes: item.notes
         });
@@ -232,6 +242,7 @@ export const useTableSales = (storeId: 1 | 2) => {
     error,
     stats,
     createTableSale,
+    addItemToSale,
     addItemToSale,
     closeSale,
     getSaleDetails,

@@ -11,10 +11,14 @@ import {
   RefreshCw,
   Utensils,
   CheckCircle,
-  XCircle
+  XCircle,
+  Search
 } from 'lucide-react';
 import { useTableSales } from '../../hooks/useTableSales';
+import { usePDVProducts } from '../../hooks/usePDV';
 import { RestaurantTable, TableSale } from '../../types/table-sales';
+import { PDVProduct } from '../../types/pdv';
+import { PesagemModal } from '../PDV/PesagemModal';
 
 interface TableSalesPanelProps {
   storeId: 1 | 2;
@@ -22,14 +26,20 @@ interface TableSalesPanelProps {
 }
 
 const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
-  const { tables, loading, error, stats, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch } = useTableSales(storeId);
+  const { tables, loading, error, stats, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch, addItemToSale } = useTableSales(storeId);
+  const { products, loading: productsLoading, searchProducts } = usePDVProducts();
   
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
   const [showNewSaleModal, setShowNewSaleModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showProductsModal, setShowProductsModal] = useState(false);
+  const [showPesagemModal, setShowPesagemModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<PDVProduct | null>(null);
   const [saleDetails, setSaleDetails] = useState<TableSale | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [customerCount, setCustomerCount] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
 
   // Check Supabase configuration
@@ -87,7 +97,11 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     
     if (table.status === 'livre') {
       setShowNewSaleModal(true);
-    } else if (table.current_sale_id) {
+    } else if (table.status === 'ocupada' && table.current_sale_id) {
+      const details = await getSaleDetails(table.current_sale_id);
+      setSaleDetails(details);
+      setShowProductsModal(true);
+    } else if (table.status === 'aguardando_conta' && table.current_sale_id) {
       const details = await getSaleDetails(table.current_sale_id);
       setSaleDetails(details);
       setShowDetailsModal(true);
@@ -134,6 +148,87 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       alert('Erro ao atualizar status da mesa.');
     }
   };
+
+  const handleAddProduct = async (product: PDVProduct, quantity: number = 1, weight?: number) => {
+    if (!selectedTable?.current_sale_id) return;
+
+    try {
+      const item = {
+        product_code: product.code,
+        product_name: product.name,
+        quantity: quantity,
+        weight_kg: weight,
+        unit_price: product.unit_price,
+        price_per_gram: product.price_per_gram,
+        discount_amount: 0,
+        subtotal: product.is_weighable && weight && product.price_per_gram
+          ? weight * 1000 * product.price_per_gram
+          : quantity * (product.unit_price || 0)
+      };
+
+      await addItemToSale(selectedTable.current_sale_id, item);
+      
+      // Refresh table data
+      refetch();
+      
+      // Show success message
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+      successMessage.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Produto adicionado à mesa ${selectedTable.number}!
+      `;
+      document.body.appendChild(successMessage);
+      
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
+        }
+      }, 3000);
+    } catch (err) {
+      console.error('Erro ao adicionar produto:', err);
+      alert('Erro ao adicionar produto à mesa.');
+    }
+  };
+
+  const handleProductClick = (product: PDVProduct) => {
+    if (product.is_weighable) {
+      setSelectedProduct(product);
+      setShowPesagemModal(true);
+    } else {
+      handleAddProduct(product, 1);
+    }
+  };
+
+  const handleWeightConfirm = (weightInGrams: number) => {
+    if (selectedProduct) {
+      const weightInKg = weightInGrams / 1000;
+      handleAddProduct(selectedProduct, 1, weightInKg);
+      setShowPesagemModal(false);
+      setSelectedProduct(null);
+    }
+  };
+
+  const filteredProducts = React.useMemo(() => {
+    let result = searchTerm ? searchProducts(searchTerm) : products;
+    
+    if (selectedCategory !== 'all') {
+      result = result.filter(p => p.category === selectedCategory);
+    }
+    
+    return result.filter(p => p.is_active);
+  }, [products, searchProducts, searchTerm, selectedCategory]);
+
+  const categories = [
+    { id: 'all', label: 'Todas' },
+    { id: 'acai', label: 'Açaí' },
+    { id: 'bebidas', label: 'Bebidas' },
+    { id: 'complementos', label: 'Complementos' },
+    { id: 'sobremesas', label: 'Sobremesas' },
+    { id: 'outros', label: 'Outros' }
+  ];
 
   if (loading) {
     return (
@@ -495,6 +590,228 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
         </div>
       )}
 
+      {/* Products Modal */}
+      {showProductsModal && selectedTable && saleDetails && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Mesa {selectedTable.number} - Adicionar Produtos
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowProductsModal(false);
+                    setSelectedTable(null);
+                    setSaleDetails(null);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <XCircle size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Products Panel */}
+                <div className="lg:col-span-2 space-y-4">
+                  {/* Search and Filters */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex-1">
+                        <div className="relative">
+                          <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Buscar produtos..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="md:w-48">
+                        <select
+                          value={selectedCategory}
+                          onChange={(e) => setSelectedCategory(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Products Grid */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Produtos Disponíveis</h3>
+                    {productsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="text-gray-600 mt-2">Carregando produtos...</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
+                        {filteredProducts.map((product) => (
+                          <button
+                            key={product.id}
+                            onClick={() => handleProductClick(product)}
+                            className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
+                          >
+                            <div className="aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
+                              {product.image_url ? (
+                                <img 
+                                  src={product.image_url} 
+                                  alt={product.name}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
+                              ) : (
+                                <Package size={24} className="text-gray-400" />
+                              )}
+                            </div>
+                            <h4 className="font-medium text-gray-800 text-sm mb-1 line-clamp-2">{product.name}</h4>
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-600 font-semibold text-sm">
+                                {product.is_weighable ? (
+                                  <div className="flex items-center gap-1">
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                                    </svg>
+                                    {formatPrice((product.price_per_gram || 0) * 1000)}/kg
+                                  </div>
+                                ) : (
+                                  formatPrice(product.unit_price || 0)
+                                )}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {product.code}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {filteredProducts.length === 0 && !productsLoading && (
+                      <div className="text-center py-8">
+                        <Package size={48} className="mx-auto text-gray-300 mb-4" />
+                        <p className="text-gray-500">
+                          {searchTerm ? 'Nenhum produto encontrado' : 'Nenhum produto disponível'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sale Details Panel */}
+                <div className="space-y-4">
+                  {/* Sale Info */}
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h3 className="font-medium text-blue-800 mb-2">Venda Atual</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Venda #:</span>
+                        <span className="font-medium">{saleDetails.sale_number}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Cliente:</span>
+                        <span className="font-medium">{saleDetails.customer_name || 'Não informado'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Pessoas:</span>
+                        <span className="font-medium">{saleDetails.customer_count}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Status:</span>
+                        <span className="font-medium capitalize">{saleDetails.status}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Current Items */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-medium text-gray-800 mb-2">
+                      Itens da Venda ({saleDetails.items?.length || 0})
+                    </h3>
+                    {saleDetails.items && saleDetails.items.length > 0 ? (
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {saleDetails.items.map((item) => (
+                          <div key={item.id} className="bg-white rounded p-3 flex justify-between">
+                            <div>
+                              <p className="font-medium text-sm">{item.product_name}</p>
+                              <p className="text-xs text-gray-600">
+                                {item.weight_kg ? 
+                                  `${item.weight_kg}kg × ${formatPrice((item.price_per_gram || 0) * 1000)}/kg` :
+                                  `${item.quantity}x × ${formatPrice(item.unit_price || 0)}`
+                                }
+                              </p>
+                            </div>
+                            <p className="font-semibold text-green-600 text-sm">
+                              {formatPrice(item.subtotal)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        <Package size={32} className="mx-auto text-gray-300 mb-2" />
+                        <p className="text-sm">Nenhum item adicionado</p>
+                        <p className="text-xs">Selecione produtos para adicionar</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Total */}
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold text-green-800">Total:</span>
+                      <span className="text-2xl font-bold text-green-600">
+                        {formatPrice(saleDetails.total_amount)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleUpdateStatus(selectedTable.id, 'aguardando_conta')}
+                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Solicitar Conta
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowProductsModal(false);
+                        setSelectedTable(null);
+                        setSaleDetails(null);
+                      }}
+                      className="w-full bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pesagem Modal */}
+      {showPesagemModal && selectedProduct && (
+        <PesagemModal
+          produto={selectedProduct}
+          onConfirmar={handleWeightConfirm}
+          onFechar={() => {
+            setShowPesagemModal(false);
+            setSelectedProduct(null);
+          }}
+        />
+      )}
+
       {/* Info Panel */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
         <div className="flex items-start gap-3">
@@ -503,10 +820,10 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
             <h4 className="font-medium text-blue-800 mb-2">ℹ️ Como usar o Sistema de Mesas</h4>
             <ul className="text-sm text-blue-700 space-y-1">
               <li>• <strong>Mesa Livre:</strong> Clique para abrir uma nova venda</li>
-              <li>• <strong>Mesa Ocupada:</strong> Clique para ver detalhes da venda</li>
+              <li>• <strong>Mesa Ocupada:</strong> Clique para adicionar produtos</li>
               <li>• <strong>Aguardando Conta:</strong> Cliente solicitou a conta</li>
               <li>• <strong>Limpeza:</strong> Mesa sendo limpa após fechamento</li>
-              <li>• Use o PDV para adicionar itens às vendas das mesas</li>
+              <li>• Adicione produtos diretamente pelo sistema de mesas</li>
               <li>• O sistema sincroniza automaticamente com o caixa</li>
             </ul>
           </div>
