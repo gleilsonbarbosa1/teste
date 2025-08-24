@@ -27,7 +27,7 @@ interface TableSalesPanelProps {
 }
 
 const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
-  const { tables, loading, error, stats, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch, addItemToSale } = useTableSales(storeId);
+  const { tables, loading, error, stats, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch, addItemToSale, removeItemFromSale } = useTableSales(storeId);
   const { products, loading: productsLoading, searchProducts } = usePDVProducts();
   
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
