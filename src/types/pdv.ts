@@ -119,6 +119,7 @@ export interface PDVCashRegisterSummary {
   opening_amount: number;
   sales_total: number;
   delivery_total: number;
+  table_total: number;
   other_income_total: number;
   total_expense: number;
   expected_balance: number;
@@ -126,6 +127,7 @@ export interface PDVCashRegisterSummary {
 }
 
 // Store2 Types
+  table_count: number;
 export interface Store2User {
   id: string;
   username: string;

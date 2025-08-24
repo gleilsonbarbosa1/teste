@@ -239,6 +239,17 @@ const CashRegisterDetails: React.FC<CashRegisterDetailsProps> = ({ register, sum
             
             <div className="flex justify-between">
               <p className="text-sm text-gray-600 flex items-center gap-1">
+                <ArrowDownCircle size={14} className="text-green-500 flex-shrink-0" title="Vendas realizadas nas Mesas" />
+                <span>Vendas Mesas ({summary.table_count || 0})</span>
+                <span className="text-xs text-gray-500 ml-1 hidden sm:inline">(Todas formas de pagamento)</span>
+              </p>
+              <p className="font-medium text-green-600">
+                {formatPrice(summary.table_total || 0)}
+              </p>
+            </div>
+            
+            <div className="flex justify-between">
+              <p className="text-sm text-gray-600 flex items-center gap-1">
                 <ArrowDownCircle size={14} className="text-green-500 flex-shrink-0" title="Outras entradas de caixa (não vendas)" /> 
                 <span>Outras Entradas</span>
                 <span className="text-xs text-gray-500 ml-1 hidden sm:inline">(Entradas manuais)</span>

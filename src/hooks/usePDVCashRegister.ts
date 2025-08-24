@@ -208,6 +208,14 @@ export const usePDVCashRegister = () => {
               .eq('type', 'income')
               .like('description', 'Delivery #%');
               
+            // Buscar vendas de Mesa
+            const { data: tableData } = await supabase
+              .from('pdv_cash_entries')
+              .select('*')
+              .eq('register_id', openRegister.id)
+              .eq('type', 'income')
+              .like('description', 'Venda Mesa #%');
+              
             // Buscar outras entradas
             const { data: otherIncomeData } = await supabase
               .from('pdv_cash_entries')
@@ -215,7 +223,8 @@ export const usePDVCashRegister = () => {
               .eq('register_id', openRegister.id) 
               .eq('type', 'income')
               .not('description', 'ilike', 'Venda #%')
-              .not('description', 'ilike', 'Delivery #%');
+              .not('description', 'ilike', 'Delivery #%')
+              .not('description', 'ilike', 'Venda Mesa #%');
               
             // Buscar saídas
             const { data: expenseData } = await supabase
@@ -227,17 +236,18 @@ export const usePDVCashRegister = () => {
             // Calcular totais
             const salesTotal = salesData?.reduce((sum, item) => sum + item.amount, 0) || 0;
             const deliveryTotal = deliveryData?.reduce((sum, item) => sum + item.amount, 0) || 0;
+            const tableTotal = tableData?.reduce((sum, item) => sum + item.amount, 0) || 0;
             const otherIncomeTotal = otherIncomeData?.reduce((sum, item) => sum + item.amount, 0) || 0;
             const expenseTotal = expenseData?.reduce((sum, item) => sum + item.amount, 0) || 0;
             
             // Calcular saldo esperado
-            const expectedBalance = openRegister.opening_amount + salesTotal + deliveryTotal + otherIncomeTotal - expenseTotal; // Correctly subtract expenses
+            const expectedBalance = openRegister.opening_amount + salesTotal + deliveryTotal + tableTotal + otherIncomeTotal - expenseTotal;
             
             // Definir resumo manualmente
             setSummary({
               opening_amount: openRegister.opening_amount || 0,
               sales_total: salesTotal,
-              total_income: salesTotal + deliveryTotal + otherIncomeTotal,
+              total_income: salesTotal + deliveryTotal + tableTotal + otherIncomeTotal,
               other_income_total: otherIncomeTotal,
               total_expense: expenseTotal,
               expected_balance: expectedBalance,
@@ -246,13 +256,16 @@ export const usePDVCashRegister = () => {
               sales_count: salesData?.length || 0,
               delivery_total: deliveryTotal,
               delivery_count: deliveryData?.length || 0,
-              total_all_sales: salesTotal + deliveryTotal,
+              table_total: tableTotal,
+              table_count: tableData?.length || 0,
+              total_all_sales: salesTotal + deliveryTotal + tableTotal,
               sales: {}
             });
             
             console.log('✅ Resumo calculado manualmente:', {
               salesTotal,
               deliveryTotal,
+              tableTotal,
               otherIncomeTotal,
               expenseTotal,
               expectedBalance
@@ -309,6 +322,8 @@ export const usePDVCashRegister = () => {
               sales_count: Number(generalSummaryData.data.sales_count) || 0,
               delivery_total: Number(generalSummaryData.data.delivery_total) || 0,
               delivery_count: Number(generalSummaryData.data.delivery_count) || 0,
+              table_total: Number(generalSummaryData.data.table_total) || 0,
+              table_count: Number(generalSummaryData.data.table_count) || 0,
               total_all_sales: Number(generalSummaryData.data.total_all_sales) || 0,
               sales: generalSummaryData.data.sales || {}
             });
@@ -317,8 +332,10 @@ export const usePDVCashRegister = () => {
               sales_total: Number(generalSummaryData.data.sales_total) || 0,
               sales_count: Number(generalSummaryData.data.sales_count) || 0,
               delivery_count: Number(generalSummaryData.data.delivery_count) || 0,
+              table_count: Number(generalSummaryData.data.table_count) || 0,
               total_all_sales: Number(generalSummaryData.data.total_all_sales) || 0,
               delivery_total: Number(generalSummaryData.data.delivery_total) || 0,
+              table_total: Number(generalSummaryData.data.table_total) || 0,
               other_income_total: Number(generalSummaryData.data.other_income_total) || 0,
               total_expense: Number(generalSummaryData.data.total_expense) || 0,
               expected_balance: Number(generalSummaryData.data.expected_balance) || 0
