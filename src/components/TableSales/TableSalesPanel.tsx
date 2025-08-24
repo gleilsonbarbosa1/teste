@@ -914,7 +914,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                     <h3 className="font-medium text-gray-800 mb-2">
                       Itens da Venda ({saleDetails.items?.length || 0})
                     </h3>
-                  
+                    {saleDetails.items && saleDetails.items.length > 0 ? (
                      {saleDetails.items && saleDetails.items.length > 0 && (
                        <button
                          onClick={() => {
@@ -927,7 +927,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                        >
                          <Trash2 size={16} />
                        </button>
-           
+                     )}
                       <div className="space-y-2 max-h-48 overflow-y-auto">
                         {saleDetails.items.map((item) => (
                           <div key={item.id} className="bg-white rounded p-3 flex justify-between">
