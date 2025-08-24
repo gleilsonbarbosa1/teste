@@ -463,16 +463,6 @@ const Cart: React.FC<CartProps> = ({
     console.log('Aplicando desconto...');
   };
 
-  const handlePrint = () => {
-    // Lógica para imprimir
-    window.print();
-  };
-
-  const handleSplit = () => {
-    // Lógica para dividir conta
-    console.log('Dividindo conta...');
-  };
-
   const handleContinueShopping = () => {
     onClose();
   };
@@ -595,6 +585,97 @@ const Cart: React.FC<CartProps> = ({
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {/* Formas de Pagamento */}
+                  <div className="space-y-3 mb-4">
+                    <h3 className="text-sm font-medium text-gray-700">Forma de Pagamento:</h3>
+                    
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="money"
+                          checked={deliveryInfo.paymentMethod === 'money'}
+                          onChange={(e) => setDeliveryInfo(prev => ({ ...prev, paymentMethod: e.target.value as any }))}
+                          className="text-green-600 h-5 w-5"
+                        />
+                        <div className="flex items-center gap-2">
+                          <Banknote size={20} className="text-green-600" />
+                          <span className="font-medium">Dinheiro</span>
+                        </div>
+                      </label>
+                      
+                      <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="pix"
+                          checked={deliveryInfo.paymentMethod === 'pix'}
+                          onChange={(e) => setDeliveryInfo(prev => ({ ...prev, paymentMethod: e.target.value as any }))}
+                          className="text-blue-600 h-5 w-5"
+                        />
+                        <div className="flex items-center gap-2">
+                          <QrCode size={20} className="text-blue-600" />
+                          <span className="font-medium">PIX</span>
+                        </div>
+                      </label>
+                      
+                      <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="card"
+                          checked={deliveryInfo.paymentMethod === 'card'}
+                          onChange={(e) => setDeliveryInfo(prev => ({ ...prev, paymentMethod: e.target.value as any }))}
+                          className="text-purple-600 h-5 w-5"
+                        />
+                        <div className="flex items-center gap-2">
+                          <CreditCard size={20} className="text-purple-600" />
+                          <span className="font-medium">Cartão</span>
+                        </div>
+                      </label>
+                    </div>
+                    
+                    {deliveryInfo.paymentMethod === 'money' && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Troco para quanto?
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min={getTotalWithCashback()}
+                          value={deliveryInfo.changeFor || ''}
+                          onChange={(e) => setDeliveryInfo(prev => ({ ...prev, changeFor: parseFloat(e.target.value) || undefined }))}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                          placeholder="Valor para troco"
+                        />
+                        {deliveryInfo.changeFor && deliveryInfo.changeFor > getTotalWithCashback() && (
+                          <p className="text-sm text-green-600">
+                            Troco: {formatPrice(deliveryInfo.changeFor - getTotalWithCashback())}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {deliveryInfo.paymentMethod === 'pix' && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle size={16} className="text-blue-600 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-800">PIX Selecionado</p>
+                            <p className="text-sm text-blue-700">
+                              Chave PIX: 85989041010
+                            </p>
+                            <p className="text-sm text-blue-700">
+                              Nome: Amanda Suyelen da Costa Pereira
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {items.map((item) => (
                     <div key={item.id} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-all">
                       <div className="flex items-start gap-4">
@@ -760,48 +841,6 @@ const Cart: React.FC<CartProps> = ({
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm appearance-none bg-white"
                   >
                     <option value="">Selecione seu bairro</option>
-                    {neighborhoods.map(neighborhood => (
-                      <option key={neighborhood.id} value={neighborhood.name}>
-                        {neighborhood.name} - {formatPrice(neighborhood.delivery_fee)} ({neighborhood.delivery_time}min)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {deliveryInfo.neighborhood && (
-                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-blue-700">Taxa de entrega:</span>
-                      <span className="font-medium text-blue-800">{formatPrice(getDeliveryFee())}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-blue-700">Tempo estimado:</span>
-                      <span className="font-medium text-blue-800">{getEstimatedDeliveryTime()} minutos</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Endereço *
-                </label>
-                <input
-                  type="text"
-                  value={deliveryInfo.address}
-                  onChange={(e) => setDeliveryInfo(prev => ({ ...prev, address: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
-                  placeholder="Rua, número"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Complemento
-                </label>
-                <input
-                  type="text"
-                  value={deliveryInfo.complement}
-                  onChange={(e) => setDeliveryInfo(prev => ({ ...prev, complement: e.target.value }))}
                   className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
                   placeholder="Apartamento, bloco, etc."
                 />
