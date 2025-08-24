@@ -193,6 +193,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       alert('Erro ao fechar mesa. Tente novamente.');
     }
   };
+  
   const handleAddProduct = async (product: PDVProduct, quantity: number = 1, weight?: number) => {
     if (!selectedTable?.current_sale_id) return;
 
@@ -821,39 +822,39 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                     {saleDetails.items && saleDetails.items.length > 0 ? (
                       <div className="space-y-2 max-h-48 overflow-y-auto">
                         {saleDetails.items.map((item) => (
-                          <div key={item.id} className="bg-white rounded p-3 flex justify-between">
+                          <div key={item.id} className="bg-white rounded p-3 flex justify-between items-start">
                             <div>
                               <p className="font-medium text-sm">{item.product_name}</p>
                               <p className="text-xs text-gray-600">
-                        <div key={item.id} className="bg-white rounded p-3 flex justify-between items-start">
+                                {item.weight_kg ? 
                                   `${item.weight_kg}kg × ${formatPrice((item.price_per_gram || 0) * 1000)}/kg` :
                                   `${item.quantity}x × ${formatPrice(item.unit_price || 0)}`
                                 }
                               </p>
+                              {item.notes && (
+                                <p className="text-xs text-gray-500 italic mt-1">
+                                  Obs: {item.notes}
+                                </p>
+                              )}
                             </div>
-                            <p className="font-semibold text-green-600 text-sm">
-                              {formatPrice(item.subtotal)}
-                            </p>
-                            {item.notes && (
-                              <p className="text-xs text-gray-500 italic mt-1">
-                                Obs: {item.notes}
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-green-600 text-sm">
+                                {formatPrice(item.subtotal)}
                               </p>
-                            )}
+                              <button
+                                onClick={() => handleRemoveItem(item.id)}
+                                className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
+                                title="Remover item"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold text-green-600 text-sm">
-                              {formatPrice(item.subtotal)}
-                            </p>
-                            <button
-                              onClick={() => handleRemoveItem(item.id)}
-                              className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
-                              title="Remover item"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
+                        ))}
+                      </div>
+                    ) : (
                       <div className="text-center py-4 text-gray-500">
                         <Package size={32} className="mx-auto text-gray-300 mb-2" />
                         <p className="text-sm">Nenhum item adicionado</p>
