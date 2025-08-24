@@ -76,8 +76,7 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({
     switch (method) {
       case 'money': return 'Dinheiro';
       case 'pix': return 'PIX';
-      case 'credit_card': return 'Cartão de Crédito';
-      case 'debit_card': return 'Cartão de Débito';
+      case 'card': return 'Cartão';
       default: return method;
     }
   };

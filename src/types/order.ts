@@ -5,7 +5,7 @@ export interface Order {
   customer_address: string;
   customer_neighborhood: string;
   customer_complement?: string;
-  payment_method: 'money' | 'pix' | 'credit_card' | 'debit_card';
+  payment_method: 'money' | 'pix' | 'card';
   change_for?: number;
   neighborhood_id?: string;
   delivery_fee?: number;

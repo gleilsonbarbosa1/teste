@@ -15,20 +15,6 @@ import {
   Clock
 } from 'lucide-react';
 
-<<<<<<< HEAD
-export interface DeliveryInfo {
-  name: string;
-  phone: string;
-  address: string;
-  neighborhood: string;
-  neighborhoodId?: string;
-  complement?: string;
-  paymentMethod: 'money' | 'pix' | 'credit_card' | 'debit_card';
-  changeFor?: number;
-  deliveryFee?: number;
-  estimatedDeliveryTime?: number;
-}
-=======
 const DeliveryOrdersPage: React.FC = () => {
   const { user, signOut } = useDeliveryAuth();
   const { orders, loading, error, refetch } = useDeliveryOrders();
@@ -637,4 +623,3 @@ const DeliveryOrdersPage: React.FC = () => {
 };
 
 export default DeliveryOrdersPage;
->>>>>>> e94bc7c (atualizaçoes delivery)
