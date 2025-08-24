@@ -243,8 +243,15 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
             {(isAdmin || hasPermission('can_view_sales')) && (
               <button
                 onClick={() => setActiveTab('history')}
+            {(isAdmin || hasPermission('can_view_sales')) && (
+              <button
+                onClick={() => setActiveTab('history')}
                 className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'vendas_mesas'
+                  activeTab === 'history'
+                    ? 'bg-emerald-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
                     ? 'bg-cyan-500 text-white shadow-lg'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
@@ -272,6 +279,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
           {activeTab === 'orders' && (isAdmin || hasPermission('can_view_orders')) && <AttendantPanel storeSettings={settings} />}
           {activeTab === 'cash' && (isAdmin || hasPermission('can_view_cash_register')) && <CashRegisterMenu />}
           {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && <TableSalesPanel storeId={1} operatorName={operator?.name || 'Operador'} />}
+          {activeTab === 'vendas_mesas' && (isAdmin || hasPermission('can_view_sales')) && <TableSalesPanel storeId={1} operatorName={operator?.name || 'Operador'} />}
           {activeTab === 'history' && (isAdmin || hasPermission('can_view_sales')) && <SalesHistoryPanel storeId={1} />}
         </div>
       </div>
