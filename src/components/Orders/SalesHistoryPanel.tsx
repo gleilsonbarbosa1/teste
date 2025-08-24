@@ -501,184 +501,77 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
           supabaseUrl === 'your_supabase_url_here' || 
           supabaseKey === 'your_supabase_anon_key_here' ||
           supabaseUrl.includes('placeholder')) {
-        console.warn('⚠️ Supabase não configurado - usando dados de demonstração');
-        
-        // Mock data for demonstration when Supabase is not configured
-        const mockSales: Sale[] = [
-          {
-            id: '1',
-            sale_number: 1001,
-            operator_name: 'Administrador',
-            customer_name: 'Maria Santos',
-            total_amount: 25.50,
-            payment_type: 'dinheiro',
-            created_at: new Date().toISOString(),
-            items_count: 3,
-            is_cancelled: false,
-            channel: 'pdv'
-          },
-          {
-            id: '2',
-            sale_number: 1002,
-            operator_name: 'Administrador',
-            customer_name: 'Pedro Oliveira',
-            total_amount: 18.00,
-            payment_type: 'pix',
-            created_at: new Date(Date.now() - 3600000).toISOString(),
-            items_count: 2,
-            is_cancelled: false,
-            channel: 'pdv'
-          }
-        ];
-        
-        setSales(mockSales);
-        setLoading(false);
-        return;
+            sale_number: sale.sale_number,
+            operator_name: sale.pdv_operators?.name || 'Operador',
+            customer_name: sale.customer_name,
+            total_amount: sale.total_amount,
+            payment_type: sale.payment_type,
+            created_at: sale.created_at,
+            items_count: 0, // Will be calculated separately
+            is_cancelled: sale.is_cancelled,
+            channel: sale.channel || 'pdv'
+          });
+        });
       }
       
-      // Calculate date range based on filter
-      let startDate: string;
-      let endDate: string;
-      
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      switch (dateFilter) {
-        case 'today':
-          startDate = today.toISOString();
-          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
-          break;
-        case 'yesterday':
-          const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-          startDate = yesterday.toISOString();
-          endDate = today.toISOString();
-          break;
-        case 'week':
-          const weekStart = new Date(today);
-          weekStart.setDate(today.getDate() - today.getDay());
-          startDate = weekStart.toISOString();
-          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
-          break;
-        case 'month':
-          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-          startDate = monthStart.toISOString();
-          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
-          break;
-        default:
-          startDate = today.toISOString();
-          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+      // Add delivery orders
+      if (deliveryOrders) {
+        deliveryOrders.forEach(order => {
+          const itemsCount = Array.isArray(order.items) ? order.items.length : 0;
+          allSales.push({
+            id: order.id,
+            sale_number: parseInt(order.id.slice(-4), 16), // Generate number from ID
+            operator_name: 'Sistema Delivery',
+            customer_name: order.customer_name,
+            total_amount: order.total_price,
+            payment_type: order.payment_method,
+            created_at: order.created_at,
+            items_count: itemsCount,
+            is_cancelled: order.status === 'cancelled',
+            channel: 'delivery'
+          });
+        });
       }
       
-      console.log('📊 Buscando vendas do período:', { startDate, endDate, dateFilter });
-      
-      // Fetch PDV sales
-      const { data: pdvSales, error: pdvError } = await supabase
-        .from('pdv_sales')
-        .select(`
-          id,
-          sale_number,
-          total_amount,
-          payment_type,
-          customer_name,
-          customer_phone,
-          is_cancelled,
-          created_at,
-          channel,
-          pdv_operators!operator_id(name)
-        `)
-        .gte('created_at', startDate)
-        .lt('created_at', endDate)
-        .order('created_at', { ascending: false });
-      
-      if (pdvError) {
-        console.error('❌ Erro ao buscar vendas PDV:', pdvError);
-        throw pdvError;
-      }
-      
-      // Fetch delivery orders
-      const { data: deliveryOrders, error: deliveryError } = await supabase
-        .from('orders')
-        .select('*')
-        .gte('created_at', startDate)
-        .lt('created_at', endDate)
-        .neq('status', 'cancelled')
-        .order('created_at', { ascending: false });
-      
-      if (deliveryError) {
-        console.warn('⚠️ Erro ao buscar pedidos delivery:', deliveryError);
-      }
-      
-      // Fetch table sales for store 1
-      const { data: tableSales, error: tableError } = await supabase
-        .from('store1_table_sales')
-        .select(`
-          id,
-          sale_number,
-          total_amount,
-          payment_type,
-          customer_name,
-          customer_count,
-          is_cancelled,
-          created_at,
-          operator_name
-        `)
-        .gte('created_at', startDate)
-        .lt('created_at', endDate)
-        .order('created_at', { ascending: false });
-      
-      if (tableError) {
-        console.warn('⚠️ Erro ao buscar vendas de mesa:', tableError);
-      }
-      
-      // Process and combine all sales
-      const allSales: Sale[] = [];
-      
-      // Add PDV sales
-      if (pdvSales) {
-        pdvSales.forEach(sale => {
+      // Add table sales
+      if (tableSales) {
+        tableSales.forEach(sale => {
           allSales.push({
             id: sale.id,
-  useEffect(() => {
-    const mockSales: Sale[] = [
-      {
-        id: '1',
-        sale_number: 1001,
-        operator_name: 'João Silva',
-        customer_name: 'Maria Santos',
-        total_amount: 25.50,
-        payment_type: 'dinheiro',
-        created_at: new Date().toISOString(),
-        items_count: 3,
-        is_cancelled: false
-      },
-      {
-        id: '2',
-        sale_number: 1002,
-        operator_name: 'Ana Costa',
-        customer_name: 'Pedro Oliveira',
-        total_amount: 18.00,
-        payment_type: 'pix',
-        created_at: new Date(Date.now() - 3600000).toISOString(),
-        items_count: 2,
-        is_cancelled: false
-      },
-      {
-        id: '3',
-        sale_number: 1003,
-        operator_name: 'Carlos Lima',
-        total_amount: 32.75,
-        payment_type: 'cartao_credito',
-        created_at: new Date(Date.now() - 7200000).toISOString(),
-        items_count: 4,
-        is_cancelled: true
+            sale_number: sale.sale_number,
+            operator_name: sale.operator_name || 'Operador',
+            customer_name: sale.customer_name,
+            total_amount: sale.total_amount,
+            payment_type: sale.payment_type,
+            created_at: sale.created_at,
+            items_count: 0, // Will be calculated separately
+            is_cancelled: sale.status === 'cancelada',
+            channel: 'mesa'
+          });
+        });
       }
-    ];
-
-    setTimeout(() => {
-      setSales(mockSales);
+      
+      // Sort all sales by creation date
+      allSales.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      console.log('✅ Vendas carregadas:', allSales.length);
+      setSales(allSales);
+      
+    } catch (err) {
+      console.error('❌ Erro ao carregar vendas:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchSales();
+  };
+
+  useEffect(() => {
+    fetchSales();
+  }, [dateFilter]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
