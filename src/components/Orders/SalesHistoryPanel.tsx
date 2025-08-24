@@ -10,9 +10,12 @@ import {
   Clock,
   User
 } from 'lucide-react';
+import { usePermissions } from '../../hooks/usePermissions';
+import { PDVOperator } from '../../types/pdv';
 
 interface SalesHistoryPanelProps {
   storeId: number;
+  operator: PDVOperator;
 }
 
 interface Sale {
