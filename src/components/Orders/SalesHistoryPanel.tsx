@@ -13,7 +13,7 @@ import {
   Users
 } from 'lucide-react';
 import AttendantPanel from './AttendantPanel'; 
-import PDVSalesScreen from './PDV/PDVSalesScreen';
+import PDVSalesScreen from '../PDV/PDVSalesScreen';
 import CashRegisterMenu from './PDV/CashRegisterMenu';
 import SalesHistoryPanel from './Orders/SalesHistoryPanel';
 import TableSalesPanel from './TableSales/TableSalesPanel';
