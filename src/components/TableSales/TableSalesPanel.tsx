@@ -69,50 +69,10 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
       activeTab,
       isCashRegisterOpen,
       pendingOrdersCount
-                Sistema de Mesas - Loja 1
+    });
   }, [operator, isAdmin]);
 
-                Gerencie vendas presenciais e controle de mesas
-  
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="text-center">
-                      <div className="bg-green-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                        <Users size={24} className="text-green-600" />
-                      </div>
-                      <h4 className="font-medium text-green-800">Mesas Livres</h4>
-                      <p className="text-2xl font-bold text-green-600">
-                        {tables.filter(t => t.status === 'livre').length}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="text-center">
-                      <div className="bg-blue-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                        <ShoppingBag size={24} className="text-blue-600" />
-                      </div>
-                      <h4 className="font-medium text-blue-800">Mesas Ocupadas</h4>
-                      <p className="text-2xl font-bold text-blue-600">
-                        supabaseUrl !== 'your_supabase_url_here' && 
-interface TableSalesPanelProps {
-  storeId: 1 | 2;
-  operatorName?: string;
-}
-
-const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
-  const { tables, loading, error, createTableSale, addItemToSale, closeSale, getSaleDetails, updateTableStatus, refetch } = useTableSales(storeId);
-  
-  // Verificar status do caixa apenas para Loja 1 (Loja 2 opera independentemente)
-  const cashRegister = storeId === 1 ? usePDVCashRegister() : null;
-  
-  const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
-  const [showSaleModal, setShowSaleModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedSale, setSelectedSale] = useState<TableSale | null>(null);
-  const [showAddItemModal, setShowAddItemModal] = useState(false);
-  const [showTableInfo, setShowTableInfo] = useState(false);
+  const settings = storeSettings || localStoreSettings;
 
   return (
     <div className="min-h-screen bg-gray-50">
