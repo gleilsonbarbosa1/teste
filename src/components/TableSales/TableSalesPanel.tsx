@@ -926,7 +926,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                        >
                          <Trash2 size={16} />
                        </button>
-                     )}
+                     )};
                       <div className="flex justify-between">
                         <span className="text-blue-700">Status:</span>
                         <span className="font-medium capitalize">{saleDetails.status}</span>
