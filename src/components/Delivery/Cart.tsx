@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDeliveryAuth } from '../../hooks/useDeliveryAuth';
 import { useDeliveryOrders } from '../../hooks/useDeliveryOrders';
 import { DeliveryOrder } from '../../types/delivery-driver';
-import DeliveryOrderCard from './DeliveryOrderCard';
+import DeliveryOrderCard from '../DeliveryDriver/DeliveryOrderCard';
 import { 
   Truck, 
   RefreshCw, 
@@ -121,7 +121,7 @@ const DeliveryOrdersPage: React.FC = () => {
     }
 
     const formatPrice = (price: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
-    const getPaymentMethodLabel = (method: string) => method === 'money' ? 'Dinheiro' : method === 'pix' ? 'PIX' : method === 'credit_card' ? 'Cartão de Crédito' : method === 'debit_card' ? 'Cartão de Débito' : method;
+    const getPaymentMethodLabel = (method: string) => method === 'money' ? 'Dinheiro' : method === 'pix' ? 'PIX' : method === 'card' ? 'Cartão' : method;
 
     const printContent = `
       <!DOCTYPE html>
@@ -225,7 +225,7 @@ const DeliveryOrdersPage: React.FC = () => {
 
   const handleWhatsApp = (order: DeliveryOrder) => {
     const formatPrice = (price: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
-    const getPaymentMethodLabel = (method: string) => method === 'money' ? 'Dinheiro' : method === 'pix' ? 'PIX' : method === 'credit_card' ? 'Cartão de Crédito' : method === 'debit_card' ? 'Cartão de Débito' : method;
+    const getPaymentMethodLabel = (method: string) => method === 'money' ? 'Dinheiro' : method === 'pix' ? 'PIX' : method === 'card' ? 'Cartão' : method;
 
     let message = `🚚 *ENTREGA - ELITE AÇAÍ*\n\n`;
     message += `📋 *Pedido #${order.id.slice(-8)}*\n`;
