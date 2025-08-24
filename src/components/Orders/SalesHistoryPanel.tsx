@@ -10,16 +10,10 @@ import {
   Clock,
   User
 } from 'lucide-react';
-<<<<<<< HEAD
-import { usePermissions } from '../../hooks/usePermissions';
-import { PDVOperator } from '../../types/pdv';
 
 interface SalesHistoryPanelProps {
   storeId: number;
-  operator?: PDVOperator;
 }
-=======
->>>>>>> 31109c8 (atualização mesas)
 
 interface Sale {
   id: string;
