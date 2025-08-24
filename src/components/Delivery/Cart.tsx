@@ -56,17 +56,6 @@ const Cart: React.FC<CartProps> = ({
     complement: '',
     paymentMethod: 'money'
   });
-  const [orderSuccess, setOrderSuccess] = useState<{
-    show: boolean;
-    orderId: string;
-    orderNumber: string;
-  }>({
-    show: false,
-    orderId: '',
-    orderNumber: ''
-  });
-
-  const { createOrder } = useOrders();
   const { neighborhoods, getNeighborhoodByName } = useNeighborhoods();
   const { 
     getOrCreateCustomer, 
