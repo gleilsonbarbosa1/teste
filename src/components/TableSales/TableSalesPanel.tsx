@@ -927,7 +927,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                        >
                          <Trash2 size={16} />
                        </button>
-                     )}
+           
                       <div className="space-y-2 max-h-48 overflow-y-auto">
                         {saleDetails.items.map((item) => (
                           <div key={item.id} className="bg-white rounded p-3 flex justify-between">
