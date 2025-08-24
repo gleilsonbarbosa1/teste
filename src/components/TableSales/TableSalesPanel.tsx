@@ -27,7 +27,7 @@ interface TableSalesPanelProps {
 }
 
 const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
-  const { tables, loading, error, stats, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch, addItemToSale, clearSaleItems } = useTableSales(storeId);
+  const { tables, loading, error, stats, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch, addItemToSale } = useTableSales(storeId);
   const { products, loading: productsLoading, searchProducts } = usePDVProducts();
   
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
@@ -777,51 +777,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                     <h3 className="font-medium text-gray-800 mb-2">
                       Itens da Venda ({saleDetails.items?.length || 0})
                     </h3>
-                    <div className="flex gap-2 mb-3">
-                      <button
-                        onClick={() => {
-                          if (selectedTable?.current_sale_id && confirm('Tem certeza que deseja limpar todos os itens desta venda?')) {
-                            clearSaleItems(selectedTable.current_sale_id).then(() => {
-                              // Refresh table data and sale details
-                              refetch();
-                              
-                              // Reload sale details to show updated items
-                              if (selectedTable.current_sale_id) {
-                                getSaleDetails(selectedTable.current_sale_id).then(updatedDetails => {
-                                  setSaleDetails(updatedDetails);
-                                });
-                              }
-                              
-                              // Show success message
-                              const successMessage = document.createElement('div');
-                              successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
-                              successMessage.innerHTML = `
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                Itens removidos da mesa ${selectedTable.number}!
-                              `;
-                              document.body.appendChild(successMessage);
-                              
-                              setTimeout(() => {
-                                if (document.body.contains(successMessage)) {
-                                  document.body.removeChild(successMessage);
-                                }
-                              }, 3000);
-                            }).catch(err => {
-                              console.error('Erro ao limpar itens:', err);
-                              alert('Erro ao limpar itens da mesa.');
-                            });
-                          }
-                        }}
-                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Limpar Itens
-                      </button>
-                    </div>
                     {saleDetails.items && saleDetails.items.length > 0 ? (
                       <div className="space-y-2 max-h-48 overflow-y-auto">
                         {saleDetails.items.map((item) => (
@@ -1148,4 +1103,4 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   );
 };
 
-export default TableSalesPanel;
+export default TableSalesPanel; 
