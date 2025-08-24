@@ -1,6 +1,6 @@
 import React from 'react';
 import { ShoppingCart, Plus, Minus, Trash2, X, Edit3 } from 'lucide-react';
-import { CartItem } from '../../types/delivery';
+import { CartItem } from '../../types/product';
 
 interface CartProps {
   items: CartItem[];
@@ -78,13 +78,13 @@ const Cart: React.FC<CartProps> = ({
                       {item.selected_size && (
                         <p className="text-sm text-gray-600">Tamanho: {item.selected_size}</p>
                       )}
-                      {item.complements.length > 0 && (
+                      {item.selectedComplements && item.selectedComplements.length > 0 && (
                         <div className="mt-1">
                           <p className="text-xs text-gray-500">Complementos:</p>
-                          {item.complements.map((comp, idx) => (
+                          {item.selectedComplements.map((selectedComp, idx) => (
                             <p key={idx} className="text-xs text-gray-600 ml-2">
-                              • {comp.name}
-                              {comp.price > 0 && ` (+${formatPrice(comp.price)})`}
+                              • {selectedComp.complement.name}
+                              {selectedComp.complement.price > 0 && ` (+${formatPrice(selectedComp.complement.price)})`}
                             </p>
                           ))}
                         </div>
