@@ -348,6 +348,4 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
         </div> 
     </div>
   );
-};
-
-export default UnifiedAttendancePage;
+};);
