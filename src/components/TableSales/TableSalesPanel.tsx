@@ -212,8 +212,14 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
       await addItemToSale(selectedTable.current_sale_id, item);
       
-      // Refresh table data
+      // Refresh table data and sale details
       refetch();
+      
+      // Reload sale details to show new item immediately
+      if (selectedTable.current_sale_id) {
+        const updatedDetails = await getSaleDetails(selectedTable.current_sale_id);
+        setSaleDetails(updatedDetails);
+      }
       
       // Show success message
       const successMessage = document.createElement('div');

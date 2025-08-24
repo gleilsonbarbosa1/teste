@@ -122,13 +122,16 @@ export const useTableSales = (storeId: 1 | 2) => {
 
       const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal), 0);
 
-      await supabase
+      const { error: updateError } = await supabase
         .from(salesTableName)
         .update({
           subtotal: subtotal,
-          total_amount: subtotal
+          total_amount: subtotal,
+          updated_at: new Date().toISOString()
         })
         .eq('id', saleId);
+      
+      if (updateError) throw updateError;
     } catch (err) {
       console.error('Erro ao atualizar totais:', err);
       throw err;
