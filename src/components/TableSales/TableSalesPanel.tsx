@@ -243,6 +243,47 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     }
   };
 
+  const handleRemoveItem = async (itemId: string) => {
+    if (!selectedTable?.current_sale_id) return;
+
+    if (!confirm('Tem certeza que deseja remover este item da venda?')) {
+      return;
+    }
+
+    try {
+      await removeItemFromSale(itemId);
+      
+      // Refresh table data and sale details
+      refetch();
+      
+      // Reload sale details to show updated items immediately
+      if (selectedTable.current_sale_id) {
+        const updatedDetails = await getSaleDetails(selectedTable.current_sale_id);
+        setSaleDetails(updatedDetails);
+      }
+      
+      // Show success message
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+      successMessage.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Item removido da mesa ${selectedTable.number}!
+      `;
+      document.body.appendChild(successMessage);
+      
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
+        }
+      }, 3000);
+    } catch (err) {
+      console.error('Erro ao remover item:', err);
+      alert('Erro ao remover item da mesa.');
+    }
+  };
+
   const handleProductClick = (product: PDVProduct) => {
     if (product.is_weighable) {
       setSelectedProduct(product);
@@ -784,7 +825,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                             <div>
                               <p className="font-medium text-sm">{item.product_name}</p>
                               <p className="text-xs text-gray-600">
-                                {item.weight_kg ? 
+                        <div key={item.id} className="bg-white rounded p-3 flex justify-between items-start">
                                   `${item.weight_kg}kg × ${formatPrice((item.price_per_gram || 0) * 1000)}/kg` :
                                   `${item.quantity}x × ${formatPrice(item.unit_price || 0)}`
                                 }
@@ -793,10 +834,26 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                             <p className="font-semibold text-green-600 text-sm">
                               {formatPrice(item.subtotal)}
                             </p>
+                            {item.notes && (
+                              <p className="text-xs text-gray-500 italic mt-1">
+                                Obs: {item.notes}
+                              </p>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-green-600 text-sm">
+                              {formatPrice(item.subtotal)}
+                            </p>
+                            <button
+                              onClick={() => handleRemoveItem(item.id)}
+                              className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
+                              title="Remover item"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
                       <div className="text-center py-4 text-gray-500">
                         <Package size={32} className="mx-auto text-gray-300 mb-2" />
                         <p className="text-sm">Nenhum item adicionado</p>
