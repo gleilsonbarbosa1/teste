@@ -32,6 +32,8 @@ const DeliveryOrdersPage: React.FC = () => {
 
   // Update current time every minute
   useEffect(() => {
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
