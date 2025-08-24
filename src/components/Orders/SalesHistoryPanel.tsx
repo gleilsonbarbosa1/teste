@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { PDVOperator } from '../../types/pdv';
+import { supabase } from '../../lib/supabase';
 
 interface SalesHistoryPanelProps {
   storeId: number;
@@ -28,17 +29,168 @@ interface Sale {
   created_at: string;
   items_count: number;
   is_cancelled: boolean;
+  channel?: string;
 }
 
 const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator }) => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('today');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const { hasPermission } = usePermissions(operator);
 
-  // Mock data for demonstration
+  const fetchSales = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Check if Supabase is configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl === 'your_supabase_url_here' || 
+          supabaseKey === 'your_supabase_anon_key_here' ||
+          supabaseUrl.includes('placeholder')) {
+        console.warn('⚠️ Supabase não configurado - usando dados de demonstração');
+        
+        // Mock data for demonstration when Supabase is not configured
+        const mockSales: Sale[] = [
+          {
+            id: '1',
+            sale_number: 1001,
+            operator_name: 'Administrador',
+            customer_name: 'Maria Santos',
+            total_amount: 25.50,
+            payment_type: 'dinheiro',
+            created_at: new Date().toISOString(),
+            items_count: 3,
+            is_cancelled: false,
+            channel: 'pdv'
+          },
+          {
+            id: '2',
+            sale_number: 1002,
+            operator_name: 'Administrador',
+            customer_name: 'Pedro Oliveira',
+            total_amount: 18.00,
+            payment_type: 'pix',
+            created_at: new Date(Date.now() - 3600000).toISOString(),
+            items_count: 2,
+            is_cancelled: false,
+            channel: 'pdv'
+          }
+        ];
+        
+        setSales(mockSales);
+        setLoading(false);
+        return;
+      }
+      
+      // Calculate date range based on filter
+      let startDate: string;
+      let endDate: string;
+      
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      switch (dateFilter) {
+        case 'today':
+          startDate = today.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+          break;
+        case 'yesterday':
+          const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+          startDate = yesterday.toISOString();
+          endDate = today.toISOString();
+          break;
+        case 'week':
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - today.getDay());
+          startDate = weekStart.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+          break;
+        case 'month':
+          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+          startDate = monthStart.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+          break;
+        default:
+          startDate = today.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+      }
+      
+      console.log('📊 Buscando vendas do período:', { startDate, endDate, dateFilter });
+      
+      // Fetch PDV sales
+      const { data: pdvSales, error: pdvError } = await supabase
+        .from('pdv_sales')
+        .select(`
+          id,
+          sale_number,
+          total_amount,
+          payment_type,
+          customer_name,
+          customer_phone,
+          is_cancelled,
+          created_at,
+          channel,
+          pdv_operators!operator_id(name)
+        `)
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .order('created_at', { ascending: false });
+      
+      if (pdvError) {
+        console.error('❌ Erro ao buscar vendas PDV:', pdvError);
+        throw pdvError;
+      }
+      
+      // Fetch delivery orders
+      const { data: deliveryOrders, error: deliveryError } = await supabase
+        .from('orders')
+        .select('*')
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false });
+      
+      if (deliveryError) {
+        console.warn('⚠️ Erro ao buscar pedidos delivery:', deliveryError);
+      }
+      
+      // Fetch table sales for store 1
+      const { data: tableSales, error: tableError } = await supabase
+        .from('store1_table_sales')
+        .select(`
+          id,
+          sale_number,
+          total_amount,
+          payment_type,
+          customer_name,
+          customer_count,
+          is_cancelled,
+          created_at,
+          operator_name
+        `)
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .order('created_at', { ascending: false });
+      
+      if (tableError) {
+        console.warn('⚠️ Erro ao buscar vendas de mesa:', tableError);
+      }
+      
+      // Process and combine all sales
+      const allSales: Sale[] = [];
+      
+      // Add PDV sales
+      if (pdvSales) {
+        pdvSales.forEach(sale => {
+          allSales.push({
+            id: sale.id,
   useEffect(() => {
     const mockSales: Sale[] = [
       {
@@ -255,7 +407,17 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
           ) : filteredSales.length === 0 ? (
             <div className="p-8 text-center">
               <Package size={48} className="text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">Nenhuma venda encontrada</p>
+              <p className="text-gray-600">
+                {searchTerm ? 'Nenhuma venda encontrada para o termo pesquisado' : 
+                 dateFilter === 'today' ? 'Nenhuma venda registrada hoje' :
+                 'Nenhuma venda encontrada para o período selecionado'}
+              </p>
+              <button
+                onClick={handleRefresh}
+                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Atualizar Lista
+              </button>
             </div>
           ) : (
             <table className="w-full">
@@ -278,6 +440,9 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Pagamento
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Canal
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -308,8 +473,33 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatCurrency(sale.total_amount)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {getPaymentTypeLabel(sale.payment_type)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        sale.channel === 'pdv' ? 'bg-green-100 text-green-800' :
+                        sale.channel === 'delivery' ? 'bg-blue-100 text-blue-800' :
+                        sale.channel === 'mesa' ? 'bg-purple-100 text-purple-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {sale.channel === 'pdv' ? 'PDV' :
+                         sale.channel === 'delivery' ? 'Delivery' :
+                         sale.channel === 'mesa' ? 'Mesa' :
+                         sale.channel || 'PDV'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        sale.channel === 'pdv' ? 'bg-green-100 text-green-800' :
+                        sale.channel === 'delivery' ? 'bg-blue-100 text-blue-800' :
+                        sale.channel === 'mesa' ? 'bg-purple-100 text-purple-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {sale.channel === 'pdv' ? 'PDV' :
+                         sale.channel === 'delivery' ? 'Delivery' :
+                         sale.channel === 'mesa' ? 'Mesa' :
+                         sale.channel || 'PDV'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -371,6 +561,15 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
                 <div>
                   <label className="text-sm font-medium text-gray-500">Forma de Pagamento</label>
                   <p className="text-gray-900">{getPaymentTypeLabel(selectedSale.payment_type)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Canal de Venda</label>
+                  <p className="text-gray-900">
+                    {selectedSale.channel === 'pdv' ? 'PDV' :
+                     selectedSale.channel === 'delivery' ? 'Delivery' :
+                     selectedSale.channel === 'mesa' ? 'Mesa' :
+                     selectedSale.channel || 'PDV'}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Total de Itens</label>
