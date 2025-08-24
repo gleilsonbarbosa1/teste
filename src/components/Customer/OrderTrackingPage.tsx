@@ -136,7 +136,8 @@ const OrderTrackingPage: React.FC = () => {
     switch (method) {
       case 'money': return 'Dinheiro';
       case 'pix': return 'PIX (85989041010)';
-      case 'card': return 'Cartão';
+      case 'credit_card': return 'Cartão de Crédito';
+      case 'debit_card': return 'Cartão de Débito';
       default: return method;
     }
   };

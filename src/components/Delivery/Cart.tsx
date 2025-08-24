@@ -269,6 +269,16 @@ const Cart: React.FC<CartProps> = ({
     }
   };
 
+  const getPaymentMethodLabel = (method: string) => {
+    switch (method) {
+      case 'money': return 'Dinheiro';
+      case 'pix': return 'PIX (85989041010)';
+      case 'credit_card': return 'Cartão de Crédito';
+      case 'debit_card': return 'Cartão de Débito';
+      default: return method;
+    }
+  };
+
   const generateWhatsAppMessage = (orderId?: string, cashbackEarned?: number) => {
     let message = `🥤 *PEDIDO ELITE AÇAÍ*\n\n`;
     
@@ -974,29 +984,14 @@ const Cart: React.FC<CartProps> = ({
                         <input
                           type="radio"
                           name="payment"
-                          value="credit_card"
-                          checked={deliveryInfo.paymentMethod === 'credit_card'}
+                          value="card"
+                          checked={deliveryInfo.paymentMethod === 'card'}
                           onChange={(e) => setDeliveryInfo(prev => ({ ...prev, paymentMethod: e.target.value as any }))}
                           className="text-purple-600 h-5 w-5"
                         />
                         <div className="flex items-center gap-2">
                           <CreditCard size={20} className="text-purple-600" />
-                          <span className="font-medium">Cartão de Crédito</span>
-                        </div>
-                      </label>
-                      
-                      <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                        <input
-                          type="radio"
-                          name="payment"
-                          value="debit_card"
-                          checked={deliveryInfo.paymentMethod === 'debit_card'}
-                          onChange={(e) => setDeliveryInfo(prev => ({ ...prev, paymentMethod: e.target.value as any }))}
-                          className="text-indigo-600 h-5 w-5"
-                        />
-                        <div className="flex items-center gap-2">
-                          <CreditCard size={20} className="text-indigo-600" />
-                          <span className="font-medium">Cartão de Débito</span>
+                          <span className="font-medium">Cartão</span>
                         </div>
                       </label>
                     </div>
