@@ -343,9 +343,9 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                         <ShoppingBag size={24} className="text-blue-600" />
                       </div>
                       <h4 className="font-medium text-blue-800">Mesas Ocupadas</h4>
-                      <p className="text-2xl font-bold text-blue-600">
-        </div> );
+                      <p className="text-2xl font-bold text-blue-600"> );
       </div>
+        </div> 
     </div>
   );
 };
