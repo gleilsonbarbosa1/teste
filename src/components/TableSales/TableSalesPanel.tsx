@@ -12,20 +12,17 @@ import {
   LogOut,
   Users
 } from 'lucide-react';
-import AttendantPanel from '../Orders/AttendantPanel'; 
-import PDVSalesScreen from '../PDV/PDVSalesScreen';
-import CashRegisterMenu from '../PDV/CashRegisterMenu';
-import SalesHistoryPanel from '../Orders/SalesHistoryPanel';
-import { usePermissions } from '../../hooks/usePermissions';
-import { useScale } from '../../hooks/useScale';
-import { useOrders } from '../../hooks/useOrders';
-import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
-import { useStoreHours } from '../../hooks/useStoreHours';
-import { PDVOperator } from '../../types/pdv';
-import { useTableSales } from '../../hooks/useTableSales';
-import { RestaurantTable, TableSale } from '../../types/table-sales';
-import TableGrid from './TableGrid';
-import TableSaleModal from './TableSaleModal';
+import AttendantPanel from './Orders/AttendantPanel'; 
+import PDVSalesScreen from './PDV/PDVSalesScreen';
+import CashRegisterMenu from './PDV/CashRegisterMenu';
+import SalesHistoryPanel from './Orders/SalesHistoryPanel';
+import TableSalesPanel from './TableSales/TableSalesPanel';
+import { usePermissions } from '../hooks/usePermissions';
+import { useScale } from '../hooks/useScale';
+import { useOrders } from '../hooks/useOrders';
+import { usePDVCashRegister } from '../hooks/usePDVCashRegister';
+import { useStoreHours } from '../hooks/useStoreHours';
+import { PDVOperator } from '../types/pdv';
 
 interface UnifiedAttendancePanelProps {
   operator?: PDVOperator;
