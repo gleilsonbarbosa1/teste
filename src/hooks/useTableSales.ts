@@ -113,10 +113,19 @@ export const useTableSales = (storeId: 1 | 2) => {
   // Remove item from sale
   const removeItemFromSale = async (saleId: string, itemId: string) => {
     try {
-      // Validate itemId
-      if (!itemId || itemId === 'undefined' || typeof itemId !== 'string') {
+      // Enhanced validation for itemId
+      if (!itemId || itemId === 'undefined' || itemId === 'null' || typeof itemId !== 'string' || itemId.trim() === '') {
+        console.error('Invalid itemId provided:', { itemId, type: typeof itemId });
         throw new Error('ID do item inválido');
       }
+
+      // Validate saleId as well
+      if (!saleId || saleId === 'undefined' || typeof saleId !== 'string' || saleId.trim() === '') {
+        console.error('Invalid saleId provided:', { saleId, type: typeof saleId });
+        throw new Error('ID da venda inválido');
+      }
+
+      console.log('Removing item:', { itemId, saleId });
 
       const { error } = await supabase
         .from(itemsTableName)

@@ -842,7 +842,14 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                                 {formatPrice(item.subtotal)}
                               </p>
                               <button
-                                onClick={() => handleRemoveItem(item.id)}
+                                onClick={() => {
+                                  if (item.id && item.id !== 'undefined' && typeof item.id === 'string') {
+                                    handleRemoveItem(item.id);
+                                  } else {
+                                    console.error('Item ID inválido:', item.id);
+                                    alert('Erro: ID do item inválido. Tente recarregar a página.');
+                                  }
+                                }}
                                 className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
                                 title="Remover item"
                               >
