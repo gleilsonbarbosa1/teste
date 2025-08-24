@@ -13,7 +13,8 @@ import {
   CheckCircle,
   XCircle,
   Search,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { useTableSales } from '../../hooks/useTableSales';
 import { usePDVProducts } from '../../hooks/usePDV';
@@ -27,7 +28,7 @@ interface TableSalesPanelProps {
 }
 
 const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
-  const { tables, loading, error, stats, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch, addItemToSale } = useTableSales(storeId);
+  const { tables, loading, error, stats, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch, addItemToSale, deleteItemFromSale } = useTableSales(storeId);
   const { products, loading: productsLoading, searchProducts } = usePDVProducts();
   
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
@@ -261,6 +262,44 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     }
   };
 
+  const handleDeleteItem = async (itemId: string) => {
+    if (!selectedTable?.current_sale_id) return;
+
+    if (confirm('Tem certeza que deseja excluir este item da venda?')) {
+      try {
+        await deleteItemFromSale(itemId, selectedTable.current_sale_id);
+        
+        // Refresh table data and sale details
+        refetch();
+        
+        // Reload sale details to show updated items immediately
+        if (selectedTable.current_sale_id) {
+          const updatedDetails = await getSaleDetails(selectedTable.current_sale_id);
+          setSaleDetails(updatedDetails);
+        }
+        
+        // Show success message
+        const successMessage = document.createElement('div');
+        successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+        successMessage.innerHTML = `
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          Item excluído da mesa ${selectedTable.number}!
+        `;
+        document.body.appendChild(successMessage);
+        
+        setTimeout(() => {
+          if (document.body.contains(successMessage)) {
+            document.body.removeChild(successMessage);
+          }
+        }, 3000);
+      } catch (err) {
+        console.error('Erro ao excluir item:', err);
+        alert('Erro ao excluir item da mesa.');
+      }
+    }
+  };
   const filteredProducts = React.useMemo(() => {
     let result = searchTerm ? searchProducts(searchTerm) : products;
     
@@ -790,9 +829,18 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                                 }
                               </p>
                             </div>
-                            <p className="font-semibold text-green-600 text-sm">
-                              {formatPrice(item.subtotal)}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-green-600 text-sm">
+                                {formatPrice(item.subtotal)}
+                              </p>
+                              <button
+                                onClick={() => handleDeleteItem(item.id)}
+                                className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors"
+                                title="Excluir item"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>

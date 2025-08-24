@@ -138,6 +138,23 @@ export const useTableSales = (storeId: 1 | 2) => {
     }
   };
 
+  // Delete item from sale
+  const deleteItemFromSale = async (itemId: string, saleId: string) => {
+    try {
+      const { error } = await supabase
+        .from(itemsTableName)
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      // Update sale totals after deleting item
+      await updateSaleTotals(saleId);
+    } catch (err) {
+      console.error('Erro ao excluir item:', err);
+      throw err;
+    }
+  };
   // Close sale
   const closeSale = async (
     saleId: string,
@@ -246,7 +263,7 @@ export const useTableSales = (storeId: 1 | 2) => {
     stats,
     createTableSale,
     addItemToSale,
-    addItemToSale,
+    deleteItemFromSale,
     closeSale,
     getSaleDetails,
     updateTableStatus,
