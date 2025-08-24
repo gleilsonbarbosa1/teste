@@ -600,6 +600,18 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
               {/* Actions */}
               <div className="flex gap-3">
+               <button
+                 onClick={() => {
+                   if (selectedTable?.current_sale_id && confirm('Tem certeza que deseja limpar todos os itens desta venda?')) {
+                     clearSaleItems(selectedTable.current_sale_id);
+                   }
+                 }}
+                 disabled={!saleDetails?.items || saleDetails.items.length === 0}
+                 className="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center gap-2"
+               >
+                 <Trash2 size={16} />
+                 Limpar Itens
+               </button>
                 {saleDetails.status === 'aberta' && (
                   <>
                     <button
@@ -778,6 +790,19 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                       Itens da Venda ({saleDetails.items?.length || 0})
                     </h3>
                     {saleDetails.items && saleDetails.items.length > 0 ? (
+                     {saleDetails.items && saleDetails.items.length > 0 && (
+                       <button
+                         onClick={() => {
+                           if (selectedTable?.current_sale_id && confirm('Tem certeza que deseja limpar todos os itens desta venda?')) {
+                             clearSaleItems(selectedTable.current_sale_id);
+                           }
+                         }}
+                         className="text-red-500 hover:text-red-700 p-1 rounded transition-colors"
+                         title="Limpar todos os itens"
+                       >
+                         <Trash2 size={16} />
+                       </button>
+                     )}
                       <div className="space-y-2 max-h-48 overflow-y-auto">
                         {saleDetails.items.map((item) => (
                           <div key={item.id} className="bg-white rounded p-3 flex justify-between">
