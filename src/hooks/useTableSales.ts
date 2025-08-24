@@ -1,303 +1,241 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Calculator, 
-  Package, 
-  DollarSign, 
-  Settings,
-  Truck, 
-  ArrowLeft,
-  ShoppingBag,
-  AlertCircle,
-  User,
-  LogOut,
-  Users
-} from 'lucide-react';
-import AttendantPanel from './Orders/AttendantPanel'; 
-import PDVSalesScreen from './PDV/PDVSalesScreen';
-import CashRegisterMenu from './PDV/CashRegisterMenu';
-import SalesHistoryPanel from './Orders/SalesHistoryPanel';
-import TableSalesPanel from './TableSales/TableSalesPanel';
-import { usePermissions } from '../hooks/usePermissions';
-import { useScale } from '../hooks/useScale';
-import { useOrders } from '../hooks/useOrders';
-import { usePDVCashRegister } from '../hooks/usePDVCashRegister';
-import { useStoreHours } from '../hooks/useStoreHours';
-import { PDVOperator } from '../types/pdv';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { RestaurantTable, TableSale, TableCartItem } from '../types/table-sales';
 
-interface UnifiedAttendancePanelProps {
-  operator?: PDVOperator;
-  storeSettings?: any;
-  scaleHook?: ReturnType<typeof useScale>;
-  onLogout?: () => void;
-}
+export const useTableSales = (storeId: 1 | 2) => {
+  const [tables, setTables] = useState<RestaurantTable[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator, storeSettings, scaleHook, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'sales' | 'orders' | 'cash' | 'tables' | 'history'>('sales');
-  const { hasPermission } = usePermissions(operator);
-  const { storeSettings: localStoreSettings } = useStoreHours();
-  const { isOpen: isCashRegisterOpen, currentRegister } = usePDVCashRegister();
-  const scale = useScale();
-  const { orders } = useOrders();
-  const [supabaseConfigured, setSupabaseConfigured] = useState(true);
-  
-  // Calculate pending orders count from the orders data
-  const pendingOrdersCount = orders.filter(order => order.status === 'pending').length;
+  const tableName = storeId === 1 ? 'store1_tables' : 'store2_tables';
+  const salesTableName = storeId === 1 ? 'store1_table_sales' : 'store2_table_sales';
+  const itemsTableName = storeId === 1 ? 'store1_table_sale_items' : 'store2_table_sale_items';
 
-  // Check if user is admin
-  const isAdmin = !operator || 
-                  operator.code?.toUpperCase() === 'ADMIN' || 
-                  operator.name?.toUpperCase().includes('ADMIN') ||
-                  operator.name?.toUpperCase() === 'ADMINISTRADOR' ||
-                  operator.username?.toUpperCase() === 'ADMIN' ||
-                  operator.username?.toUpperCase().includes('ADMIN') ||
-                  operator.role === 'admin' ||
-                  operator.username === 'admin' ||
-                  operator.name === 'admin';
+  // Fetch tables
+  const fetchTables = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('is_active', true)
+        .order('number');
 
-  // Debug logging
-  React.useEffect(() => {
-    console.log('🔍 UnifiedAttendancePage - Estado completo:', {
-      operator: operator ? {
-        id: operator.id,
-        username: operator.username,
-        name: operator.name,
-        code: operator.code,
-        role: operator.role,
-        permissions: operator.permissions
-      } : 'No operator',
-      isAdmin,
-      activeTab,
-      isCashRegisterOpen,
-      pendingOrdersCount
-    });
-  }, [operator, isAdmin]);
+      if (error) throw error;
+      setTables(data || []);
+    } catch (err) {
+      console.error('Erro ao carregar mesas:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const settings = storeSettings || localStoreSettings;
-  
-  // Check Supabase configuration on mount
-  React.useEffect(() => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    const isConfigured = supabaseUrl && supabaseKey && 
-                        supabaseUrl !== 'your_supabase_url_here' && 
-                        supabaseKey !== 'your_supabase_anon_key_here' &&
-                        !supabaseUrl.includes('placeholder');
-    
-    setSupabaseConfigured(isConfigured);
-  }, []);
+  // Create new table sale
+  const createTableSale = async (
+    tableId: string, 
+    customerName?: string, 
+    customerCount: number = 1
+  ): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase
+        .from(salesTableName)
+        .insert({
+          table_id: tableId,
+          operator_name: 'Operador',
+          customer_name: customerName || '',
+          customer_count: customerCount,
+          status: 'aberta'
+        })
+        .select()
+        .single();
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b print:hidden">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img 
-                src="/logo elite.jpeg" 
-                alt="Elite Açaí Logo" 
-                className="w-12 h-12 object-contain bg-white rounded-full p-1 border-2 border-green-200"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-              <div className="bg-green-100 rounded-full p-2">
-                <ShoppingBag size={24} className="text-green-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">Atendimento Unificado</h1>
-                <p className="text-gray-600">Elite Açaí - Vendas, Pedidos e Caixa</p>
-              </div>
-            </div>
-            
-            {/* User info and logout */}
-            {operator && (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg">
-                  <User size={18} className="text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">{operator.name}</span>
-                </div>
-                {onLogout && (
-                  <button
-                    onClick={onLogout}
-                    className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-colors text-sm"
-                    title="Sair do sistema"
-                  >
-                    <LogOut size={16} />
-                    Sair
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      if (error) throw error;
 
-      {/* Supabase Configuration Warning */}
-      {!supabaseConfigured && (
-        <div className="max-w-7xl mx-auto px-4 mt-6 print:hidden">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-yellow-100 rounded-full p-2">
-                <AlertCircle size={20} className="text-yellow-600" />
-              </div>
-              <div>
-                <h3 className="font-medium text-yellow-800">Sistema em Modo Demonstração</h3>
-                <p className="text-yellow-700 text-sm">
-                  O Supabase não está configurado. Algumas funcionalidades estarão limitadas.
-                  Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para acesso completo.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      // Update table status to occupied
+      await supabase
+        .from(tableName)
+        .update({ 
+          status: 'ocupada',
+          current_sale_id: data.id
+        })
+        .eq('id', tableId);
 
-      {/* Cash Register Warning */}
-      {supabaseConfigured && !isCashRegisterOpen && (activeTab === 'sales' || activeTab === 'orders') && (
-        <div className="max-w-7xl mx-auto px-4 mt-6 print:hidden">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-yellow-100 rounded-full p-2">
-                <AlertCircle size={20} className="text-yellow-600" />
-              </div>
-              <div>
-                <h3 className="font-medium text-yellow-800">Caixa Fechado</h3>
-                <p className="text-yellow-700 text-sm">
-                  Não é possível {activeTab === 'sales' ? 'realizar vendas' : 'visualizar pedidos'} sem um caixa aberto.
-                  Por favor, abra um caixa primeiro na aba "Caixas".
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      await fetchTables();
+      return data.id;
+    } catch (err) {
+      console.error('Erro ao criar venda:', err);
+      throw err;
+    }
+  };
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Navigation Tabs */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6 print:hidden">
-          <div className="flex flex-wrap gap-4">
-            {(isAdmin || hasPermission('can_view_sales')) && (
-              <button
-                onClick={() => setActiveTab('sales')}
-                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'sales'
-                    ? 'bg-green-600 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Calculator size={20} />
-                Vendas
-              </button>
-            )}
-            
-            {(isAdmin || hasPermission('can_view_orders')) && (
-              <button
-                onClick={() => setActiveTab('orders')}
-                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 relative ${
-                  activeTab === 'orders'
-                    ? 'bg-purple-600 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Truck size={20} />
-                Pedidos
-                {pendingOrdersCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">
-                    {pendingOrdersCount}
-                  </span>
-                )}
-              </button>
-            )}
-            
-            {(isAdmin || hasPermission('can_view_cash_register')) && (
-              <button
-                onClick={() => setActiveTab('cash')}
-                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'cash'
-                    ? 'bg-yellow-500 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <DollarSign size={20} />
-                Caixas
-              </button>
-            )}
-            
-            {(isAdmin || hasPermission('can_view_sales')) && (
-              <button
-                onClick={() => setActiveTab('tables')}
-                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'tables'
-                    ? 'bg-blue-500 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Users size={20} />
-                Mesas
-              </button>
-            )}
-            
-            {(isAdmin || hasPermission('can_view_sales')) && (
-              <button
-                onClick={() => setActiveTab('history')}
-                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'history'
-                    ? 'bg-emerald-500 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <ShoppingBag size={20} />
-                Histórico
-              </button>
-            )}
-          </div>
-        </div>
+  // Add item to sale
+  const addItemToSale = async (
+    saleId: string,
+    item: Omit<TableCartItem, 'id' | 'created_at'>
+  ) => {
+    try {
+      const { error } = await supabase
+        .from(itemsTableName)
+        .insert({
+          sale_id: saleId,
+          product_code: item.product_code,
+          product_name: item.product_name,
+          quantity: item.quantity,
+          weight_kg: item.weight_kg,
+          unit_price: item.unit_price,
+          price_per_gram: item.price_per_gram,
+          discount_amount: item.discount_amount || 0,
+          subtotal: item.subtotal,
+          notes: item.notes
+        });
 
-        {/* Content */}
-        <div className="transition-all duration-300 print:hidden">
-          {activeTab === 'sales' && (isAdmin || hasPermission('can_view_sales')) && <PDVSalesScreen operator={operator} scaleHook={scaleHook || scale} storeSettings={settings} />}
-          {activeTab === 'orders' && (isAdmin || hasPermission('can_view_orders')) && <AttendantPanel storeSettings={settings} />}
-          {activeTab === 'cash' && (isAdmin || hasPermission('can_view_cash_register')) && <CashRegisterMenu />}
-          {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-              <Users size={48} className="mx-auto text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-600 mb-2">
-                Sistema de Mesas - Loja 1
-              </h3>
-              <p className="text-gray-500 mb-4">
-                Gerencie vendas presenciais e controle de mesas
-              </p>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="text-center">
-                      <div className="bg-green-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                        <Users size={24} className="text-green-600" />
-                      </div>
-                      <h4 className="font-medium text-green-800">Mesas Livres</h4>
-                      <p className="text-2xl font-bold text-green-600">
-                        {tables.filter(t => t.status === 'livre').length}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="text-center">
-                      <div className="bg-blue-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                        <ShoppingBag size={24} className="text-blue-600" />
-                      </div>
-                      <h4 className="font-medium text-blue-800">Mesas Ocupadas</h4>
-                      <p className="text-2xl font-bold text-blue-600">
-            </div>
-          )}
-          {activeTab === 'history' && (isAdmin || hasPermission('can_view_sales')) && <SalesHistoryPanel storeId={1} />}
-        </div>
-      </div>
-    </div>
-  );
+      if (error) throw error;
+
+      // Update sale totals
+      await updateSaleTotals(saleId);
+    } catch (err) {
+      console.error('Erro ao adicionar item:', err);
+      throw err;
+    }
+  };
+
+  // Update sale totals
+  const updateSaleTotals = async (saleId: string) => {
+    try {
+      const { data: items, error } = await supabase
+        .from(itemsTableName)
+        .select('subtotal')
+        .eq('sale_id', saleId);
+
+      if (error) throw error;
+
+      const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal), 0);
+
+      await supabase
+        .from(salesTableName)
+        .update({
+          subtotal: subtotal,
+          total_amount: subtotal
+        })
+        .eq('id', saleId);
+    } catch (err) {
+      console.error('Erro ao atualizar totais:', err);
+      throw err;
+    }
+  };
+
+  // Close sale
+  const closeSale = async (
+    saleId: string,
+    paymentType: 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'voucher' | 'misto',
+    changeAmount: number = 0
+  ) => {
+    try {
+      const { error } = await supabase
+        .from(salesTableName)
+        .update({
+          status: 'fechada',
+          payment_type: paymentType,
+          change_amount: changeAmount,
+          closed_at: new Date().toISOString()
+        })
+        .eq('id', saleId);
+
+      if (error) throw error;
+
+      // Update table status to cleaning
+      await supabase
+        .from(tableName)
+        .update({ 
+          status: 'limpeza',
+          current_sale_id: null
+        })
+        .eq('current_sale_id', saleId);
+
+      await fetchTables();
+    } catch (err) {
+      console.error('Erro ao fechar venda:', err);
+      throw err;
+    }
+  };
+
+  // Get sale details
+  const getSaleDetails = async (saleId: string): Promise<TableSale | null> => {
+    try {
+      const { data: sale, error: saleError } = await supabase
+        .from(salesTableName)
+        .select('*')
+        .eq('id', saleId)
+        .single();
+
+      if (saleError) throw saleError;
+
+      const { data: items, error: itemsError } = await supabase
+        .from(itemsTableName)
+        .select('*')
+        .eq('sale_id', saleId)
+        .order('created_at');
+
+      if (itemsError) throw itemsError;
+
+      return {
+        ...sale,
+        items: items || []
+      };
+    } catch (err) {
+      console.error('Erro ao carregar detalhes da venda:', err);
+      return null;
+    }
+  };
+
+  // Update table status
+  const updateTableStatus = async (
+    tableId: string, 
+    status: 'livre' | 'ocupada' | 'aguardando_conta' | 'limpeza'
+  ) => {
+    try {
+      const { error } = await supabase
+        .from(tableName)
+        .update({ status })
+        .eq('id', tableId);
+
+      if (error) throw error;
+      await fetchTables();
+    } catch (err) {
+      console.error('Erro ao atualizar status da mesa:', err);
+      throw err;
+    }
+  };
+
+  // Refetch data
+  const refetch = () => {
+    fetchTables();
+  };
+
+  useEffect(() => {
+    fetchTables();
+  }, [storeId]);
+
+  // Calculate statistics
+  const stats = {
+    total: tables.length,
+    free: tables.filter(t => t.status === 'livre').length,
+    occupied: tables.filter(t => t.status === 'ocupada').length,
+    waitingBill: tables.filter(t => t.status === 'aguardando_conta').length,
+    cleaning: tables.filter(t => t.status === 'limpeza').length
+  };
+
+  return {
+    tables,
+    loading,
+    error,
+    stats,
+    createTableSale,
+    addItemToSale,
+    closeSale,
+    getSaleDetails,
+    updateTableStatus,
+    refetch
+  };
 };
-
-export default UnifiedAttendancePage;
