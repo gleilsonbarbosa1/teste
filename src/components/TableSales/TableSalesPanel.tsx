@@ -243,24 +243,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
             {(isAdmin || hasPermission('can_view_sales')) && (
               <button
                 onClick={() => setActiveTab('history')}
-            {(isAdmin || hasPermission('can_view_sales')) && (
-              <button
-                onClick={() => setActiveTab('history')}
                 className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'history'
-                    ? 'bg-emerald-500 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                    ? 'bg-cyan-500 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Users size={20} />
-                Vendas em Mesas
-              </button>
-            )}
-            
                   activeTab === 'history'
                     ? 'bg-emerald-500 text-white shadow-lg'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
