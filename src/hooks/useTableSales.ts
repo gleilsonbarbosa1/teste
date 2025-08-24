@@ -83,9 +83,9 @@ export const useTableSales = (storeId: 1 | 2) => {
       subtotal: number;
       notes?: string;
     }
-  ) => {
+  ): Promise<any> => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from(itemsTableName)
         .insert({
           sale_id: saleId,
@@ -98,12 +98,16 @@ export const useTableSales = (storeId: 1 | 2) => {
           discount_amount: item.discount_amount,
           subtotal: item.subtotal,
           notes: item.notes
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
       // Update sale totals
       await updateSaleTotals(saleId);
+      
+      return data;
     } catch (err) {
       console.error('Erro ao adicionar item:', err);
       throw err;
