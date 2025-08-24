@@ -7,7 +7,6 @@ import { Customer, CustomerBalance } from '../../types/cashback';
 import { useOrders } from '../../hooks/useOrders';
 import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
 import { useNeighborhoods } from '../../hooks/useNeighborhoods';
-import { useOrders } from '../../hooks/useOrders';
 import { useCashback } from '../../hooks/useCashback';
 import CashbackDisplay from '../Cashback/CashbackDisplay';
 import CashbackButton from '../Cashback/CashbackButton';
