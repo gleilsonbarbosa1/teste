@@ -18,7 +18,7 @@ import CashRegisterMenu from '../PDV/CashRegisterMenu';
 import SalesHistoryPanel from '../Orders/SalesHistoryPanel';
 import TableSalesPanel from '../TableSales/TableSalesPanel';
 import { usePermissions } from '../../hooks/usePermissions';
-import { useScale } from '../hooks/useScale';
+import { useScale } from '../../hooks/useScale';
 import { useOrders } from '../hooks/useOrders';
 import { usePDVCashRegister } from '../hooks/usePDVCashRegister';
 import { useStoreHours } from '../hooks/useStoreHours';
