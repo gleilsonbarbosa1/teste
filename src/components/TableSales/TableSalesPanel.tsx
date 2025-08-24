@@ -318,54 +318,54 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                     Itens da Venda ({saleDetails.items?.length || 0})
                   </h3>
                   {saleDetails.items && saleDetails.items.length > 0 && (
-                    <>
-                      <button
-                        onClick={() => {
-                          if (selectedTable?.current_sale_id && confirm('Tem certeza que deseja limpar todos os itens desta venda?')) {
-                            clearSaleItems(selectedTable.current_sale_id);
-                          }
-                        }}
-                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm transition-colors flex items-center gap-1"
-                      >
-                        <Trash2 size={14} />
-                        Limpar Todos
-                      </button>
-
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {saleDetails.items.map((item) => (
-                          <div key={item.id} className="bg-white rounded p-3 flex justify-between">
-                            <div>
-                              <p className="font-medium text-gray-800">{item.product_name}</p>
-                              <p className="text-sm text-gray-600">
-                                {item.weight_kg ? 
-                                  `${item.weight_kg}kg × ${formatPrice((item.price_per_gram || 0) * 1000)}/kg` :
-                                  `${item.quantity}x × ${formatPrice(item.unit_price || 0)}`
-                                }
-                              </p>
-                              {item.notes && (
-                                <p className="text-xs text-gray-500 italic mt-1">
-                                  Obs: {item.notes}
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-green-600">
-                                {formatPrice(item.subtotal)}
-                              </span>
-                              <button
-                                onClick={() => removeItemFromSale(item.id)}
-                                className="text-red-500 hover:text-red-700 p-1"
-                                title="Remover item"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </>
+                    <button
+                      onClick={() => {
+                        if (selectedTable?.current_sale_id && confirm('Tem certeza que deseja limpar todos os itens desta venda?')) {
+                          clearSaleItems(selectedTable.current_sale_id);
+                        }
+                      }}
+                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 size={14} />
+                      Limpar Todos
+                    </button>
                   )}
                 </div>
+
+                {saleDetails.items && saleDetails.items.length > 0 && (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {saleDetails.items.map((item) => (
+                      <div key={item.id} className="bg-white rounded p-3 flex justify-between">
+                        <div>
+                          <p className="font-medium text-gray-800">{item.product_name}</p>
+                          <p className="text-sm text-gray-600">
+                            {item.weight_kg ? 
+                              `${item.weight_kg}kg × ${formatPrice((item.price_per_gram || 0) * 1000)}/kg` :
+                              `${item.quantity}x × ${formatPrice(item.unit_price || 0)}`
+                            }
+                          </p>
+                          {item.notes && (
+                            <p className="text-xs text-gray-500 italic mt-1">
+                              Obs: {item.notes}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-green-600">
+                            {formatPrice(item.subtotal)}
+                          </span>
+                          <button
+                            onClick={() => removeItemFromSale(item.id)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                            title="Remover item"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {(!saleDetails.items || saleDetails.items.length === 0) && (
                   <div className="text-center py-8">
@@ -378,19 +378,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
               {/* Actions */}
               {saleDetails.status === 'aberta' && (
-                <>
-                  <button
-                    onClick={() => {
-                      if (selectedTable?.current_sale_id && confirm('Tem certeza que deseja limpar todos os itens desta venda?')) {
-                        clearSaleItems(selectedTable.current_sale_id);
-                      }
-                    }}
-                    disabled={!saleDetails?.items || saleDetails.items.length === 0}
-                    className="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center gap-2"
-                  >
-                    <Trash2 size={16} />
-                    Limpar Itens
-                  </button>
                 <div className="flex gap-3">
                   <button
                     onClick={() => handleUpdateStatus(selectedTable!.id, 'aguardando_conta')}
@@ -407,7 +394,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                     Fechar Mesa
                   </button>
                 </div>
-                </>
               )}
               
               {selectedTable?.status === 'limpeza' && (
