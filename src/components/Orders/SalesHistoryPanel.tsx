@@ -8,7 +8,11 @@ import {
   DollarSign,
   Package,
   Clock,
-  User
+  User,
+  Printer
+} from 'lucide-react';
+import { PDVOperator } from '../../types/pdv';
+import { usePermissions } from '../../hooks/usePermissions';
 import { supabase } from '../../lib/supabase';
 
 interface SalesHistoryPanelProps {
