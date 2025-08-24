@@ -12,17 +12,17 @@ import {
   LogOut,
   Users
 } from 'lucide-react';
-import AttendantPanel from '../Orders/AttendantPanel'; 
-import PDVSalesScreen from '../PDV/PDVSalesScreen';
-import CashRegisterMenu from '../PDV/CashRegisterMenu';
-import SalesHistoryPanel from '../Orders/SalesHistoryPanel';
-import TableSalesPanel from '../TableSales/TableSalesPanel';
-import { usePermissions } from '../../hooks/usePermissions';
+import AttendantPanel from './Orders/AttendantPanel'; 
+import PDVSalesScreen from './PDV/PDVSalesScreen';
+import CashRegisterMenu from './PDV/CashRegisterMenu';
+import SalesHistoryPanel from './Orders/SalesHistoryPanel';
+import TableSalesPanel from './TableSales/TableSalesPanel';
+import { usePermissions } from '../hooks/usePermissions';
 import { useScale } from '../hooks/useScale';
 import { useOrders } from '../hooks/useOrders';
 import { usePDVCashRegister } from '../hooks/usePDVCashRegister';
 import { useStoreHours } from '../hooks/useStoreHours';
-import { PDVOperator } from '../types/pdv'; 
+import { PDVOperator } from '../types/pdv';
 
 interface UnifiedAttendancePanelProps {
   operator?: PDVOperator;
@@ -278,7 +278,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="text-center mb-6">
                 <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Users size={24} className="text-blue-600" />
+                  <Users size={32} className="text-blue-600" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">Sistema de Mesas - Loja 1</h2>
                 <p className="text-gray-600">
@@ -316,7 +316,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                       <div className="bg-yellow-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
                         <DollarSign size={24} className="text-yellow-600" />
                       </div>
-                      <h4 className="font-medium text-yellow-800">Vendas Hoje</h4>
+                      <h4 className="font-medium text-yellow-800">Faturamento</h4>
                       <p className="text-2xl font-bold text-yellow-600">
                         R$ 0,00
                       </p>
@@ -327,9 +327,8 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
             </div>
           )}
           
-          {activeTab === 'history' && (isAdmin || hasPermission('can_view_sales')) && (
-            <SalesHistoryPanel />
-          )}
+          {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && <TableSalesPanel storeId={1} operatorName={operator?.name || 'Operador'} />}
+          {activeTab === 'history' && (isAdmin || hasPermission('can_view_sales')) && <SalesHistoryPanel storeId={1} />}
         </div>
       </div>
     </div>
