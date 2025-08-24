@@ -12,17 +12,9 @@ import {
   LogOut,
   Users
 } from 'lucide-react';
-import AttendantPanel from './Orders/AttendantPanel'; 
-import PDVSalesScreen from './PDV/PDVSalesScreen';
-import CashRegisterMenu from './PDV/CashRegisterMenu';
-import SalesHistoryPanel from './Orders/SalesHistoryPanel';
-import TableSalesPanel from './TableSales/TableSalesPanel';
-import { usePermissions } from '../hooks/usePermissions';
-import { useScale } from '../hooks/useScale';
-import { useOrders } from '../hooks/useOrders';
-import { usePDVCashRegister } from '../hooks/usePDVCashRegister';
-import { useStoreHours } from '../hooks/useStoreHours';
-import { PDVOperator } from '../types/pdv';
+import { useTableSales } from '../../hooks/useTableSales';
+import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
+import { RestaurantTable, TableSale } from '../../types/table-sales';
 
 interface UnifiedAttendancePanelProps {
   operator?: PDVOperator;
@@ -73,6 +65,19 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
   }, [operator, isAdmin]);
 
   const settings = storeSettings || localStoreSettings;
+  
+  // Check Supabase configuration on mount
+  React.useEffect(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    const isConfigured = supabaseUrl && supabaseKey && 
+                        supabaseUrl !== 'your_supabase_url_here' && 
+                        supabaseKey !== 'your_supabase_anon_key_here' &&
+                        !supabaseUrl.includes('placeholder');
+    
+    setSupabaseConfigured(isConfigured);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
