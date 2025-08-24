@@ -9,9 +9,6 @@ import {
   Package,
   Clock,
   User
-} from 'lucide-react';
-import { usePermissions } from '../../hooks/usePermissions';
-import { PDVOperator } from '../../types/pdv';
 import { supabase } from '../../lib/supabase';
 
 interface SalesHistoryPanelProps {
@@ -32,14 +29,136 @@ interface Sale {
   channel?: string;
 }
 
-const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator }) => {
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('today');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const { hasPermission } = usePermissions(operator);
+
+  const handlePrintReceipt = (sale: Sale) => {
+    // Criar uma nova janela com conteúdo específico para impressão térmica
+    const printWindow = window.open('', '_blank', 'width=300,height=600');
+    if (!printWindow) {
+      alert('Por favor, permita pop-ups para imprimir');
+      return;
+    }
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Comprovante Venda #${sale.sale_number}</title>
+        <style>
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            color: black !important;
+            background: white !important;
+          }
+          
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.3;
+            color: black;
+            background: white;
+            padding: 2mm;
+            width: 76mm;
+          }
+          
+          .center { text-align: center; }
+          .bold { font-weight: bold; }
+          .small { font-size: 10px; }
+          .separator { 
+            border-bottom: 1px dashed black; 
+            margin: 5px 0; 
+            padding-bottom: 5px; 
+          }
+          .flex-between { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+          }
+          .mb-1 { margin-bottom: 2px; }
+          .mb-2 { margin-bottom: 5px; }
+          .mb-3 { margin-bottom: 8px; }
+          .ml-2 { margin-left: 8px; }
+        </style>
+      </head>
+      <body>
+        <!-- Cabeçalho -->
+        <div class="center mb-3 separator">
+          <div class="bold" style="font-size: 16px;">ELITE AÇAÍ</div>
+          <div class="small">Comprovante de Venda</div>
+          <div class="small">Rua Um, 1614-C</div>
+          <div class="small">Residencial 1 - Cágado</div>
+          <div class="small">Tel: (85) 98904-1010</div>
+          <div class="small">CNPJ: 38.130.139/0001-22</div>
+        </div>
+        
+        <!-- Dados da Venda -->
+        <div class="mb-3 separator">
+          <div class="bold center mb-2">=== COMPROVANTE DE VENDA ===</div>
+          <div class="small">Venda: #${sale.sale_number}</div>
+          <div class="small">Data: ${new Date(sale.created_at).toLocaleDateString('pt-BR')}</div>
+          <div class="small">Hora: ${new Date(sale.created_at).toLocaleTimeString('pt-BR')}</div>
+          <div class="small">Operador: ${sale.operator_name}</div>
+          ${sale.customer_name ? `<div class="small">Cliente: ${sale.customer_name}</div>` : ''}
+          <div class="small">Canal: ${sale.channel === 'pdv' ? 'PDV' : sale.channel === 'delivery' ? 'Delivery' : sale.channel === 'mesa' ? 'Mesa' : 'PDV'}</div>
+        </div>
+        
+        <!-- Resumo -->
+        <div class="mb-3 separator">
+          <div class="bold mb-1">RESUMO:</div>
+          <div class="flex-between">
+            <span class="small">Total:</span>
+            <span class="small">${formatCurrency(sale.total_amount)}</span>
+          </div>
+          <div class="flex-between">
+            <span class="small">Pagamento:</span>
+            <span class="small">${getPaymentTypeLabel(sale.payment_type)}</span>
+          </div>
+          ${sale.items_count > 0 ? `
+          <div class="flex-between">
+            <span class="small">Itens:</span>
+            <span class="small">${sale.items_count}</span>
+          </div>
+          ` : ''}
+        </div>
+        
+        <!-- Rodapé -->
+        <div class="center small">
+          <div class="bold mb-2">Obrigado pela preferência!</div>
+          <div>Elite Açaí - O melhor açaí da cidade!</div>
+          <div>@eliteacai</div>
+          <div>⭐⭐⭐⭐⭐ Avalie-nos no Google</div>
+          <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid black;">
+            <div>Elite Açaí - CNPJ: 38.130.139/0001-22</div>
+            <div>Impresso: ${new Date().toLocaleString('pt-BR')}</div>
+            <div>Este não é um documento fiscal</div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    };
+  };
 
   const fetchSales = async () => {
     try {
@@ -606,7 +725,11 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
                 >
                   Fechar
                 </button>
-                <button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg transition-colors">
+                <button 
+                  onClick={() => handlePrintReceipt(selectedSale)}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <Printer size={16} />
                   Imprimir Comprovante
                 </button>
               </div>
