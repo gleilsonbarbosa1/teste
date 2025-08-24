@@ -7,6 +7,7 @@ import { Customer, CustomerBalance } from '../../types/cashback';
 import { useOrders } from '../../hooks/useOrders';
 import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
 import { useNeighborhoods } from '../../hooks/useNeighborhoods';
+import { useOrders } from '../../hooks/useOrders';
 import { useCashback } from '../../hooks/useCashback';
 import CashbackDisplay from '../Cashback/CashbackDisplay';
 import CashbackButton from '../Cashback/CashbackButton';
@@ -44,6 +45,7 @@ const Cart: React.FC<CartProps> = ({
   const [appliedCashback, setAppliedCashback] = useState(0);
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
   const [loadingCustomer, setLoadingCustomer] = useState(false);
+  const { createOrder } = useOrders();
   const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [successOrderId, setSuccessOrderId] = useState<string | null>(null);
