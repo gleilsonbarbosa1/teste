@@ -244,7 +244,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
               <button
                 onClick={() => setActiveTab('history')}
 
-import SalesHistoryPanel from '../Orders/SalesHistoryPanel';
+
 import { usePermissions } from '../../hooks/usePermissions';
 import { useScale } from '../../hooks/useScale'; 
 import { useOrders } from '../../hooks/useOrders';
