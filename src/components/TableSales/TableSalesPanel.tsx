@@ -889,7 +889,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                          <Trash2 size={16} />
                        </button>
                      )}
-                
+                 
                        <button
                          onClick={() => {
                            if (selectedTable?.current_sale_id && confirm('Tem certeza que deseja limpar todos os itens desta venda?')) {
