@@ -341,4 +341,4 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               <AlertCircle size={20} className="text-yellow-600" />
             </div>
             <div>
-              <h3 className="font-
+              <h3 className="font-semibold text-yellow-600">Configuração do Supabase</h3>
