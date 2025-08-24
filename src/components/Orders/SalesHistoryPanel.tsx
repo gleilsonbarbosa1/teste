@@ -13,9 +13,6 @@ import {
 import { usePermissions } from '../../hooks/usePermissions';
 import { PDVOperator } from '../../types/pdv';
 import { supabase } from '../../lib/supabase';
-import { supabase } from '../../lib/supabase';
-import { supabase } from '../../lib/supabase';
-import { supabase } from '../../lib/supabase';
 
 interface SalesHistoryPanelProps {
   storeId: number;
@@ -33,17 +30,11 @@ interface Sale {
   items_count: number;
   is_cancelled: boolean;
   channel?: string;
-  channel?: string;
-  channel?: string;
-  channel?: string;
 }
 
 const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator }) => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('today');
