@@ -10,7 +10,6 @@ import {
   Clock,
   User
 } from 'lucide-react';
-<<<<<<< HEAD
 import { usePermissions } from '../../hooks/usePermissions';
 import { PDVOperator } from '../../types/pdv';
 
@@ -18,8 +17,6 @@ interface SalesHistoryPanelProps {
   storeId: number;
   operator?: PDVOperator;
 }
-=======
->>>>>>> 31109c8 (atualização mesas)
 
 interface Sale {
   id: string;
@@ -37,17 +34,9 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-<<<<<<< HEAD
   const [dateFilter, setDateFilter] = useState('today');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const { hasPermission } = usePermissions(operator);
-=======
-  const [dateFilter, setDateFilter] = useState('');
-  const [expandedSales, setExpandedSales] = useState<Set<string>>(new Set());
-  const [paymentFilter, setPaymentFilter] = useState<string>('all');
-  const [supabaseConfigured, setSupabaseConfigured] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
->>>>>>> 31109c8 (atualização mesas)
 
   // Mock data for demonstration
   useEffect(() => {
@@ -117,21 +106,7 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
       'cartao_debito': 'Cartão de Débito',
       'voucher': 'Voucher'
     };
-<<<<<<< HEAD
     return types[type] || type;
-=======
-    return methodNames[method] || method;
-  };
-
-  const toggleSaleExpansion = (saleId: string) => {
-    const newExpanded = new Set(expandedSales);
-    if (newExpanded.has(saleId)) {
-      newExpanded.delete(saleId);
-    } else {
-      newExpanded.add(saleId);
-    }
-    setExpandedSales(newExpanded);
->>>>>>> 31109c8 (atualização mesas)
   };
 
   const filteredSales = sales.filter(sale => {
