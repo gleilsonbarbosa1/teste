@@ -253,8 +253,38 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                 Sistema de Mesas - Loja 1
               </button>
             )}
-                Gerencie vendas presenciais e controle de mesas
+          </div>
         </div>
+
+        {/* Content */}
+        <div className="space-y-6">
+          {activeTab === 'sales' && (isAdmin || hasPermission('can_view_sales')) && (
+            <PDVSalesScreen 
+              operator={operator}
+              storeSettings={settings}
+              scaleHook={scaleHook || scale}
+            />
+          )}
+          
+          {activeTab === 'orders' && (isAdmin || hasPermission('can_view_orders')) && (
+            <AttendantPanel />
+          )}
+          
+          {activeTab === 'cash' && (isAdmin || hasPermission('can_view_cash_register')) && (
+            <CashRegisterMenu operator={operator} />
+          )}
+          
+          {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="text-center mb-6">
+                <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <Users size={32} className="text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Sistema de Mesas - Loja 1</h2>
+                <p className="text-gray-600">
+                  Gerencie vendas presenciais e controle de mesas
+                </p>
+              </div>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -264,7 +294,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                       </div>
                       <h4 className="font-medium text-green-800">Mesas Livres</h4>
                       <p className="text-2xl font-bold text-green-600">
-                        {tables.filter(t => t.status === 'livre').length}
+                        0
                       </p>
                     </div>
                   </div>
@@ -276,7 +306,28 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                       </div>
                       <h4 className="font-medium text-blue-800">Mesas Ocupadas</h4>
                       <p className="text-2xl font-bold text-blue-600">
-          {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && <TableSalesPanel storeId={1} operatorName={operator?.name || 'Operador'} />}
+                        0
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="text-center">
+                      <div className="bg-yellow-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
+                        <DollarSign size={24} className="text-yellow-600" />
+                      </div>
+                      <h4 className="font-medium text-yellow-800">Vendas Hoje</h4>
+                      <p className="text-2xl font-bold text-yellow-600">
+                        R$ 0,00
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <TableSalesPanel storeId={1} operatorName={operator?.name || 'Operador'} />
+              </div>
+            </div>
+          )}
+          
           {activeTab === 'history' && (isAdmin || hasPermission('can_view_sales')) && <SalesHistoryPanel storeId={1} />}
         </div>
       </div>
