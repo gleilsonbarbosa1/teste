@@ -463,6 +463,16 @@ const Cart: React.FC<CartProps> = ({
     console.log('Aplicando desconto...');
   };
 
+  const handlePrint = () => {
+    // Lógica para imprimir
+    console.log('Imprimindo...');
+  };
+
+  const handleSplit = () => {
+    // Lógica para dividir conta
+    console.log('Dividindo conta...');
+  };
+
   const handleContinueShopping = () => {
     onClose();
   };
@@ -841,6 +851,37 @@ const Cart: React.FC<CartProps> = ({
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm appearance-none bg-white"
                   >
                     <option value="">Selecione seu bairro</option>
+                    {neighborhoods.map((neighborhood) => (
+                      <option key={neighborhood.id} value={neighborhood.name}>
+                        {neighborhood.name} - {formatPrice(neighborhood.delivery_fee)} ({neighborhood.delivery_time}min)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Endereço completo *
+                </label>
+                <input
+                  type="text"
+                  value={deliveryInfo.address}
+                  onChange={(e) => setDeliveryInfo(prev => ({ ...prev, address: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                  placeholder="Rua, número, bairro"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Complemento
+                </label>
+                <input
+                  type="text"
+                  value={deliveryInfo.complement}
+                  onChange={(e) => setDeliveryInfo(prev => ({ ...prev, complement: e.target.value }))}
                   className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
                   placeholder="Apartamento, bloco, etc."
                 />
@@ -914,7 +955,7 @@ const Cart: React.FC<CartProps> = ({
               <div className="space-y-2">
                 <button
                   onClick={handleSendOrder}
-                  disabled={disabled || !isCashRegisterOpen}
+                  disabled={disabled || !isCashRegisterOpen || !isFormValid()}
                   className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
                 >
                   <MessageCircle size={20} />
