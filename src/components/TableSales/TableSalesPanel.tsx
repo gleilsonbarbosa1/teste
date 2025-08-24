@@ -940,7 +940,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                       Itens da Venda ({saleDetails.items?.length || 0})
                     </h3>
                     {saleDetails.items && saleDetails.items.length > 0 ? (
-                     {saleDetails.items && saleDetails.items.length > 0 && (
+                    
                        <button
                          onClick={() => {
                            if (selectedTable?.current_sale_id && confirm('Tem certeza que deseja limpar todos os itens desta venda?')) {
