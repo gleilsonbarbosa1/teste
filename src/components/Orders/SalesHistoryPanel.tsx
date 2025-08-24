@@ -191,6 +191,77 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
         pdvSales.forEach(sale => {
           allSales.push({
             id: sale.id,
+            sale_number: sale.sale_number,
+            operator_name: sale.pdv_operators?.name || 'Desconhecido',
+            customer_name: sale.customer_name,
+            total_amount: sale.total_amount,
+            payment_type: sale.payment_type,
+            created_at: sale.created_at,
+            items_count: 0, // Will be calculated from items
+            is_cancelled: sale.is_cancelled,
+            channel: sale.channel || 'pdv'
+          });
+        });
+      }
+      
+      // Add delivery orders
+      if (deliveryOrders) {
+        deliveryOrders.forEach(order => {
+          allSales.push({
+            id: order.id,
+            sale_number: order.order_number || 0,
+            operator_name: 'Sistema Delivery',
+            customer_name: order.customer_name,
+            total_amount: order.total_amount,
+            payment_type: order.payment_method || 'não informado',
+            created_at: order.created_at,
+            items_count: order.items?.length || 0,
+            is_cancelled: false,
+            channel: 'delivery'
+          });
+        });
+      }
+      
+      // Add table sales
+      if (tableSales) {
+        tableSales.forEach(sale => {
+          allSales.push({
+            id: sale.id,
+            sale_number: sale.sale_number,
+            operator_name: sale.operator_name || 'Desconhecido',
+            customer_name: sale.customer_name,
+            total_amount: sale.total_amount,
+            payment_type: sale.payment_type,
+            created_at: sale.created_at,
+            items_count: 0, // Will be calculated from items
+            is_cancelled: sale.is_cancelled,
+            channel: 'mesa'
+          });
+        });
+      }
+      
+      // Sort by creation date (newest first)
+      allSales.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      console.log('✅ Vendas carregadas:', allSales.length);
+      setSales(allSales);
+      
+    } catch (error) {
+      console.error('❌ Erro ao buscar vendas:', error);
+      setError('Erro ao carregar histórico de vendas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchSales();
+  };
+
+  useEffect(() => {
+    fetchSales();
+  }, [dateFilter]);
+
   useEffect(() => {
     const mockSales: Sale[] = [
       {
@@ -473,20 +544,8 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatCurrency(sale.total_amount)}
                     </td>
-                      {getPaymentTypeLabel(sale.payment_type)}
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        sale.channel === 'pdv' ? 'bg-green-100 text-green-800' :
-                        sale.channel === 'delivery' ? 'bg-blue-100 text-blue-800' :
-                        sale.channel === 'mesa' ? 'bg-purple-100 text-purple-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {sale.channel === 'pdv' ? 'PDV' :
-                         sale.channel === 'delivery' ? 'Delivery' :
-                         sale.channel === 'mesa' ? 'Mesa' :
-                         sale.channel || 'PDV'}
-                      </span>
+                      {getPaymentTypeLabel(sale.payment_type)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
