@@ -447,10 +447,12 @@ const Cart: React.FC<CartProps> = ({
   };
 
   const isFormValid = () => {
-    return deliveryInfo.name && 
-           deliveryInfo.phone && 
-           deliveryInfo.address && 
-           deliveryInfo.neighborhood;
+    const phoneNumbers = deliveryInfo.phone.replace(/\D/g, '');
+    return deliveryInfo.name.trim() && 
+           deliveryInfo.phone.trim() && 
+           phoneNumbers.length >= 11 &&
+           deliveryInfo.address.trim() && 
+           deliveryInfo.neighborhood.trim();
   };
 
   const handlePayment = () => {
@@ -782,10 +784,17 @@ const Cart: React.FC<CartProps> = ({
                     type="text"
                     value={deliveryInfo.name}
                     onChange={(e) => setDeliveryInfo(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                    className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 shadow-sm ${
+                      !deliveryInfo.name.trim() && showCheckout 
+                        ? 'border-red-300 focus:ring-red-500 bg-red-50' 
+                        : 'border-gray-300 focus:ring-purple-500'
+                    }`}
                     placeholder="Seu nome"
                     required
                   />
+                  {!deliveryInfo.name.trim() && showCheckout && (
+                    <p className="text-red-600 text-xs mt-1">Nome é obrigatório</p>
+                  )}
                   
                   {customerSuggestions.length > 0 && (
                     <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 mt-1">
@@ -817,10 +826,17 @@ const Cart: React.FC<CartProps> = ({
                     type="tel"
                     value={deliveryInfo.phone}
                     onChange={handlePhoneChange}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                    className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 shadow-sm ${
+                      (!deliveryInfo.phone.trim() || deliveryInfo.phone.replace(/\D/g, '').length < 11) && showCheckout 
+                        ? 'border-red-300 focus:ring-red-500 bg-red-50' 
+                        : 'border-gray-300 focus:ring-purple-500'
+                    }`}
                     placeholder="(85) 99999-9999"
                     required
                   />
+                  {(!deliveryInfo.phone.trim() || deliveryInfo.phone.replace(/\D/g, '').length < 11) && showCheckout && (
+                    <p className="text-red-600 text-xs mt-1">Telefone válido é obrigatório (11 dígitos)</p>
+                  )}
                   {loadingCustomer && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
@@ -848,7 +864,12 @@ const Cart: React.FC<CartProps> = ({
                   <select
                     value={deliveryInfo.neighborhood}
                     onChange={(e) => setDeliveryInfo(prev => ({ ...prev, neighborhood: e.target.value }))}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm appearance-none bg-white"
+                    className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 shadow-sm appearance-none bg-white ${
+                      !deliveryInfo.neighborhood.trim() && showCheckout 
+                        ? 'border-red-300 focus:ring-red-500 bg-red-50' 
+                        : 'border-gray-300 focus:ring-purple-500'
+                    }`}
+                    required
                   >
                     <option value="">Selecione seu bairro</option>
                     {neighborhoods.map((neighborhood) => (
@@ -857,6 +878,9 @@ const Cart: React.FC<CartProps> = ({
                       </option>
                     ))}
                   </select>
+                  {!deliveryInfo.neighborhood.trim() && showCheckout && (
+                    <p className="text-red-600 text-xs mt-1">Bairro é obrigatório</p>
+                  )}
                 </div>
               </div>
 
@@ -868,10 +892,17 @@ const Cart: React.FC<CartProps> = ({
                   type="text"
                   value={deliveryInfo.address}
                   onChange={(e) => setDeliveryInfo(prev => ({ ...prev, address: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                  className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 shadow-sm ${
+                    !deliveryInfo.address.trim() && showCheckout 
+                      ? 'border-red-300 focus:ring-red-500 bg-red-50' 
+                      : 'border-gray-300 focus:ring-purple-500'
+                  }`}
                   placeholder="Rua, número, bairro"
                   required
                 />
+                {!deliveryInfo.address.trim() && showCheckout && (
+                  <p className="text-red-600 text-xs mt-1">Endereço é obrigatório</p>
+                )}
               </div>
 
               <div className="space-y-2">
