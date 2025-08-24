@@ -45,6 +45,9 @@ const Cart: React.FC<CartProps> = ({
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
   const [loadingCustomer, setLoadingCustomer] = useState(false);
   const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [successOrderId, setSuccessOrderId] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo>({
     name: '',
     phone: '',
@@ -391,7 +394,7 @@ const Cart: React.FC<CartProps> = ({
       };
 
       const newOrder = await createOrder(orderData);
-      setOrderId(newOrder.id);
+      setSuccessOrderId(newOrder.id);
 
       let cashbackEarned = 0;
 
@@ -431,21 +434,49 @@ const Cart: React.FC<CartProps> = ({
       const whatsappUrl = `https://wa.me/5585989041010?text=${message}`;
       window.open(whatsappUrl, '_blank');
 
-      onClearCart();
-      setShowCheckout(false);
-      setShowOrderTracking(true);
+      // Mostrar tela de sucesso
+      setOrderSuccess(true);
       
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
       const message = generateWhatsAppMessage();
       const whatsappUrl = `https://wa.me/5585989041010?text=${message}`;
       window.open(whatsappUrl, '_blank');
-      onClearCart();
-      setShowCheckout(false);
-      onClose();
+      
+      // Mesmo com erro, mostrar tela de sucesso (pedido foi enviado por WhatsApp)
+      setOrderSuccess(true);
     }
   };
 
+  const copyTrackingLink = async () => {
+    if (!successOrderId) return;
+    
+    const trackingUrl = `${window.location.origin}/pedido/${successOrderId}`;
+    
+    try {
+      await navigator.clipboard.writeText(trackingUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      // Fallback para navegadores que não suportam clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = trackingUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
+
+  const handleFinishOrder = () => {
+    onClearCart();
+    setOrderSuccess(false);
+    setSuccessOrderId(null);
+    setShowCheckout(false);
+    onClose();
+  };
   const isFormValid = () => {
     const phoneNumbers = deliveryInfo.phone.replace(/\D/g, '');
     return deliveryInfo.name.trim() && 
@@ -480,6 +511,151 @@ const Cart: React.FC<CartProps> = ({
   };
 
   if (!isOpen) return null;
+
+  // Tela de sucesso do pedido
+  if (orderSuccess && successOrderId) {
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden">
+          {/* Header de Sucesso */}
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-6 text-white text-center">
+            <div className="bg-white/20 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold mb-2">
+              🎉 Pedido Realizado com Sucesso!
+            </h2>
+            <p className="text-green-100">
+              Seu pedido foi enviado e está sendo processado
+            </p>
+          </div>
+
+          {/* Conteúdo */}
+          <div className="p-6 space-y-4">
+            {/* ID do Pedido */}
+            <div className="bg-gray-50 rounded-xl p-4 text-center">
+              <p className="text-sm text-gray-600 mb-1">Número do Pedido:</p>
+              <p className="text-2xl font-bold text-purple-600 font-mono">
+                #{successOrderId.slice(-8)}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Guarde este número para acompanhar seu pedido
+              </p>
+            </div>
+
+            {/* Link de Acompanhamento */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.102m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                <p className="text-sm font-medium text-blue-800">
+                  Link de Acompanhamento
+                </p>
+              </div>
+              
+              <div className="bg-white border border-blue-200 rounded-lg p-3 mb-3">
+                <p className="text-xs text-gray-600 font-mono break-all">
+                  {window.location.origin}/pedido/{successOrderId}
+                </p>
+              </div>
+              
+              <button
+                onClick={copyTrackingLink}
+                className={`w-full py-2 px-4 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
+                  linkCopied 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                {linkCopied ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Link Copiado!
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copiar Link
+                  </>
+                )}
+              </button>
+              
+              <p className="text-xs text-blue-700 text-center mt-2">
+                📱 Compartilhe este link para acompanhar o pedido em tempo real
+              </p>
+            </div>
+
+            {/* Informações Importantes */}
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-purple-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-purple-800 mb-2">
+                    ℹ️ Próximos Passos:
+                  </p>
+                  <ul className="text-sm text-purple-700 space-y-1">
+                    <li>• ✅ Pedido enviado por WhatsApp</li>
+                    <li>• 📞 Aguarde confirmação da loja</li>
+                    <li>• 🍧 Preparo iniciará após confirmação</li>
+                    <li>• 🚴 Entrega em aproximadamente {getEstimatedDeliveryTime()} minutos</li>
+                    {deliveryInfo.paymentMethod === 'pix' && (
+                      <li>• 💳 Envie o comprovante do PIX para confirmar</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Cashback Info */}
+            {customer && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="flex items-center gap-2">
+                  <Gift size={18} className="text-green-600" />
+                  <p className="text-sm font-medium text-green-800">
+                    🎁 Cashback de 5% será creditado automaticamente!
+                  </p>
+                </div>
+                <p className="text-xs text-green-700 mt-1">
+                  Use até o final do mês em suas próximas compras
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Botões de Ação */}
+          <div className="p-6 border-t border-gray-200 space-y-3">
+            <button
+              onClick={() => window.location.href = `/pedido/${successOrderId}`}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Acompanhar Pedido
+            </button>
+            
+            <button
+              onClick={handleFinishOrder}
+              className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              <ArrowLeft size={18} />
+              Fazer Novo Pedido
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showOrderTracking && orderId) {
     return (
