@@ -12,7 +12,7 @@ import {
   LogOut,
   Users
 } from 'lucide-react';
-import AttendantPanel from '../../Orders/AttendantPanel'; 
+import AttendantPanel from '/Orders/AttendantPanel'; 
 import PDVSalesScreen from './PDV/PDVSalesScreen';
 import CashRegisterMenu from './PDV/CashRegisterMenu';
 import SalesHistoryPanel from './Orders/SalesHistoryPanel';
