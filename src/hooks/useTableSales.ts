@@ -110,6 +110,25 @@ export const useTableSales = (storeId: 1 | 2) => {
     }
   };
 
+  // Remove item from sale
+  const removeItemFromSale = async (saleId: string, itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from(itemsTableName)
+        .delete()
+        .eq('id', itemId)
+        .eq('sale_id', saleId);
+
+      if (error) throw error;
+
+      // Update sale totals after removing item
+      await updateSaleTotals(saleId);
+    } catch (err) {
+      console.error('Erro ao remover item:', err);
+      throw err;
+    }
+  };
+
   // Update sale totals
   const updateSaleTotals = async (saleId: string) => {
     try {
