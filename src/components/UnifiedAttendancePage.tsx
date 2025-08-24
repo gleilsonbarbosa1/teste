@@ -265,6 +265,10 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
             <div className="bg-white rounded-xl shadow-sm p-8 text-center">
               <Users size={48} className="mx-auto text-gray-300 mb-4" />
               <h3 className="text-lg font-medium text-gray-600 mb-2">
+              <Users size={48} className="mx-auto text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-600 mb-2">
+              <Users size={48} className="mx-auto text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-600 mb-2">
                 Sistema de Mesas em Desenvolvimento
               </h3>
               <p className="text-gray-500 mb-4">
