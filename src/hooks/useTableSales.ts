@@ -1,359 +1,303 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
-import { RestaurantTable, TableSale, TableSaleItem, TableCartItem } from '../types/table-sales';
-import { usePDVCashRegister } from './usePDVCashRegister';
+import React, { useState, useEffect } from 'react';
+import { 
+  Calculator, 
+  Package, 
+  DollarSign, 
+  Settings,
+  Truck, 
+  ArrowLeft,
+  ShoppingBag,
+  AlertCircle,
+  User,
+  LogOut,
+  Users
+} from 'lucide-react';
+import AttendantPanel from './Orders/AttendantPanel'; 
+import PDVSalesScreen from './PDV/PDVSalesScreen';
+import CashRegisterMenu from './PDV/CashRegisterMenu';
+import SalesHistoryPanel from './Orders/SalesHistoryPanel';
+import TableSalesPanel from './TableSales/TableSalesPanel';
+import { usePermissions } from '../hooks/usePermissions';
+import { useScale } from '../hooks/useScale';
+import { useOrders } from '../hooks/useOrders';
+import { usePDVCashRegister } from '../hooks/usePDVCashRegister';
+import { useStoreHours } from '../hooks/useStoreHours';
+import { PDVOperator } from '../types/pdv';
 
-// Hook para Loja 2 (placeholder - implementar quando necessário)
-const useStore2PDVCashRegister = () => {
-  return {
-    currentRegister: null,
-    isOpen: false,
-    refreshData: async () => {}
-  };
-};
+interface UnifiedAttendancePanelProps {
+  operator?: PDVOperator;
+  storeSettings?: any;
+  scaleHook?: ReturnType<typeof useScale>;
+  onLogout?: () => void;
+}
 
-export const useTableSales = (storeId: 1 | 2) => {
-  const [tables, setTables] = useState<RestaurantTable[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator, storeSettings, scaleHook, onLogout }) => {
+  const [activeTab, setActiveTab] = useState<'sales' | 'orders' | 'cash' | 'tables' | 'history'>('sales');
+  const { hasPermission } = usePermissions(operator);
+  const { storeSettings: localStoreSettings } = useStoreHours();
+  const { isOpen: isCashRegisterOpen, currentRegister } = usePDVCashRegister();
+  const scale = useScale();
+  const { orders } = useOrders();
+  const [supabaseConfigured, setSupabaseConfigured] = useState(true);
   
-  // Hooks de caixa baseado na loja
-  const store1CashRegister = usePDVCashRegister();
-  const store2CashRegister = useStore2PDVCashRegister();
+  // Calculate pending orders count from the orders data
+  const pendingOrdersCount = orders.filter(order => order.status === 'pending').length;
+
+  // Check if user is admin
+  const isAdmin = !operator || 
+                  operator.code?.toUpperCase() === 'ADMIN' || 
+                  operator.name?.toUpperCase().includes('ADMIN') ||
+                  operator.name?.toUpperCase() === 'ADMINISTRADOR' ||
+                  operator.username?.toUpperCase() === 'ADMIN' ||
+                  operator.username?.toUpperCase().includes('ADMIN') ||
+                  operator.role === 'admin' ||
+                  operator.username === 'admin' ||
+                  operator.name === 'admin';
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔍 UnifiedAttendancePage - Estado completo:', {
+      operator: operator ? {
+        id: operator.id,
+        username: operator.username,
+        name: operator.name,
+        code: operator.code,
+        role: operator.role,
+        permissions: operator.permissions
+      } : 'No operator',
+      isAdmin,
+      activeTab,
+      isCashRegisterOpen,
+      pendingOrdersCount
+    });
+  }, [operator, isAdmin]);
+
+  const settings = storeSettings || localStoreSettings;
   
-  const cashRegister = storeId === 1 ? store1CashRegister : store2CashRegister;
-
-  // Definir nomes das tabelas baseado na loja
-  const tablesTable = storeId === 1 ? 'store1_tables' : 'store2_tables';
-  const salesTable = storeId === 1 ? 'store1_table_sales' : 'store2_table_sales';
-  const itemsTable = storeId === 1 ? 'store1_table_sale_items' : 'store2_table_sale_items';
-  const cashEntriesTable = storeId === 1 ? 'pdv_cash_entries' : 'pdv2_cash_entries';
-
-  const fetchTables = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      console.log(`🔄 Carregando TODAS as mesas da Loja ${storeId}...`);
-
-      const { data, error } = await supabase
-        .from(tablesTable)
-        .select(`
-          *,
-          current_sale:${salesTable}!current_sale_id(*)
-        `)
-        // Remover filtro is_active para mostrar todas as mesas
-        .order('number');
-
-      if (error) throw error;
-
-      console.log(`📊 Dados das mesas carregados (${data?.length || 0} mesas):`, data);
-      setTables(data || []);
-      console.log(`✅ ${data?.length || 0} mesas carregadas da Loja ${storeId} (incluindo inativas)`);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar mesas';
-      console.error(`❌ Erro ao carregar mesas da Loja ${storeId}:`, errorMessage);
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [storeId, tablesTable, salesTable]);
-
-  const updateSaleTotal = useCallback(async (saleId: string) => {
-    try {
-      console.log(`🧮 Calculando total da venda ${saleId}...`);
-      
-      // Calcular total dos itens
-      const { data: items, error: itemsError } = await supabase
-        .from(itemsTable)
-        .select('subtotal')
-        .eq('sale_id', saleId);
-
-      if (itemsError) throw itemsError;
-
-      const subtotal = items?.reduce((sum, item) => sum + Number(item.subtotal), 0) || 0;
-
-      console.log(`💰 Novo subtotal calculado: R$ ${subtotal.toFixed(2)}`);
-      // Atualizar venda
-      const { error: updateError } = await supabase
-        .from(salesTable)
-        .update({
-          subtotal: subtotal,
-          total_amount: subtotal,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', saleId);
-
-      if (updateError) throw updateError;
-
-      console.log(`✅ Total da venda atualizado na Loja ${storeId}: R$ ${subtotal.toFixed(2)}`);
-      
-      // Não recarregar todas as mesas, apenas retornar sucesso
-      console.log(`✅ Total atualizado sem recarregar mesas`);
-    } catch (err) {
-      console.error(`❌ Erro ao atualizar total da venda na Loja ${storeId}:`, err);
-      throw err;
-    }
-  }, [storeId, itemsTable, salesTable]);
-
-  const createTableSale = useCallback(async (
-    tableId: string,
-    operatorName: string,
-    customerName?: string,
-    customerCount: number = 1
-  ): Promise<TableSale> => {
-    try {
-      console.log(`🚀 Criando venda para mesa da Loja ${storeId}:`, { tableId, operatorName });
-
-      const { data, error } = await supabase
-        .from(salesTable)
-        .insert([{
-          table_id: tableId,
-          operator_name: operatorName,
-          customer_name: customerName,
-          customer_count: customerCount,
-          status: 'aberta'
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      console.log(`✅ Venda criada na Loja ${storeId}:`, data);
-      await fetchTables(); // Recarregar mesas
-      return data;
-    } catch (err) {
-      console.error(`❌ Erro ao criar venda na Loja ${storeId}:`, err);
-      throw new Error(err instanceof Error ? err.message : 'Erro ao criar venda');
-    }
-  }, [storeId, salesTable, fetchTables]);
-
-  const addItemToSale = useCallback(async (
-    saleId: string,
-    item: TableCartItem
-  ): Promise<TableSaleItem> => {
-    try {
-      console.log(`➕ Adicionando item à venda da Loja ${storeId}:`, { saleId, item });
-
-      // Validar dados do item
-      if (!item.product_code || !item.product_name || !item.subtotal) {
-        throw new Error('Dados do item inválidos');
-      }
-
-      // Verificar se a venda existe
-      const { data: saleExists, error: saleError } = await supabase
-        .from(salesTable)
-        .select('id')
-        .eq('id', saleId)
-        .single();
-
-      if (saleError || !saleExists) {
-        throw new Error('Venda não encontrada');
-      }
-
-      const { data, error } = await supabase
-        .from(itemsTable)
-        .insert([{
-          sale_id: saleId,
-          product_code: item.product_code,
-          product_name: item.product_name,
-          quantity: item.quantity,
-          weight_kg: item.weight,
-          unit_price: item.unit_price,
-          price_per_gram: item.price_per_gram,
-          discount_amount: 0,
-          subtotal: item.subtotal,
-          notes: item.notes
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      console.log(`✅ Item inserido no banco:`, data);
-
-      // Atualizar total da venda
-      await updateSaleTotal(saleId);
-      
-
-      console.log(`✅ Item adicionado à venda da Loja ${storeId}`);
-      return data;
-    } catch (err) {
-      console.error(`❌ Erro ao adicionar item na Loja ${storeId}:`, err);
-      throw new Error(err instanceof Error ? err.message : 'Erro ao adicionar item');
-    }
-  }, [storeId, itemsTable, salesTable, updateSaleTotal, fetchTables]);
-
-  const closeSale = useCallback(async (
-    saleId: string,
-    paymentType: TableSale['payment_type'],
-    changeAmount: number = 0,
-    discountAmount: number = 0
-  ): Promise<void> => {
-    try {
-      console.log(`🔒 Fechando venda da Loja ${storeId}:`, { saleId, paymentType });
-
-      // Buscar venda atual
-      const { data: sale, error: saleError } = await supabase
-        .from(salesTable)
-        .select('subtotal')
-        .eq('id', saleId)
-        .single();
-
-      if (saleError) throw saleError;
-
-      const totalAmount = Number(sale.subtotal) - discountAmount;
-
-      const { error } = await supabase
-        .from(salesTable)
-        .update({
-          status: 'fechada',
-          payment_type: paymentType,
-          change_amount: changeAmount,
-          discount_amount: discountAmount,
-          total_amount: totalAmount,
-          closed_at: new Date().toISOString()
-        })
-        .eq('id', saleId);
-
-      if (error) throw error;
-
-      // Adicionar entrada no caixa se houver caixa aberto
-      if (cashRegister.currentRegister && cashRegister.isOpen) {
-        try {
-          console.log(`💰 Adicionando venda de mesa ao caixa da Loja ${storeId}:`, {
-            registerId: cashRegister.currentRegister.id,
-            amount: totalAmount,
-            paymentType
-          });
-          
-          const paymentMethodName = getPaymentMethodName(paymentType);
-          
-          await supabase
-            .from(cashEntriesTable)
-            .insert([{
-              register_id: cashRegister.currentRegister.id,
-              type: 'income',
-              amount: totalAmount,
-              description: `Venda Mesa - Loja ${storeId} (${paymentMethodName})`,
-              payment_method: paymentType
-            }]);
-            
-          console.log(`✅ Entrada de caixa criada para venda de mesa da Loja ${storeId}`);
-          
-          // Atualizar dados do caixa
-          await cashRegister.refreshData();
-        } catch (cashError) {
-          console.error(`⚠️ Erro ao adicionar entrada no caixa da Loja ${storeId} (venda salva):`, cashError);
-          // Não falhar a venda se houver erro no caixa
-        }
-      } else {
-        console.warn(`⚠️ Nenhum caixa aberto na Loja ${storeId} - venda não registrada no caixa`);
-      }
-      console.log(`✅ Venda fechada na Loja ${storeId}`);
-      await fetchTables(); // Recarregar mesas
-    } catch (err) {
-      console.error(`❌ Erro ao fechar venda na Loja ${storeId}:`, err);
-      throw new Error(err instanceof Error ? err.message : 'Erro ao fechar venda');
-    }
-  }, [storeId, salesTable, fetchTables, cashRegister, cashEntriesTable]);
-
-  const getSaleDetails = useCallback(async (saleId: string): Promise<TableSale | null> => {
-    try {
-      console.log(`🔍 Buscando detalhes da venda ${saleId} na Loja ${storeId}...`);
-      
-      const { data, error } = await supabase
-        .from(salesTable)
-        .select(`
-          *,
-          items:${itemsTable}(*)
-        `)
-        .eq('id', saleId)
-        .single();
-
-      if (error) {
-        console.error(`❌ Erro ao buscar venda ${saleId}:`, error);
-        throw error;
-      }
-      
-      console.log(`✅ Detalhes da venda carregados:`, data);
-      return data;
-    } catch (err) {
-      console.error(`❌ Erro ao buscar detalhes da venda na Loja ${storeId}:`, err);
-      return null;
-    }
-  }, [storeId, salesTable, itemsTable]);
-
-  const updateTableStatus = useCallback(async (
-    tableId: string,
-    status: RestaurantTable['status']
-  ): Promise<void> => {
-    try {
-      const { error } = await supabase
-        .from(tablesTable)
-        .update({ status })
-        .eq('id', tableId);
-
-      if (error) throw error;
-
-      console.log(`✅ Status da mesa atualizado na Loja ${storeId}: ${status}`);
-      await fetchTables();
-    } catch (err) {
-      console.error(`❌ Erro ao atualizar status da mesa na Loja ${storeId}:`, err);
-      throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar status da mesa');
-    }
-  }, [storeId, tablesTable, fetchTables]);
-
-  // Configurar realtime para atualizações automáticas
-  useEffect(() => {
-    fetchTables();
-
-    const channel = supabase
-      .channel(`table_sales_store${storeId}`)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: tablesTable },
-        () => {
-          console.log(`🔄 Mesas da Loja ${storeId} atualizadas via realtime`);
-          fetchTables();
-        }
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: salesTable },
-        () => {
-          console.log(`🔄 Vendas da Loja ${storeId} atualizadas via realtime`);
-          fetchTables();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [storeId, fetchTables, tablesTable, salesTable]);
-
-  return {
-    tables,
-    loading,
-    error,
-    createTableSale,
-    addItemToSale,
-    closeSale,
-    getSaleDetails,
-    updateTableStatus,
-    refetch: fetchTables,
+  // Check Supabase configuration on mount
+  React.useEffect(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
-  };
+    const isConfigured = supabaseUrl && supabaseKey && 
+                        supabaseUrl !== 'your_supabase_url_here' && 
+                        supabaseKey !== 'your_supabase_anon_key_here' &&
+                        !supabaseUrl.includes('placeholder');
+    
+    setSupabaseConfigured(isConfigured);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b print:hidden">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img 
+                src="/logo elite.jpeg" 
+                alt="Elite Açaí Logo" 
+                className="w-12 h-12 object-contain bg-white rounded-full p-1 border-2 border-green-200"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
+              <div className="bg-green-100 rounded-full p-2">
+                <ShoppingBag size={24} className="text-green-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800">Atendimento Unificado</h1>
+                <p className="text-gray-600">Elite Açaí - Vendas, Pedidos e Caixa</p>
+              </div>
+            </div>
+            
+            {/* User info and logout */}
+            {operator && (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg">
+                  <User size={18} className="text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">{operator.name}</span>
+                </div>
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-colors text-sm"
+                    title="Sair do sistema"
+                  >
+                    <LogOut size={16} />
+                    Sair
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Supabase Configuration Warning */}
+      {!supabaseConfigured && (
+        <div className="max-w-7xl mx-auto px-4 mt-6 print:hidden">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-yellow-100 rounded-full p-2">
+                <AlertCircle size={20} className="text-yellow-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-yellow-800">Sistema em Modo Demonstração</h3>
+                <p className="text-yellow-700 text-sm">
+                  O Supabase não está configurado. Algumas funcionalidades estarão limitadas.
+                  Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para acesso completo.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cash Register Warning */}
+      {supabaseConfigured && !isCashRegisterOpen && (activeTab === 'sales' || activeTab === 'orders') && (
+        <div className="max-w-7xl mx-auto px-4 mt-6 print:hidden">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-yellow-100 rounded-full p-2">
+                <AlertCircle size={20} className="text-yellow-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-yellow-800">Caixa Fechado</h3>
+                <p className="text-yellow-700 text-sm">
+                  Não é possível {activeTab === 'sales' ? 'realizar vendas' : 'visualizar pedidos'} sem um caixa aberto.
+                  Por favor, abra um caixa primeiro na aba "Caixas".
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6 print:hidden">
+          <div className="flex flex-wrap gap-4">
+            {(isAdmin || hasPermission('can_view_sales')) && (
+              <button
+                onClick={() => setActiveTab('sales')}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                  activeTab === 'sales'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Calculator size={20} />
+                Vendas
+              </button>
+            )}
+            
+            {(isAdmin || hasPermission('can_view_orders')) && (
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 relative ${
+                  activeTab === 'orders'
+                    ? 'bg-purple-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Truck size={20} />
+                Pedidos
+                {pendingOrdersCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">
+                    {pendingOrdersCount}
+                  </span>
+                )}
+              </button>
+            )}
+            
+            {(isAdmin || hasPermission('can_view_cash_register')) && (
+              <button
+                onClick={() => setActiveTab('cash')}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                  activeTab === 'cash'
+                    ? 'bg-yellow-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <DollarSign size={20} />
+                Caixas
+              </button>
+            )}
+            
+            {(isAdmin || hasPermission('can_view_sales')) && (
+              <button
+                onClick={() => setActiveTab('tables')}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                  activeTab === 'tables'
+                    ? 'bg-blue-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Users size={20} />
+                Mesas
+              </button>
+            )}
+            
+            {(isAdmin || hasPermission('can_view_sales')) && (
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                  activeTab === 'history'
+                    ? 'bg-emerald-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <ShoppingBag size={20} />
+                Histórico
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="transition-all duration-300 print:hidden">
+          {activeTab === 'sales' && (isAdmin || hasPermission('can_view_sales')) && <PDVSalesScreen operator={operator} scaleHook={scaleHook || scale} storeSettings={settings} />}
+          {activeTab === 'orders' && (isAdmin || hasPermission('can_view_orders')) && <AttendantPanel storeSettings={settings} />}
+          {activeTab === 'cash' && (isAdmin || hasPermission('can_view_cash_register')) && <CashRegisterMenu />}
+          {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && (
+            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+              <Users size={48} className="mx-auto text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-600 mb-2">
+                Sistema de Mesas - Loja 1
+              </h3>
+              <p className="text-gray-500 mb-4">
+                Gerencie vendas presenciais e controle de mesas
+              </p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="text-center">
+                      <div className="bg-green-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
+                        <Users size={24} className="text-green-600" />
+                      </div>
+                      <h4 className="font-medium text-green-800">Mesas Livres</h4>
+                      <p className="text-2xl font-bold text-green-600">
+                        {tables.filter(t => t.status === 'livre').length}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="text-center">
+                      <div className="bg-blue-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
+                        <ShoppingBag size={24} className="text-blue-600" />
+                      </div>
+                      <h4 className="font-medium text-blue-800">Mesas Ocupadas</h4>
+                      <p className="text-2xl font-bold text-blue-600">
+            </div>
+          )}
+          {activeTab === 'history' && (isAdmin || hasPermission('can_view_sales')) && <SalesHistoryPanel storeId={1} />}
+        </div>
+      </div>
+    </div>
+  );
 };
 
-// Helper function to get payment method display name
-const getPaymentMethodName = (method: string): string => {
-  const methodNames: Record<string, string> = {
-    'dinheiro': 'Dinheiro',
-    'pix': 'PIX',
-    'cartao_credito': 'Cartão de Crédito',
-    'cartao_debito': 'Cartão de Débito',
-    'voucher': 'Voucher',
-    'misto': 'Pagamento Misto'
-  };
-  return methodNames[method] || method;
-};
+export default UnifiedAttendancePage;
