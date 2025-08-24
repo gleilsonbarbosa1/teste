@@ -27,7 +27,7 @@ const DeliveryOrdersPage: React.FC = () => {
     totalDeliveries: 0,
     totalFees: 0,
     averageFee: 0,
-    completedDeliveries: 0
+    paymentMethod: 'money'
   });
 
   // Update current time every minute
@@ -536,29 +536,14 @@ const DeliveryOrdersPage: React.FC = () => {
           {overdueCount > 0 && (
             <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
               <div className="flex items-center justify-between">
-                        value="credit_card"
-                        checked={deliveryInfo.paymentMethod === 'credit_card'}
-                        onChange={(e) => setDeliveryInfo(prev => ({ ...prev, paymentMethod: e.target.value as any }))}
+                <div className="flex items-center gap-2">
+                <AlertCircle size={16} className="text-red-600" />
+                <p className="text-sm font-medium text-red-800">
                   ⚠️ {overdueCount} pedido(s) há mais de 20 minutos aguardando entrega!
                 </p>
                 </div>
                 {autoRefresh && (
-                        <span className="font-medium">Cartão de Crédito</span>
-                      </div>
-                    </label>
-                    
-                    <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 transition-colors">
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="debit_card"
-                        checked={deliveryInfo.paymentMethod === 'debit_card'}
-                        onChange={(e) => setDeliveryInfo(prev => ({ ...prev, paymentMethod: e.target.value as any }))}
-                        className="text-purple-600"
-                      />
-                      <div className="flex items-center gap-2">
-                        <CreditCard size={20} className="text-indigo-600" />
-                        <span className="font-medium">Cartão de Débito</span>
+                  <div className="flex items-center gap-1 text-xs text-red-600">
                     <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                     <span>Monitorando</span>
                   </div>
