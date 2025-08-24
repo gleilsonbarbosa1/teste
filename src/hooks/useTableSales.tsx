@@ -110,6 +110,32 @@ export const useTableSales = (storeId: 1 | 2) => {
     }
   };
 
+  // Clear all items from sale
+  const clearSaleItems = async (saleId: string) => {
+    try {
+      const { error } = await supabase
+        .from(itemsTableName)
+        .delete()
+        .eq('sale_id', saleId);
+
+      if (error) throw error;
+
+      // Update sale totals to zero
+      const { error: updateError } = await supabase
+        .from(salesTableName)
+        .update({
+          subtotal: 0,
+          total_amount: 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', saleId);
+      
+      if (updateError) throw updateError;
+    } catch (err) {
+      console.error('Erro ao limpar itens:', err);
+      throw err;
+    }
+  };
   // Update sale totals
   const updateSaleTotals = async (saleId: string) => {
     try {
@@ -246,7 +272,7 @@ export const useTableSales = (storeId: 1 | 2) => {
     stats,
     createTableSale,
     addItemToSale,
-    addItemToSale,
+    clearSaleItems,
     closeSale,
     getSaleDetails,
     updateTableStatus,
