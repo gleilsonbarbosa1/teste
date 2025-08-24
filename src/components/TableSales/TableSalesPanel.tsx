@@ -921,7 +921,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                            if (selectedTable?.current_sale_id && confirm('Tem certeza que deseja limpar todos os itens desta venda?')) {
                              clearSaleItems(selectedTable.current_sale_id);
                            }
-                         }}
+                    
                          className="text-red-500 hover:text-red-700 p-1 rounded transition-colors"
                          title="Limpar todos os itens"
                        >
