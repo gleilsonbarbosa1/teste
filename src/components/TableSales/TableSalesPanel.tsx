@@ -624,6 +624,18 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                  <Trash2 size={16} />
                  Limpar Itens
                </button>
+               <button
+                 onClick={() => {
+                   if (selectedTable?.current_sale_id && confirm('Tem certeza que deseja limpar todos os itens desta venda?')) {
+                     clearSaleItems(selectedTable.current_sale_id);
+                   }
+                 }}
+                 disabled={!saleDetails?.items || saleDetails.items.length === 0}
+                 className="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center gap-2"
+               >
+                 <Trash2 size={16} />
+                 Limpar Itens
+               </button>
                 {saleDetails.status === 'aberta' && (
                   <>
                     <button
@@ -802,6 +814,19 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                         <span className="text-blue-700">Pessoas:</span>
                         <span className="font-medium">{saleDetails.customer_count}</span>
                       </div>
+                     {saleDetails.items && saleDetails.items.length > 0 && (
+                       <button
+                         onClick={() => {
+                           if (selectedTable?.current_sale_id && confirm('Tem certeza que deseja limpar todos os itens desta venda?')) {
+                             clearSaleItems(selectedTable.current_sale_id);
+                           }
+                         }}
+                         className="text-red-500 hover:text-red-700 p-1 rounded transition-colors"
+                         title="Limpar todos os itens"
+                       >
+                         <Trash2 size={16} />
+                       </button>
+                     )}
                       <div className="flex justify-between">
                         <span className="text-blue-700">Status:</span>
                         <span className="font-medium capitalize">{saleDetails.status}</span>
