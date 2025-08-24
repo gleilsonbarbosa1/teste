@@ -236,7 +236,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                 }`}
               >
                 <Users size={20} />
-                Vendas Mesas
+                Mesas
               </button>
             )}
             
@@ -244,6 +244,16 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
               <button
                 onClick={() => setActiveTab('history')}
                 className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                  activeTab === 'vendas_mesas'
+                    ? 'bg-cyan-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Users size={20} />
+                Vendas em Mesas
+              </button>
+            )}
+            
                   activeTab === 'history'
                     ? 'bg-emerald-500 text-white shadow-lg'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
