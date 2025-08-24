@@ -27,7 +27,7 @@ interface TableSalesPanelProps {
 }
 
 const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
-  const { tables, loading, error, stats, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch, addItemToSale, removeItemFromSale } = useTableSales(storeId);
+  const { tables, loading, error, stats, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch, addItemToSale } = useTableSales(storeId);
   const { products, loading: productsLoading, searchProducts } = usePDVProducts();
   
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
@@ -193,7 +193,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
       alert('Erro ao fechar mesa. Tente novamente.');
     }
   };
-  
   const handleAddProduct = async (product: PDVProduct, quantity: number = 1, weight?: number) => {
     if (!selectedTable?.current_sale_id) return;
 
@@ -241,47 +240,6 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     } catch (err) {
       console.error('Erro ao adicionar produto:', err);
       alert('Erro ao adicionar produto à mesa.');
-    }
-  };
-
-  const handleRemoveItem = async (itemId: string) => {
-    if (!selectedTable?.current_sale_id) return;
-
-    if (!confirm('Tem certeza que deseja remover este item da venda?')) {
-      return;
-    }
-
-    try {
-      await removeItemFromSale(itemId);
-      
-      // Refresh table data and sale details
-      refetch();
-      
-      // Reload sale details to show updated items immediately
-      if (selectedTable.current_sale_id) {
-        const updatedDetails = await getSaleDetails(selectedTable.current_sale_id);
-        setSaleDetails(updatedDetails);
-      }
-      
-      // Show success message
-      const successMessage = document.createElement('div');
-      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
-      successMessage.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-        </svg>
-        Item removido da mesa ${selectedTable.number}!
-      `;
-      document.body.appendChild(successMessage);
-      
-      setTimeout(() => {
-        if (document.body.contains(successMessage)) {
-          document.body.removeChild(successMessage);
-        }
-      }, 3000);
-    } catch (err) {
-      console.error('Erro ao remover item:', err);
-      alert('Erro ao remover item da mesa.');
     }
   };
 
@@ -341,12 +299,808 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               <AlertCircle size={20} className="text-yellow-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-yellow-600">Configuração do Supabase</h3>
-    )
-    }
-  )
-}
-    )
-    }
-  )
-}
+              <h3 className="font-medium text-yellow-800">Modo Demonstração</h3>
+              <p className="text-yellow-700 text-sm">
+                Supabase não configurado. Sistema de mesas limitado.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <Users size={24} className="text-blue-600" />
+            Sistema de Mesas - Loja {storeId}
+          </h2>
+          <p className="text-gray-600">Gerencie mesas e vendas presenciais</p>
+        </div>
+        <button
+          onClick={refetch}
+          disabled={loading}
+          className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+        >
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          Atualizar
+        </button>
+      </div>
+
+      {/* Statistics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total</p>
+              <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
+            </div>
+            <Users className="w-8 h-8 text-gray-500" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Livres</p>
+              <p className="text-2xl font-bold text-green-600">{stats.free}</p>
+            </div>
+            <CheckCircle className="w-8 h-8 text-green-500" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Ocupadas</p>
+              <p className="text-2xl font-bold text-red-600">{stats.occupied}</p>
+            </div>
+            <User className="w-8 h-8 text-red-500" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Aguardando</p>
+              <p className="text-2xl font-bold text-yellow-600">{stats.waitingBill}</p>
+            </div>
+            <DollarSign className="w-8 h-8 text-yellow-500" />
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={20} className="text-red-600" />
+            <p className="text-red-600">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Tables Grid */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          Mesas ({tables.length})
+        </h3>
+        
+        {tables.length === 0 ? (
+          <div className="text-center py-12">
+            <Users size={48} className="mx-auto text-gray-300 mb-4" />
+            <h3 className="text-lg font-medium text-gray-600 mb-2">
+              Nenhuma mesa encontrada
+            </h3>
+            <p className="text-gray-500">
+              {supabaseConfigured 
+                ? 'Não há mesas cadastradas para esta loja.'
+                : 'Configure o Supabase para acessar as mesas.'
+              }
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {tables.map((table) => (
+              <div
+                key={table.id}
+                onClick={() => handleTableClick(table)}
+                className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${getStatusColor(table.status)}`}
+              >
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-2">
+                    {getStatusIcon(table.status)}
+                  </div>
+                  <h4 className="font-bold text-lg mb-1">Mesa {table.number}</h4>
+                  <p className="text-sm font-medium mb-2">{getStatusLabel(table.status)}</p>
+                  
+                  {table.current_sale && (
+                    <div className="text-xs space-y-1">
+                      {table.current_sale.customer_name && (
+                        <p>Cliente: {table.current_sale.customer_name}</p>
+                      )}
+                      <p>Pessoas: {table.current_sale.customer_count}</p>
+                      <p className="font-semibold">
+                        Total: {formatPrice(table.current_sale.total_amount)}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="mt-2 text-xs text-gray-600">
+                    Capacidade: {table.capacity} pessoas
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* New Sale Modal */}
+      {showNewSaleModal && selectedTable && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Abrir Mesa {selectedTable.number}
+              </h2>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome do Cliente (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Nome do cliente"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Número de Pessoas
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setCustomerCount(Math.max(1, customerCount - 1))}
+                    className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  >
+                    <Plus size={16} className="rotate-45" />
+                  </button>
+                  <span className="text-xl font-semibold w-12 text-center">{customerCount}</span>
+                  <button
+                    onClick={() => setCustomerCount(customerCount + 1)}
+                    className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-blue-800 text-sm">
+                  <strong>Mesa:</strong> {selectedTable.name} (Capacidade: {selectedTable.capacity} pessoas)
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowNewSaleModal(false);
+                  setSelectedTable(null);
+                  setCustomerName('');
+                  setCustomerCount(1);
+                }}
+                className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateSale}
+                disabled={!supabaseConfigured}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors"
+              >
+                Abrir Mesa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Table Details Modal */}
+      {showDetailsModal && selectedTable && saleDetails && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Mesa {selectedTable.number} - Detalhes
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setSelectedTable(null);
+                    setSaleDetails(null);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <XCircle size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Sale Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-medium text-gray-800 mb-2">Informações da Venda</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Venda #:</span>
+                    <span className="ml-2 font-medium">{saleDetails.sale_number}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Status:</span>
+                    <span className="ml-2 font-medium capitalize">{saleDetails.status}</span>
+                  </div>
+                  {saleDetails.customer_name && (
+                    <div>
+                      <span className="text-gray-600">Cliente:</span>
+                      <span className="ml-2 font-medium">{saleDetails.customer_name}</span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-gray-600">Pessoas:</span>
+                    <span className="ml-2 font-medium">{saleDetails.customer_count}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Aberta em:</span>
+                    <span className="ml-2 font-medium">
+                      {new Date(saleDetails.opened_at).toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Total:</span>
+                    <span className="ml-2 font-bold text-green-600">
+                      {formatPrice(saleDetails.total_amount)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items */}
+              {saleDetails.items && saleDetails.items.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-medium text-gray-800 mb-2">
+                    Itens ({saleDetails.items.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {saleDetails.items.map((item) => (
+                      <div key={item.id} className="bg-white rounded p-3 flex justify-between">
+                        <div>
+                          <p className="font-medium">{item.product_name}</p>
+                          <p className="text-sm text-gray-600">
+                            {item.weight_kg ? 
+                              `${item.weight_kg}kg × ${formatPrice((item.price_per_gram || 0) * 1000)}/kg` :
+                              `${item.quantity}x × ${formatPrice(item.unit_price || 0)}`
+                            }
+                          </p>
+                        </div>
+                        <p className="font-semibold text-green-600">
+                          {formatPrice(item.subtotal)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                {saleDetails.status === 'aberta' && (
+                  <>
+                    <button
+                      onClick={() => handleUpdateStatus(selectedTable.id, 'aguardando_conta')}
+                      className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Solicitar Conta
+                    </button>
+                    <button
+                      onClick={() => handleCloseSale(saleDetails)}
+                      className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Fechar Mesa
+                    </button>
+                  </>
+                )}
+                
+                {selectedTable.status === 'limpeza' && (
+                  <button
+                    onClick={() => handleUpdateStatus(selectedTable.id, 'livre')}
+                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Marcar como Livre
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Products Modal */}
+      {showProductsModal && selectedTable && saleDetails && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Mesa {selectedTable.number} - Adicionar Produtos
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowProductsModal(false);
+                    setSelectedTable(null);
+                    setSaleDetails(null);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <XCircle size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Products Panel */}
+                <div className="lg:col-span-2 space-y-4">
+                  {/* Search and Filters */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex-1">
+                        <div className="relative">
+                          <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Buscar produtos..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="md:w-48">
+                        <select
+                          value={selectedCategory}
+                          onChange={(e) => setSelectedCategory(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Products Grid */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Produtos Disponíveis</h3>
+                    {productsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="text-gray-600 mt-2">Carregando produtos...</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
+                        {filteredProducts.map((product) => (
+                          <button
+                            key={product.id}
+                            onClick={() => handleProductClick(product)}
+                            className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
+                          >
+                            <div className="aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
+                              {product.image_url ? (
+                                <img 
+                                  src={product.image_url} 
+                                  alt={product.name}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
+                              ) : (
+                                <Package size={24} className="text-gray-400" />
+                              )}
+                            </div>
+                            <h4 className="font-medium text-gray-800 text-sm mb-1 line-clamp-2">{product.name}</h4>
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-600 font-semibold text-sm">
+                                {product.is_weighable ? (
+                                  <div className="flex items-center gap-1">
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                                    </svg>
+                                    {formatPrice((product.price_per_gram || 0) * 1000)}/kg
+                                  </div>
+                                ) : (
+                                  formatPrice(product.unit_price || 0)
+                                )}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {product.code}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {filteredProducts.length === 0 && !productsLoading && (
+                      <div className="text-center py-8">
+                        <Package size={48} className="mx-auto text-gray-300 mb-4" />
+                        <p className="text-gray-500">
+                          {searchTerm ? 'Nenhum produto encontrado' : 'Nenhum produto disponível'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sale Details Panel */}
+                <div className="space-y-4">
+                  {/* Sale Info */}
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h3 className="font-medium text-blue-800 mb-2">Venda Atual</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Venda #:</span>
+                        <span className="font-medium">{saleDetails.sale_number}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Cliente:</span>
+                        <span className="font-medium">{saleDetails.customer_name || 'Não informado'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Pessoas:</span>
+                        <span className="font-medium">{saleDetails.customer_count}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Status:</span>
+                        <span className="font-medium capitalize">{saleDetails.status}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Current Items */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-medium text-gray-800 mb-2">
+                      Itens da Venda ({saleDetails.items?.length || 0})
+                    </h3>
+                    {saleDetails.items && saleDetails.items.length > 0 ? (
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {saleDetails.items.map((item) => (
+                          <div key={item.id} className="bg-white rounded p-3 flex justify-between">
+                            <div>
+                              <p className="font-medium text-sm">{item.product_name}</p>
+                              <p className="text-xs text-gray-600">
+                                {item.weight_kg ? 
+                                  `${item.weight_kg}kg × ${formatPrice((item.price_per_gram || 0) * 1000)}/kg` :
+                                  `${item.quantity}x × ${formatPrice(item.unit_price || 0)}`
+                                }
+                              </p>
+                            </div>
+                            <p className="font-semibold text-green-600 text-sm">
+                              {formatPrice(item.subtotal)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        <Package size={32} className="mx-auto text-gray-300 mb-2" />
+                        <p className="text-sm">Nenhum item adicionado</p>
+                        <p className="text-xs">Selecione produtos para adicionar</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Total */}
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold text-green-800">Total:</span>
+                      <span className="text-2xl font-bold text-green-600">
+                        {formatPrice(saleDetails.total_amount)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleUpdateStatus(selectedTable.id, 'aguardando_conta')}
+                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Solicitar Conta
+                    </button>
+                    <button
+                      onClick={() => handleCloseSale(saleDetails)}
+                      className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Fechar Mesa
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowProductsModal(false);
+                        setSelectedTable(null);
+                        setSaleDetails(null);
+                      }}
+                      className="w-full bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pesagem Modal */}
+      {showPesagemModal && selectedProduct && (
+        <PesagemModal
+          produto={selectedProduct}
+          onConfirmar={handleWeightConfirm}
+          onFechar={() => {
+            setShowPesagemModal(false);
+            setSelectedProduct(null);
+          }}
+        />
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && saleToClose && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Forma de Pagamento
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    setSaleToClose(null);
+                    setPaymentMethod('dinheiro');
+                    setChangeFor(undefined);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-blue-800 font-medium">
+                  Total a pagar: {formatPrice(saleToClose.total_amount)}
+                </p>
+                <p className="text-blue-700 text-sm">
+                  Mesa {selectedTable?.number} - Venda #{saleToClose.sale_number}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700">
+                  Selecione a forma de pagamento:
+                </label>
+                
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="dinheiro"
+                      checked={paymentMethod === 'dinheiro'}
+                      onChange={(e) => setPaymentMethod(e.target.value as any)}
+                      className="text-green-600 h-5 w-5"
+                    />
+                    <div className="flex items-center gap-2">
+                      <DollarSign size={20} className="text-green-600" />
+                      <span className="font-medium">Dinheiro</span>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="pix"
+                      checked={paymentMethod === 'pix'}
+                      onChange={(e) => setPaymentMethod(e.target.value as any)}
+                      className="text-blue-600 h-5 w-5"
+                    />
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M12 12h-4.01M12 12v4m6-4h.01M12 8h.01M12 8h4.01M12 8H7.99M12 8V4m0 0H7.99M12 4h4.01" />
+                      </svg>
+                      <span className="font-medium">PIX</span>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="cartao_credito"
+                      checked={paymentMethod === 'cartao_credito'}
+                      onChange={(e) => setPaymentMethod(e.target.value as any)}
+                      className="text-purple-600 h-5 w-5"
+                    />
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                      <span className="font-medium">Cartão de Crédito</span>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="cartao_debito"
+                      checked={paymentMethod === 'cartao_debito'}
+                      onChange={(e) => setPaymentMethod(e.target.value as any)}
+                      className="text-indigo-600 h-5 w-5"
+                    />
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                      <span className="font-medium">Cartão de Débito</span>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="voucher"
+                      checked={paymentMethod === 'voucher'}
+                      onChange={(e) => setPaymentMethod(e.target.value as any)}
+                      className="text-yellow-600 h-5 w-5"
+                    />
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
+                      <span className="font-medium">Voucher</span>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="misto"
+                      checked={paymentMethod === 'misto'}
+                      onChange={(e) => setPaymentMethod(e.target.value as any)}
+                      className="text-gray-600 h-5 w-5"
+                    />
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-3a2 2 0 00-2-2H9a2 2 0 00-2 2v3a2 2 0 002 2zm7-5a2 2 0 012 2v4a2 2 0 01-2 2H9a2 2 0 01-2-2v-4a2 2 0 012-2h8z" />
+                      </svg>
+                      <span className="font-medium">Pagamento Misto</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {paymentMethod === 'dinheiro' && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Troco para quanto?
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={saleToClose.total_amount}
+                    value={changeFor || ''}
+                    onChange={(e) => setChangeFor(parseFloat(e.target.value) || undefined)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Valor para troco (opcional)"
+                  />
+                  {changeFor && changeFor > saleToClose.total_amount && (
+                    <p className="text-sm text-green-600">
+                      Troco: {formatPrice(changeFor - saleToClose.total_amount)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {paymentMethod === 'pix' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">PIX Selecionado</p>
+                      <p className="text-sm text-blue-700">
+                        Chave PIX: 85989041010
+                      </p>
+                      <p className="text-sm text-blue-700">
+                        Nome: Amanda Suyelen da Costa Pereira
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === 'misto' && (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-gray-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">Pagamento Misto</p>
+                      <p className="text-sm text-gray-700">
+                        Configure as formas de pagamento no caixa.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setSaleToClose(null);
+                  setPaymentMethod('dinheiro');
+                  setChangeFor(undefined);
+                }}
+                className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handlePaymentConfirm}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={16} />
+                Confirmar Pagamento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info Panel */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <Utensils size={20} className="text-blue-600 mt-0.5" />
+          <div>
+            <h4 className="font-medium text-blue-800 mb-2">ℹ️ Como usar o Sistema de Mesas</h4>
+            <ul className="text-sm text-blue-700 space-y-1">
+              <li>• <strong>Mesa Livre:</strong> Clique para abrir uma nova venda</li>
+              <li>• <strong>Mesa Ocupada:</strong> Clique para adicionar produtos</li>
+              <li>• <strong>Aguardando Conta:</strong> Cliente solicitou a conta</li>
+              <li>• <strong>Limpeza:</strong> Mesa sendo limpa após fechamento</li>
+              <li>• Adicione produtos diretamente pelo sistema de mesas</li>
+              <li>• O sistema sincroniza automaticamente com o caixa</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TableSalesPanel;
