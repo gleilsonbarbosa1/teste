@@ -9,11 +9,14 @@ import {
   ShoppingBag,
   AlertCircle,
   User,
-  LogOut,
+  LogOut, 
   Users
 } from 'lucide-react';
-
-
+import AttendantPanel from './Orders/AttendantPanel'; 
+import PDVSalesScreen from './PDV/PDVSalesScreen';
+import CashRegisterMenu from './PDV/CashRegisterMenu';
+import SalesHistoryPanel from './Orders/SalesHistoryPanel';
+import TableSalesPanel from './TableSales/TableSalesPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import { useScale } from '../hooks/useScale';
 import { useOrders } from '../hooks/useOrders';
@@ -275,7 +278,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="text-center mb-6">
                 <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Users size={24} className="text-blue-600" />
+                Sistema de Mesas - Loja 1
                 </div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">Sistema de Mesas - Loja 1</h2>
                 <p className="text-gray-600">
@@ -318,15 +321,29 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                         R$ 0,00
                       </p>
                     </div>
-                  </div>
+                Gerencie vendas presenciais e controle de mesas
                 </div>
-              </div>
-            </div>
-          )}
-          
-          {activeTab === 'history' && (isAdmin || hasPermission('can_view_sales')) && (
-            <SalesHistoryPanel />
-          )}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="text-center">
+                      <div className="bg-green-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
+                        <Users size={24} className="text-green-600" />
+                      </div>
+                      <h4 className="font-medium text-green-800">Mesas Livres</h4>
+                      <p className="text-2xl font-bold text-green-600">
+                        {tables.filter(t => t.status === 'livre').length}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="text-center">
+                      <div className="bg-blue-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
+                        <ShoppingBag size={24} className="text-blue-600" />
+                      </div>
+                      <h4 className="font-medium text-blue-800">Mesas Ocupadas</h4>
+                      <p className="text-2xl font-bold text-blue-600">
         </div>
       </div>
     </div>
