@@ -261,23 +261,7 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
           {activeTab === 'sales' && (isAdmin || hasPermission('can_view_sales')) && <PDVSalesScreen operator={operator} scaleHook={scaleHook || scale} storeSettings={settings} />}
           {activeTab === 'orders' && (isAdmin || hasPermission('can_view_orders')) && <AttendantPanel storeSettings={settings} />}
           {activeTab === 'cash' && (isAdmin || hasPermission('can_view_cash_register')) && <CashRegisterMenu />}
-          {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-              <Users size={48} className="mx-auto text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-600 mb-2">
-                Sistema de Mesas em Desenvolvimento
-              </h3>
-              <p className="text-gray-500 mb-4">
-                O sistema de vendas para mesas está sendo desenvolvido.
-              </p>
-              <button
-                onClick={() => window.location.href = '/atendimento/mesas'}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-              >
-                Acessar Sistema de Mesas
-              </button>
-            </div>
-          )}
+          {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && <TableSalesPanel storeId={1} operatorName={operator?.name || 'Operador'} />}
           {activeTab === 'history' && (isAdmin || hasPermission('can_view_sales')) && <SalesHistoryPanel storeId={1} />}
         </div>
       </div>
