@@ -12,11 +12,9 @@ import {
   LogOut,
   Users
 } from 'lucide-react';
-import AttendantPanel from './Orders/AttendantPanel'; 
-import PDVSalesScreen from './PDV/PDVSalesScreen';
-import CashRegisterMenu from './PDV/CashRegisterMenu';
-import SalesHistoryPanel from './Orders/SalesHistoryPanel';
-import TableSalesPanel from './TableSales/TableSalesPanel';
+import AttendantPanel from './AttendantPanel'; 
+import PDVSalesScreen from '../PDV/PDVSalesScreen';
+import CashRegisterMenu from '../PDV/CashRegisterMenu';
 import { usePermissions } from '../hooks/usePermissions';
 import { useScale } from '../hooks/useScale';
 import { useOrders } from '../hooks/useOrders';
@@ -250,17 +248,32 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                 }`}
               >
                 <ShoppingBag size={20} />
-                Histórico
+                Sistema de Mesas - Loja 1
               </button>
             )}
-          </div>
+                Gerencie vendas presenciais e controle de mesas
         </div>
-
-        {/* Content */}
-        <div className="transition-all duration-300 print:hidden">
-          {activeTab === 'sales' && (isAdmin || hasPermission('can_view_sales')) && <PDVSalesScreen operator={operator} scaleHook={scaleHook || scale} storeSettings={settings} />}
-          {activeTab === 'orders' && (isAdmin || hasPermission('can_view_orders')) && <AttendantPanel storeSettings={settings} />}
-          {activeTab === 'cash' && (isAdmin || hasPermission('can_view_cash_register')) && <CashRegisterMenu />}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="text-center">
+                      <div className="bg-green-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
+                        <Users size={24} className="text-green-600" />
+                      </div>
+                      <h4 className="font-medium text-green-800">Mesas Livres</h4>
+                      <p className="text-2xl font-bold text-green-600">
+                        {tables.filter(t => t.status === 'livre').length}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="text-center">
+                      <div className="bg-blue-100 rounded-full p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center">
+                        <ShoppingBag size={24} className="text-blue-600" />
+                      </div>
+                      <h4 className="font-medium text-blue-800">Mesas Ocupadas</h4>
+                      <p className="text-2xl font-bold text-blue-600">
           {activeTab === 'tables' && (isAdmin || hasPermission('can_view_sales')) && <TableSalesPanel storeId={1} operatorName={operator?.name || 'Operador'} />}
           {activeTab === 'history' && (isAdmin || hasPermission('can_view_sales')) && <SalesHistoryPanel storeId={1} />}
         </div>
