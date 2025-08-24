@@ -9,7 +9,7 @@ import {
   ShoppingBag,
   AlertCircle,
   User,
-  LogOut, 
+  LogOut,
   Users
 } from 'lucide-react';
 import AttendantPanel from './Orders/AttendantPanel'; 
@@ -344,8 +344,10 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
                       </div>
                       <h4 className="font-medium text-blue-800">Mesas Ocupadas</h4>
                       <p className="text-2xl font-bold text-blue-600">
-        </div> 
+        </div>
       </div>
     </div>
+  );
+};
 
 export default UnifiedAttendancePage;
