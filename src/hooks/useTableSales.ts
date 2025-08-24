@@ -113,6 +113,11 @@ export const useTableSales = (storeId: 1 | 2) => {
   // Remove item from sale
   const removeItemFromSale = async (saleId: string, itemId: string) => {
     try {
+      // Validate itemId
+      if (!itemId || itemId === 'undefined' || typeof itemId !== 'string') {
+        throw new Error('ID do item inválido');
+      }
+
       const { error } = await supabase
         .from(itemsTableName)
         .delete()
