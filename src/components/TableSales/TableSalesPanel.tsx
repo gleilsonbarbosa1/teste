@@ -243,15 +243,6 @@ const UnifiedAttendancePage: React.FC<UnifiedAttendancePanelProps> = ({ operator
             {(isAdmin || hasPermission('can_view_sales')) && (
               <button
                 onClick={() => setActiveTab('history')}
-import CashRegisterMenu from '../PDV/CashRegisterMenu';
-import SalesHistoryPanel from '../Orders/SalesHistoryPanel';
-import TableSalesPanel from './TableSalesPanel';
-import { usePermissions } from '../../hooks/usePermissions';
-import { useScale } from '../../hooks/useScale';
-import { useOrders } from '../../hooks/useOrders';
-import { usePDVCashRegister } from '../../hooks/usePDVCashRegister';
-import { useStoreHours } from '../../hooks/useStoreHours';
-import { PDVOperator } from '../../types/pdv';
                 className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
                   activeTab === 'history'
                     ? 'bg-emerald-500 text-white shadow-lg'
