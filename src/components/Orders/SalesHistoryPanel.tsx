@@ -12,11 +12,11 @@ import {
   LogOut,
   Users
 } from 'lucide-react';
-import AttendantPanel from './Orders/AttendantPanel'; 
-import PDVSalesScreen from './PDV/PDVSalesScreen';
-import CashRegisterMenu from './PDV/CashRegisterMenu';
-import SalesHistoryPanel from './Orders/SalesHistoryPanel';
-import TableSalesPanel from './TableSales/TableSalesPanel';
+import AttendantPanel from '../Orders/AttendantPanel'; 
+import PDVSalesScreen from '../PDV/PDVSalesScreen';
+import CashRegisterMenu from '../PDV/CashRegisterMenu';
+import SalesHistoryPanel from '../Orders/SalesHistoryPanel';
+import TableSalesPanel from '../TableSales/TableSalesPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import { useScale } from '../hooks/useScale';
 import { useOrders } from '../hooks/useOrders';
