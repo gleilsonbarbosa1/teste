@@ -15,6 +15,7 @@ import { PDVOperator } from '../../types/pdv';
 import { supabase } from '../../lib/supabase';
 import { supabase } from '../../lib/supabase';
 import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 interface SalesHistoryPanelProps {
   storeId: number;
@@ -34,11 +35,13 @@ interface Sale {
   channel?: string;
   channel?: string;
   channel?: string;
+  channel?: string;
 }
 
 const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator }) => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +51,155 @@ const SalesHistoryPanel: React.FC<SalesHistoryPanelProps> = ({ storeId, operator
   const { hasPermission } = usePermissions(operator);
 
   const fetchSales = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Check if Supabase is configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || 
+          supabaseUrl === 'your_supabase_url_here' || 
+          supabaseKey === 'your_supabase_anon_key_here' ||
+          supabaseUrl.includes('placeholder')) {
+        console.warn('⚠️ Supabase não configurado - usando dados de demonstração');
+        
+        // Mock data for demonstration when Supabase is not configured
+        const mockSales: Sale[] = [
+          {
+            id: '1',
+            sale_number: 1001,
+            operator_name: 'Administrador',
+            customer_name: 'Maria Santos',
+            total_amount: 25.50,
+            payment_type: 'dinheiro',
+            created_at: new Date().toISOString(),
+            items_count: 3,
+            is_cancelled: false,
+            channel: 'pdv'
+          },
+          {
+            id: '2',
+            sale_number: 1002,
+            operator_name: 'Administrador',
+            customer_name: 'Pedro Oliveira',
+            total_amount: 18.00,
+            payment_type: 'pix',
+            created_at: new Date(Date.now() - 3600000).toISOString(),
+            items_count: 2,
+            is_cancelled: false,
+            channel: 'pdv'
+          }
+        ];
+        
+        setSales(mockSales);
+        setLoading(false);
+        return;
+      }
+      
+      // Calculate date range based on filter
+      let startDate: string;
+      let endDate: string;
+      
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      switch (dateFilter) {
+        case 'today':
+          startDate = today.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+          break;
+        case 'yesterday':
+          const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+          startDate = yesterday.toISOString();
+          endDate = today.toISOString();
+          break;
+        case 'week':
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - today.getDay());
+          startDate = weekStart.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+          break;
+        case 'month':
+          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+          startDate = monthStart.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+          break;
+        default:
+          startDate = today.toISOString();
+          endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+      }
+      
+      console.log('📊 Buscando vendas do período:', { startDate, endDate, dateFilter });
+      
+      // Fetch PDV sales
+      const { data: pdvSales, error: pdvError } = await supabase
+        .from('pdv_sales')
+        .select(`
+          id,
+          sale_number,
+          total_amount,
+          payment_type,
+          customer_name,
+          customer_phone,
+          is_cancelled,
+          created_at,
+          channel,
+          pdv_operators!operator_id(name)
+        `)
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .order('created_at', { ascending: false });
+      
+      if (pdvError) {
+        console.error('❌ Erro ao buscar vendas PDV:', pdvError);
+        throw pdvError;
+      }
+      
+      // Fetch delivery orders
+      const { data: deliveryOrders, error: deliveryError } = await supabase
+        .from('orders')
+        .select('*')
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false });
+      
+      if (deliveryError) {
+        console.warn('⚠️ Erro ao buscar pedidos delivery:', deliveryError);
+      }
+      
+      // Fetch table sales for store 1
+      const { data: tableSales, error: tableError } = await supabase
+        .from('store1_table_sales')
+        .select(`
+          id,
+          sale_number,
+          total_amount,
+          payment_type,
+          customer_name,
+          customer_count,
+          is_cancelled,
+          created_at,
+          operator_name
+        `)
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .order('created_at', { ascending: false });
+      
+      if (tableError) {
+        console.warn('⚠️ Erro ao buscar vendas de mesa:', tableError);
+      }
+      
+      // Process and combine all sales
+      const allSales: Sale[] = [];
+      
+      // Add PDV sales
+      if (pdvSales) {
+        pdvSales.forEach(sale => {
+          allSales.push({
+            id: sale.id,
     try {
       setLoading(true);
       setError(null);
