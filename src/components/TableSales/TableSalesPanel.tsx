@@ -25,9 +25,10 @@ import { PesagemModal } from '../PDV/PesagemModal';
 interface TableSalesPanelProps {
   storeId: 1 | 2;
   operatorName?: string;
+  isCashRegisterOpen?: boolean;
 }
 
-const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador' }) => {
+const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName = 'Operador', isCashRegisterOpen = false }) => {
   const { tables, loading, error, stats, createTableSale, closeSale, getSaleDetails, updateTableStatus, refetch, addItemToSale, deleteItemFromSale } = useTableSales(storeId);
   const { products, loading: productsLoading, searchProducts } = usePDVProducts();
   
@@ -163,6 +164,11 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
   const handlePaymentConfirm = async () => {
     if (!saleToClose) return;
 
+    if (!isCashRegisterOpen) {
+      alert('Não é possível finalizar a venda sem um caixa aberto. Por favor, abra um caixa primeiro.');
+      return;
+    }
+
     try {
       await closeSale(saleToClose.id, paymentMethod, changeFor ? changeFor - saleToClose.total_amount : 0);
       setShowPaymentModal(false);
@@ -189,9 +195,14 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
           document.body.removeChild(successMessage);
         }
       }, 3000);
-    } catch (err) {
-      console.error('Erro ao fechar mesa:', err);
-      alert('Erro ao fechar mesa. Tente novamente.');
+    } catch (error) {
+      console.error('Erro ao fechar mesa:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      if (errorMessage.includes('Cannot add entry to a closed or non-existent cash register')) {
+        alert('Não é possível finalizar a venda sem um caixa aberto. Por favor, abra um caixa primeiro na aba "Caixas".');
+      } else {
+        alert(`Erro ao fechar mesa: ${errorMessage}`);
+      }
     }
   };
   const handleAddProduct = async (product: PDVProduct, quantity: number = 1, weight?: number) => {
@@ -1120,7 +1131,8 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
               </button>
               <button
                 onClick={handlePaymentConfirm}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                disabled={!isCashRegisterOpen}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <CheckCircle size={16} />
                 Confirmar Pagamento
