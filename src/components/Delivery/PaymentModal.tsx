@@ -32,8 +32,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   const isFormValid = () => {
-    // Para dinheiro, não é obrigatório informar troco
-    // Para outros métodos, sempre válido
+    // Always valid when a payment method is selected
+    if (!paymentMethod) return false;
+    
+    // For cash payments, validate change amount if provided
+    if (paymentMethod === 'dinheiro' && changeFor !== undefined) {
+      return changeFor >= totalAmount;
+    }
+    
     return true;
   };
 
@@ -240,7 +246,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!isFormValid() || disableConfirm}
+            disabled={disableConfirm || !paymentMethod}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <CreditCard size={16} />
