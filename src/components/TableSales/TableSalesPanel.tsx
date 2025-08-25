@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Plus, 
-import TablePaymentModal from './TablePaymentModal';
   DollarSign, 
   Clock, 
   User,
@@ -21,6 +20,7 @@ import { usePDVProducts } from '../../hooks/usePDV';
 import { RestaurantTable, TableSale } from '../../types/table-sales';
 import { PDVProduct } from '../../types/pdv';
 import { PesagemModal } from '../PDV/PesagemModal';
+import TablePaymentModal from './TablePaymentModal';
 
 interface TableSalesPanelProps {
   storeId: 1 | 2;
@@ -477,12 +477,10 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                   
                   <div className="mt-2 text-xs text-gray-600">
                     Capacidade: {table.capacity} pessoas
-          <TablePaymentModal
+                  </div>
                 </div>
               </div>
             ))}
-            disableConfirm={!isCashRegisterOpen}
-            isCashRegisterOpen={isCashRegisterOpen}
           </div>
         )}
       </div>
@@ -922,226 +920,20 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
 
       {/* Payment Modal */}
       {showPaymentModal && saleToClose && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  Forma de Pagamento
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowPaymentModal(false);
-                    setSaleToClose(null);
-                    setPaymentMethod('dinheiro');
-                    setChangeFor(undefined);
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-blue-800 font-medium">
-                  Total a pagar: {formatPrice(saleToClose.total_amount)}
-                </p>
-                <p className="text-blue-700 text-sm">
-                  Mesa {selectedTable?.number} - Venda #{saleToClose.sale_number}
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">
-                  Selecione a forma de pagamento:
-                </label>
-                
-                <div className="space-y-2">
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="dinheiro"
-                      checked={paymentMethod === 'dinheiro'}
-                      onChange={(e) => setPaymentMethod(e.target.value as any)}
-                      className="text-green-600 h-5 w-5"
-                    />
-                    <div className="flex items-center gap-2">
-                      <DollarSign size={20} className="text-green-600" />
-                      <span className="font-medium">Dinheiro</span>
-                    </div>
-                  </label>
-                  
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="pix"
-                      checked={paymentMethod === 'pix'}
-                      onChange={(e) => setPaymentMethod(e.target.value as any)}
-                      className="text-blue-600 h-5 w-5"
-                    />
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M12 12h-4.01M12 12v4m6-4h.01M12 8h.01M12 8h4.01M12 8H7.99M12 8V4m0 0H7.99M12 4h4.01" />
-                      </svg>
-                      <span className="font-medium">PIX</span>
-                    </div>
-                  </label>
-                  
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="cartao_credito"
-                      checked={paymentMethod === 'cartao_credito'}
-                      onChange={(e) => setPaymentMethod(e.target.value as any)}
-                      className="text-purple-600 h-5 w-5"
-                    />
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                      </svg>
-                      <span className="font-medium">Cartão de Crédito</span>
-                    </div>
-                  </label>
-                  
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="cartao_debito"
-                      checked={paymentMethod === 'cartao_debito'}
-                      onChange={(e) => setPaymentMethod(e.target.value as any)}
-                      className="text-indigo-600 h-5 w-5"
-                    />
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                      </svg>
-                      <span className="font-medium">Cartão de Débito</span>
-                    </div>
-                  </label>
-                  
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="voucher"
-                      checked={paymentMethod === 'voucher'}
-                      onChange={(e) => setPaymentMethod(e.target.value as any)}
-                      className="text-yellow-600 h-5 w-5"
-                    />
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                      </svg>
-                      <span className="font-medium">Voucher</span>
-                    </div>
-                  </label>
-                  
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="misto"
-                      checked={paymentMethod === 'misto'}
-                      onChange={(e) => setPaymentMethod(e.target.value as any)}
-                      className="text-gray-600 h-5 w-5"
-                    />
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-3a2 2 0 00-2-2H9a2 2 0 00-2 2v3a2 2 0 002 2zm7-5a2 2 0 012 2v4a2 2 0 01-2 2H9a2 2 0 01-2-2v-4a2 2 0 012-2h8z" />
-                      </svg>
-                      <span className="font-medium">Pagamento Misto</span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {paymentMethod === 'dinheiro' && (
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Troco para quanto?
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min={saleToClose.total_amount}
-                    value={changeFor || ''}
-                    onChange={(e) => setChangeFor(parseFloat(e.target.value) || undefined)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Valor para troco (opcional)"
-                  />
-                  {changeFor && changeFor > saleToClose.total_amount && (
-                    <p className="text-sm text-green-600">
-                      Troco: {formatPrice(changeFor - saleToClose.total_amount)}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {paymentMethod === 'pix' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <div className="flex items-start gap-2">
-                    <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-blue-800">PIX Selecionado</p>
-                      <p className="text-sm text-blue-700">
-                        Chave PIX: 85989041010
-                      </p>
-                      <p className="text-sm text-blue-700">
-                        Nome: Amanda Suyelen da Costa Pereira
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === 'misto' && (
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                  <div className="flex items-start gap-2">
-                    <svg className="w-5 h-5 text-gray-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">Pagamento Misto</p>
-                      <p className="text-sm text-gray-700">
-                        Configure as formas de pagamento no caixa.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => {
-                  setShowPaymentModal(false);
-                  setSaleToClose(null);
-                  setPaymentMethod('dinheiro');
-                  setChangeFor(undefined);
-                }}
-                className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => handlePaymentConfirm(paymentMethod, changeFor)}
-                disabled={!isCashRegisterOpen}
-                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <CheckCircle size={16} />
-                Confirmar Pagamento
-              </button>
-            </div>
-          </div>
-        </div>
+        <TablePaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSaleToClose(null);
+            setPaymentMethod('dinheiro');
+            setChangeFor(undefined);
+          }}
+          sale={saleToClose}
+          selectedTable={selectedTable}
+          onConfirm={handlePaymentConfirm}
+          disableConfirm={!isCashRegisterOpen}
+          isCashRegisterOpen={isCashRegisterOpen}
+        />
       )}
 
       {/* Info Panel */}
