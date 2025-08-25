@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Plus, 
-  Eye, 
+import TablePaymentModal from './TablePaymentModal';
   DollarSign, 
   Clock, 
   User,
@@ -477,11 +477,12 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                   
                   <div className="mt-2 text-xs text-gray-600">
                     Capacidade: {table.capacity} pessoas
-                  </div>
+          <TablePaymentModal
                 </div>
               </div>
             ))}
             disableConfirm={!isCashRegisterOpen}
+            isCashRegisterOpen={isCashRegisterOpen}
           </div>
         )}
       </div>
