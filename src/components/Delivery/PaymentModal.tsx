@@ -6,15 +6,13 @@ interface PaymentModalProps {
   onClose: () => void;
   onConfirm: (method: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto', changeFor?: number) => void;
   totalAmount: number;
-  disableConfirm?: boolean;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  totalAmount,
-  disableConfirm = false
+  totalAmount
 }) => {
   const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto'>('dinheiro');
   const [changeFor, setChangeFor] = useState<number | undefined>(undefined);
@@ -28,14 +26,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const handleConfirm = () => {
     onConfirm(paymentMethod, changeFor);
-    onClose();
   };
 
   const isFormValid = () => {
-    // Always valid when a payment method is selected
     if (!paymentMethod) return false;
     
-    // For cash payments, validate change amount if provided
     if (paymentMethod === 'dinheiro' && changeFor !== undefined) {
       return changeFor >= totalAmount;
     }
@@ -234,8 +229,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               </p>
             </div>
           )}
-        </div>
 
+        </div>
+      </div>
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 flex gap-3">
           <button
@@ -246,14 +242,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={disableConfirm || !paymentMethod}
+            disabled={!paymentMethod || (paymentMethod === 'dinheiro' && changeFor !== undefined && changeFor < totalAmount)}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <CreditCard size={16} />
             Confirmar Pagamento
           </button>
         </div>
-      </div>
     </div>
   );
 };

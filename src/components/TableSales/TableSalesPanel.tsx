@@ -161,7 +161,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     setShowPaymentModal(true);
   };
 
-  const handlePaymentConfirm = async () => {
+  const handlePaymentConfirm = async (method: string, changeForAmount?: number) => {
     if (!saleToClose) return;
 
     if (!isCashRegisterOpen) {
@@ -170,7 +170,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
     }
 
     try {
-      await closeSale(saleToClose.id, paymentMethod, changeFor ? changeFor - saleToClose.total_amount : 0);
+      await closeSale(saleToClose.id, method as any, changeForAmount ? changeForAmount - saleToClose.total_amount : 0);
       setShowPaymentModal(false);
       setSaleToClose(null);
       setPaymentMethod('dinheiro');
@@ -1130,7 +1130,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                 Cancelar
               </button>
               <button
-                onClick={handlePaymentConfirm}
+                onClick={() => handlePaymentConfirm(paymentMethod, changeFor)}
                 disabled={!isCashRegisterOpen}
                 className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
