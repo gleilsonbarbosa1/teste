@@ -878,4 +878,4 @@ function formatPrice(price: number) {
     style: 'currency',
     currency: 'BRL'
   }).format(price);
-} 
+}

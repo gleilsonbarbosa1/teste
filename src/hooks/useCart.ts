@@ -10,7 +10,8 @@ export const useCart = () => {
     selectedSize?: ProductSize, 
     quantity: number = 1,
     observations?: string,
-    selectedComplements: SelectedComplement[] = []
+    selectedComplements: SelectedComplement[] = [],
+    replaceItemId?: string
   ) => {
     const basePrice = selectedSize ? selectedSize.price : product.price;
     const complementsPrice = selectedComplements.reduce((total, selected) => total + selected.complement.price, 0);
@@ -36,7 +37,15 @@ export const useCart = () => {
       complementsCount: selectedComplements.length
     });
 
-    setItems(prev => [...prev, newItem]);
+    if (replaceItemId) {
+      // Modo edição: substituir item na mesma posição
+      setItems(prev => prev.map(item => 
+        item.id === replaceItemId ? newItem : item
+      ));
+    } else {
+      // Modo normal: adicionar ao final
+      setItems(prev => [...prev, newItem]);
+    }
     setIsOpen(true);
   }, []);
 

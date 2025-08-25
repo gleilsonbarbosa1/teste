@@ -28,7 +28,7 @@ interface AttendantPanelProps {
 const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSettings }) => {
   const { hasPermission } = usePermissions();
   const { orders, loading, updateOrderStatus } = useOrders();
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('pending');
   const [showManualOrderForm, setShowManualOrderForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [lastOrderCount, setLastOrderCount] = useState(0);
@@ -342,9 +342,9 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
 
   return (
     <PermissionGuard hasPermission={hasPermission('can_view_orders')} showMessage={true}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b print:hidden">
+        <header className="bg-white shadow-lg border-b print:hidden backdrop-blur-sm bg-white/95">
           <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -361,8 +361,17 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
                   <Package size={24} className="text-purple-600" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-800">Painel de Atendimento</h1>
-                  <p className="text-gray-600">Gerencie pedidos e converse com clientes</p>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    Painel de Atendimento
+                  </h1>
+                  <p className="text-gray-600 flex items-center gap-2">
+                    <span>Gerencie pedidos e converse com clientes</span>
+                    {pendingOrdersCount > 0 && (
+                      <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium animate-pulse">
+                        {pendingOrdersCount} pendente(s)
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
               
@@ -384,7 +393,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
                 </button>
                 <button
                   onClick={() => setShowManualOrderForm(true)}
-                  className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                  className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-xl transition-all duration-300 text-sm shadow-lg hover:shadow-xl transform hover:scale-105"
                 >
                   <Plus size={16} />
                   Pedido Manual
@@ -407,11 +416,11 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
                   </button>
                 )}
                 {printerSettings.auto_print_enabled && (
-                  <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-full text-xs">
+                  <div className="flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-xs border border-green-200 shadow-sm">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
-                    Auto Print
+                    <span className="font-medium">Auto Print</span>
                   </div>
                 )}
               </div>
@@ -421,7 +430,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
 
         <div className="max-w-7xl mx-auto px-4 py-6">
           {/* Filters */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6 print:hidden">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-6 mb-6 print:hidden">
             <div className="flex flex-col lg:flex-row gap-4">
               {/* Search */}
               <div className="flex-1">
@@ -432,7 +441,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Buscar por nome, telefone ou ID do pedido..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
                   />
                 </div>
               </div>
@@ -442,7 +451,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as OrderStatus | 'all')}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
                 >
                   {statusOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -454,7 +463,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
             </div>
 
             {/* Status Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mt-4 print:hidden">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mt-6 print:hidden">
               {statusOptions.map(option => {
                 const Icon = option.icon;
                 const isActive = statusFilter === option.value;
@@ -463,15 +472,19 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
                   <button
                     key={option.value}
                     onClick={() => setStatusFilter(option.value)}
-                    className={`p-3 rounded-lg border transition-all ${
+                    className={`p-4 rounded-xl border-2 transition-all duration-300 transform hover:scale-105 ${
                       isActive
-                        ? 'bg-purple-100 border-purple-300 text-purple-700'
-                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                        ? 'bg-gradient-to-br from-purple-500 to-blue-500 border-purple-400 text-white shadow-lg'
+                        : 'bg-white/70 backdrop-blur-sm border-gray-200 text-gray-600 hover:bg-white hover:shadow-md'
                     }`}
                   >
-                    <Icon size={20} className="mx-auto mb-1" />
-                    <div className="text-xs font-medium">{option.label}</div>
-                    <div className="text-lg font-bold">{option.count}</div>
+                    <Icon size={24} className="mx-auto mb-2" />
+                    <div className="text-xs font-medium mb-1">{option.label}</div>
+                    <div className={`text-xl font-bold ${
+                      isActive ? 'text-white' : 'text-gray-800'
+                    }`}>
+                      {option.count}
+                    </div>
                   </button>
                 );
               })}
@@ -479,10 +492,12 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
           </div>
 
           {/* Orders List */}
-          <div className="space-y-4 print:hidden">
+          <div className="space-y-6 print:hidden">
             {filteredOrders.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-                <Package size={48} className="mx-auto text-gray-300 mb-4" />
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-12 text-center">
+                <div className="bg-gray-100 rounded-full p-6 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                  <Package size={48} className="text-gray-400" />
+                </div>
                 <h3 className="text-lg font-medium text-gray-600 mb-2">
                   Nenhum pedido encontrado
                 </h3>
@@ -492,6 +507,13 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
                     : 'Aguardando novos pedidos...'
                   }
                 </p>
+                {statusFilter === 'pending' && (
+                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <p className="text-blue-700 text-sm">
+                      💡 <strong>Dica:</strong> Novos pedidos aparecerão automaticamente aqui quando chegarem
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               filteredOrders.map(order => (
@@ -500,6 +522,7 @@ const AttendantPanel: React.FC<AttendantPanelProps> = ({ onBackToAdmin, storeSet
                   order={order}
                   onStatusChange={updateOrderStatus}
                   isAttendant={true}
+                  className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
                 />
               ))
             )}

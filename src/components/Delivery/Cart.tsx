@@ -50,7 +50,7 @@ const Cart: React.FC<CartProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center">
-      <div className="bg-white w-full sm:w-96 sm:max-w-md h-full sm:h-auto sm:max-h-[80vh] sm:rounded-lg shadow-xl flex flex-col">
+      <div className="bg-white w-full sm:w-[600px] sm:max-w-2xl h-full sm:h-auto sm:max-h-[80vh] sm:rounded-lg shadow-xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-purple-50 to-green-50 sm:rounded-t-lg">
           <div className="flex items-center gap-2">
@@ -145,7 +145,8 @@ const Cart: React.FC<CartProps> = ({
                       {item.selectedComplements && item.selectedComplements.length > 0 && (
                         <div className="mb-2">
                           <p className="text-xs font-medium text-gray-700 mb-1">Complementos:</p>
-                          <div className="flex flex-wrap gap-1">
+                          <div className="max-h-20 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                            <div className="flex flex-wrap gap-1 pr-2">
                             {item.selectedComplements.slice(0, 3).map((selectedComp, idx) => (
                               <span 
                                 key={idx}
@@ -156,10 +157,19 @@ const Cart: React.FC<CartProps> = ({
                               </span>
                             ))}
                             {item.selectedComplements.length > 3 && (
-                              <span className="text-xs text-gray-500">
-                                +{item.selectedComplements.length - 3} mais
-                              </span>
+                              <>
+                                {item.selectedComplements.slice(3).map((selectedComp, idx) => (
+                                  <span 
+                                    key={idx + 3}
+                                    className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full"
+                                  >
+                                    {selectedComp.complement.name}
+                                    {selectedComp.complement.price > 0 && ` (+${formatPrice(selectedComp.complement.price)})`}
+                                  </span>
+                                ))}
+                              </>
                             )}
+                            </div>
                           </div>
                         </div>
                       )}

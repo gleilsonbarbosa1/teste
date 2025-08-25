@@ -21,13 +21,15 @@ interface OrderCardProps {
   onStatusChange: (orderId: string, status: OrderStatus) => void;
   storeSettings?: any;
   isAttendant?: boolean;
+  className?: string;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({ 
   order, 
   storeSettings,
   onStatusChange, 
-  isAttendant = false 
+  isAttendant = false,
+  className = ''
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showPrintView, setShowPrintView] = useState(false);
@@ -101,61 +103,77 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:hidden">
+      <div className={`bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 overflow-hidden print:hidden transition-all duration-300 hover:shadow-xl ${className}`}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-100">
+        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="bg-purple-100 rounded-full p-2">
+              <div className="bg-gradient-to-br from-purple-500 to-blue-500 rounded-full p-3 shadow-lg">
                 <Package size={20} className="text-purple-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-800">
+                <h3 className="font-bold text-gray-800 text-lg">
                   Pedido #{order.id.slice(-8)}
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-600 font-medium">
                   {formatDate(order.created_at)}
                 </p>
               </div>
             </div>
-            <OrderStatusBadge status={order.status} />
+            <OrderStatusBadge status={order.status} className="text-base px-4 py-2 shadow-md" />
           </div>
 
           {/* Customer Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div className="flex items-center gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center gap-3 bg-white/50 rounded-lg p-3">
               <User size={16} className="text-gray-400" />
-              <span>{order.customer_name}</span>
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Cliente</p>
+                <p className="font-semibold text-gray-800">{order.customer_name}</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 bg-white/50 rounded-lg p-3">
               <Phone size={16} className="text-gray-400" />
-              <span>{order.customer_phone}</span>
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Telefone</p>
+                <p className="font-semibold text-gray-800">{order.customer_phone}</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 bg-white/50 rounded-lg p-3 md:col-span-2">
               <MapPin size={16} className="text-gray-400" />
-              <span>{order.customer_address}, {order.customer_neighborhood}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CreditCard size={16} className="text-gray-400" />
-              <span>{getPaymentMethodLabel(order.payment_method)}</span>
-              {order.change_for && (
-                <span className="text-gray-500">
-                  (Troco para {formatPrice(order.change_for)})
-                </span>
-              )}
+              <div className="flex-1">
+                <p className="text-xs text-gray-500 font-medium">Endereço</p>
+                <p className="font-semibold text-gray-800">{order.customer_address}</p>
+                <p className="text-sm text-gray-600">{order.customer_neighborhood}</p>
+              </div>
             </div>
           </div>
 
           {/* Total */}
-          <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center justify-between">
-              <span className="text-lg font-bold text-green-600">
-                Total: {formatPrice(order.total_price)}
-              </span>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 bg-white/50 rounded-lg p-2">
+                  <CreditCard size={16} className="text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500">Pagamento</p>
+                    <p className="font-medium text-gray-800">{getPaymentMethodLabel(order.payment_method)}</p>
+                    {order.change_for && (
+                      <p className="text-xs text-gray-600">
+                        Troco: {formatPrice(order.change_for)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-xl shadow-lg">
+                  <p className="text-xs font-medium">Total</p>
+                  <p className="text-xl font-bold">{formatPrice(order.total_price)}</p>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowPrintView(true)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm print:hidden"
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-xl hover:from-green-200 hover:to-emerald-200 transition-all duration-300 text-sm print:hidden shadow-md hover:shadow-lg transform hover:scale-105"
                   title="Imprimir pedido"
                 >
                   <Printer size={16} />
@@ -166,7 +184,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     href={generateWhatsAppLink()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm print:hidden"
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300 text-sm print:hidden shadow-lg hover:shadow-xl transform hover:scale-105"
                     title="Falar com cliente via WhatsApp"
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -177,7 +195,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 )}
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm print:hidden"
+                  className="flex items-center gap-2 px-4 py-2 bg-white/70 text-gray-700 rounded-xl hover:bg-white transition-all duration-300 text-sm print:hidden shadow-md hover:shadow-lg"
                 >
                   {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   {isExpanded ? 'Menos' : 'Detalhes'}
@@ -189,14 +207,14 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
         {/* Status Change (Attendant Only) */}
         {isAttendant && (
-          <div className="p-4 bg-gray-50 border-b border-gray-100 print:hidden">
+          <div className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-100 print:hidden">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Alterar Status:
+              🔄 Alterar Status do Pedido:
             </label>
             <select
               value={order.status}
               onChange={(e) => onStatusChange(order.id, e.target.value as OrderStatus)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 font-medium"
             >
               {statusOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -209,33 +227,38 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
         {/* Expanded Details */}
         {isExpanded && (
-          <div className="p-4 border-b border-gray-100">
-            <h4 className="font-medium text-gray-800 mb-3">Itens do Pedido:</h4>
-            <div className="space-y-3">
+          <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50">
+            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Package size={18} className="text-purple-600" />
+              Itens do Pedido ({order.items.length}):
+            </h4>
+            <div className="space-y-4">
               {order.items.map((item, index) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-3">
+                <div key={index} className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/30 shadow-sm hover:shadow-md transition-all duration-300">
                   <div className="flex items-start gap-3">
                     <img
                       src={item.product_image}
                       alt={item.product_name}
-                      className="w-12 h-12 object-cover rounded-lg"
+                      className="w-16 h-16 object-cover rounded-xl shadow-md"
                     />
                     <div className="flex-1">
-                      <h5 className="font-medium text-gray-800">{item.product_name}</h5>
+                      <h5 className="font-bold text-gray-800 mb-1">{item.product_name}</h5>
                       {item.selected_size && (
-                        <p className="text-sm text-gray-600">{item.selected_size}</p>
+                        <p className="text-sm text-purple-600 font-medium">Tamanho: {item.selected_size}</p>
                       )}
                       
                       {/* Complementos */}
                       {item.complements.length > 0 && (
-                        <div className="mt-1">
-                          <p className="text-xs font-medium text-gray-700">Complementos:</p>
-                          <div className="text-xs text-gray-600">
+                        <div className="mt-2">
+                          <p className="text-xs font-bold text-gray-700 mb-1">Complementos:</p>
+                          <div className="flex flex-wrap gap-1">
                             {item.complements.map((comp, idx) => (
-                              <span key={idx}>
-                                • {comp.name}
+                              <span 
+                                key={idx}
+                                className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-medium"
+                              >
+                                {comp.name}
                                 {comp.price > 0 && ` (+${formatPrice(comp.price)})`}
-                                {idx < item.complements.length - 1 && ', '}
                               </span>
                             ))}
                           </div>
@@ -243,16 +266,21 @@ const OrderCard: React.FC<OrderCardProps> = ({
                       )}
                       
                       {item.observations && (
-                        <p className="text-sm text-gray-500 italic mt-1">
-                          Obs: {item.observations}
-                        </p>
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <p className="text-xs font-bold text-yellow-800 mb-1">📝 Observações:</p>
+                          <p className="text-sm text-yellow-800 font-medium">
+                            {item.observations}
+                          </p>
+                        </div>
                       )}
                       
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-sm text-gray-600">
-                          Qtd: {item.quantity}x
-                        </span>
-                        <span className="font-medium text-purple-600">
+                      <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-200">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full font-medium">
+                            Qtd: {item.quantity}x
+                          </span>
+                        </div>
+                        <span className="font-bold text-green-600 text-lg">
                           {formatPrice(item.total_price)}
                         </span>
                       </div>
