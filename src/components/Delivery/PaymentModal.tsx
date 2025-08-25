@@ -219,15 +219,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             </div>
           )}
 
-          {disableConfirm && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-yellow-800 text-sm">
-                ⚠️ Não é possível finalizar pagamento sem um caixa aberto.
-              </p>
-            </div>
-          )}
-
-        </div>
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 flex gap-3">
           <button
@@ -238,7 +229,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={disableConfirm || !paymentMethod || (paymentMethod === 'dinheiro' && changeFor !== undefined && changeFor < totalAmount)}
+            disabled={!paymentMethod}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <CreditCard size={16} />
