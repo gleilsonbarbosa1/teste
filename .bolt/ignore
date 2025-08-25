@@ -11,4 +11,8 @@
 /home/project/ONDE_CRIAR_USUARIOS_LOJA2.md
 /home/project/src/components/CashFlow
 /home/project/src/components/Orders
-
+/home/project/src/hooks/useRecommendations.ts
+/home/project/src/hooks/useStoreHours.ts
+/home/project/src/hooks/useWeightFromScale.ts
+/home/project/src/hooks/useScale.ts
+/home/project/src/hooks/useProductScheduling.ts
