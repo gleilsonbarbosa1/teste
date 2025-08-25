@@ -90,10 +90,10 @@ const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({ status, className =
 
   return (
     <span className={`
-      inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border whitespace-nowrap
+      inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border-2 whitespace-nowrap shadow-md transition-all duration-300 hover:shadow-lg
       ${config.bgColor} ${config.textColor} ${config.borderColor} ${className}
     `}>
-      <Icon size={16} />
+      <Icon size={18} />
       {config.label}
     </span>
   );

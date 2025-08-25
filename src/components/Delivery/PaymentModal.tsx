@@ -4,15 +4,17 @@ import { X, CreditCard, Banknote, QrCode, AlertCircle } from 'lucide-react';
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm,
+  onConfirm: (method: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto', changeFor?: number) => void;
   totalAmount: number;
+  disableConfirm?: boolean;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  totalAmount
+  totalAmount,
+  disableConfirm = false
 }) => {
   const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto'>('dinheiro');
   const [changeFor, setChangeFor] = useState<number | undefined>(undefined);
@@ -26,13 +28,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const handleConfirm = () => {
     onConfirm(paymentMethod, changeFor);
-    onClose();
   };
 
   const isFormValid = () => {
-    // Para dinheiro, não é obrigatório informar troco
-    // Para outros métodos, sempre válido
-    return true;
+    // Always return true if a payment method is selected
+    return !!paymentMethod;
   };
 
   if (!isOpen) return null;
@@ -230,7 +230,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!isFormValid()}
+            disabled={!paymentMethod}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <CreditCard size={16} />

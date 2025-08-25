@@ -1,362 +1,167 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-interface UploadedImage {
+interface UploadResult {
   url: string;
-  name: string;
-  size: number;
-  id: string;
+  path: string;
 }
 
 export const useImageUpload = () => {
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [deleting, setDeleting] = useState(false);
 
-  const uploadImage = async (file: File): Promise<UploadedImage> => {
+  const uploadImage = async (file: File): Promise<UploadResult> => {
     setUploading(true);
-    setError(null);
-    setUploadProgress(0);
-
+    
     try {
-      console.log('🚀 Iniciando upload da imagem:', {
-        name: file.name,
-        size: file.size,
-        type: file.type
-      });
-
-      // Validar arquivo
+      // Validar tipo de arquivo
       if (!file.type.startsWith('image/')) {
         throw new Error('Arquivo deve ser uma imagem');
       }
 
-      if (file.size > 5 * 1024 * 1024) { // 5MB
-        throw new Error('Arquivo muito grande. Máximo 5MB');
+      // Validar tamanho (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Arquivo deve ter no máximo 5MB');
       }
 
       // Gerar nome único para o arquivo
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-      const filePath = `product-images/${fileName}`;
-
-      console.log('📁 Caminho do arquivo:', filePath);
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `products/${fileName}`;
 
       // Upload para Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+        .from('product-images')
+        .upload(filePath, file);
 
       if (uploadError) {
-        console.error('❌ Erro no upload para storage:', uploadError);
-        throw new Error(`Erro no upload: ${uploadError.message}`);
+        throw uploadError;
       }
 
-      if (!uploadData || !uploadData.path) {
-        console.error('❌ Upload retornou dados inválidos:', uploadData);
-        throw new Error('Upload falhou - dados inválidos retornados');
-      }
-
-      console.log('✅ Upload para storage concluído:', uploadData);
-      setUploadProgress(50);
-
-      // Obter URL pública da imagem
+      // Obter URL pública
       const { data: urlData } = supabase.storage
-        .from('images')
+        .from('product-images')
         .getPublicUrl(filePath);
 
-      if (!urlData?.publicUrl) {
-        throw new Error('Erro ao obter URL da imagem');
-      }
-
-      console.log('🔗 URL pública gerada:', urlData.publicUrl);
-      setUploadProgress(75);
-
-      // Salvar informações da imagem na tabela product_images
-      const { data: imageRecord, error: dbError } = await supabase
+      // Salvar metadata no banco
+      const { data: imageData, error: dbError } = await supabase
         .from('product_images')
-        .insert([{
+        .insert({
           file_name: fileName,
           file_path: filePath,
           file_size: file.size,
           mime_type: file.type,
           public_url: urlData.publicUrl,
           original_name: file.name
-        }])
+        })
         .select()
         .single();
 
       if (dbError) {
-        console.error('❌ Erro ao salvar metadados no banco:', dbError);
-        // Tentar deletar o arquivo do storage se falhou salvar no banco
-        try {
-          await supabase.storage.from('images').remove([filePath]);
-          console.log('🗑️ Arquivo removido do storage após erro no banco');
-        } catch (cleanupError) {
-          console.error('⚠️ Erro ao limpar arquivo do storage:', cleanupError);
-        }
-        throw new Error(`Erro ao salvar no banco: ${dbError.message}`);
+        // Se falhou ao salvar no banco, remover do storage
+        await supabase.storage
+          .from('product-images')
+          .remove([filePath]);
+        throw dbError;
       }
 
-      console.log('✅ Metadados salvos no banco:', imageRecord);
-      setUploadProgress(100);
-
       return {
-        id: imageRecord.id,
         url: urlData.publicUrl,
-        name: file.name,
-        size: file.size
+        path: filePath
       };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao fazer upload';
-      setError(errorMessage);
-      console.error('💥 Erro geral no upload:', err);
-      throw new Error(errorMessage);
+      console.error('Erro no upload:', err);
+      throw err;
     } finally {
       setUploading(false);
-      setUploadProgress(0);
     }
   };
 
-  const deleteImage = async (imageUrl: string): Promise<void> => {
+  const deleteImage = async (imagePath: string): Promise<void> => {
+    setDeleting(true);
+    
     try {
-      console.log('🗑️ Iniciando exclusão da imagem:', imageUrl);
-
-      // Remove cache-busting parameters from URL for database lookup
-      const cleanImageUrl = imageUrl.split('?')[0];
-
-      // Buscar informações da imagem no banco
-      const { data: imageRecord, error: findError } = await supabase
-        .from('product_images')
-        .select('id, file_path')
-        .eq('public_url', cleanImageUrl)
-        .maybeSingle();
-
-      if (findError || !imageRecord) {
-        console.error('❌ Imagem não encontrada no banco para exclusão:', findError);
-        throw new Error('Imagem não encontrada no banco de dados');
-      }
-
-      console.log('📋 Dados da imagem encontrados:', imageRecord);
-
-      // Deletar do storage
+      // Remover do storage
       const { error: storageError } = await supabase.storage
-        .from('images')
-        .remove([imageRecord.file_path]);
+        .from('product-images')
+        .remove([imagePath]);
 
       if (storageError) {
-        console.warn('⚠️ Erro ao deletar do storage (continuando):', storageError);
+        throw storageError;
       }
 
-      // Deletar do banco
+      // Remover do banco
       const { error: dbError } = await supabase
         .from('product_images')
         .delete()
-        .eq('id', imageRecord.id);
+        .eq('file_path', imagePath);
 
       if (dbError) {
-        console.error('❌ Erro ao deletar metadados do banco:', dbError);
-        throw new Error(`Erro ao deletar do banco: ${dbError.message}`);
+        throw dbError;
       }
-
-      console.log('🗑️ Removendo associações de produtos...');
-      // Remover associações de produtos
-      const { error: associationError } = await supabase
-        .from('product_image_associations')
-        .delete()
-        .eq('image_id', imageRecord.id);
-
-      if (associationError) {
-        console.warn('⚠️ Erro ao remover associações:', associationError);
-      }
-
-      console.log('✅ Imagem excluída completamente');
     } catch (err) {
       console.error('Erro ao deletar imagem:', err);
       throw err;
-    }
-  };
-
-  const getUploadedImages = async (): Promise<UploadedImage[]> => {
-    try {
-      console.log('📋 Carregando lista de imagens...');
-
-      const { data, error } = await supabase
-        .from('product_images')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Erro ao buscar imagens do banco:', error);
-        return [];
-      }
-
-      const imageCount = data?.length || 0;
-      console.log(`✅ ${imageCount} imagens carregadas do banco`);
-
-      return (data || []).map(img => ({
-        id: img.id,
-        url: img.public_url,
-        name: img.original_name,
-        size: img.file_size
-      }));
-    } catch (err) {
-      console.error('💥 Erro geral ao buscar imagens:', err);
-      return [];
-    }
-  };
-
-  const saveImageToProduct = async (imageUrl: string, productId: string): Promise<string | null> => {
-    try {
-      console.log('🔗 Iniciando associação imagem-produto:', { 
-        imageUrl: imageUrl.split('?')[0].substring(0, 50) + '...', 
-        productId 
-      });
-      
-      // Remove cache-busting parameters from URL for database lookup
-      const cleanImageUrl = imageUrl.split('?')[0];
-      
-      // Buscar ID da imagem
-      const { data: imageRecord, error: findError } = await supabase
-        .from('product_images')
-        .select('*')
-        .eq('public_url', cleanImageUrl)
-        .maybeSingle();
-
-      if (findError || !imageRecord) {
-        console.error('❌ Imagem não encontrada no banco para associação:', findError);
-        throw new Error('Imagem não encontrada no banco de dados');
-      }
-
-      console.log('✅ Imagem encontrada para associação:', imageRecord.id);
-      
-      // Remover associação anterior se existir
-      const { error: deleteError } = await supabase
-        .from('product_image_associations')
-        .delete()
-        .eq('product_id', productId);
-
-      if (deleteError) {
-        console.warn('⚠️ Erro ao remover associação anterior (continuando):', deleteError);
-      }
-
-      // Criar nova associação
-      const { error: associationError } = await supabase
-        .from('product_image_associations')
-        .insert([{
-          product_id: productId,
-          image_id: imageRecord.id
-        }]);
-
-      if (associationError) {
-        console.error('❌ Erro ao criar associação imagem-produto:', associationError);
-        throw new Error(`Erro ao associar imagem: ${associationError.message}`);
-      }
-      
-      // Force a cache refresh by adding a timestamp to the URL
-      const timestamp = new Date().getTime();
-      const refreshedUrl = imageUrl.includes('?') ? 
-        `${cleanImageUrl}?t=${timestamp}` : 
-        `${imageUrl}?t=${timestamp}`;
-      
-      console.log('✅ Associação imagem-produto criada com sucesso');
-
-      // Return the clean URL without cache parameters
-      return cleanImageUrl;
-    } catch (err) {
-      console.error('Erro ao salvar imagem do produto:', err);
-      throw err;
+    } finally {
+      setDeleting(false);
     }
   };
 
   const getProductImage = async (productId: string): Promise<string | null> => {
     try {
-      // Check if Supabase is configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey || 
-          supabaseUrl.includes('placeholder') || 
-          supabaseKey.includes('placeholder')) {
-        console.warn('⚠️ Supabase not configured, skipping image fetch');
+      const { data, error } = await supabase
+        .from('product_image_associations')
+        .select('image_id, product_images(public_url)')
+        .eq('product_id', productId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao buscar imagem do produto:', error);
         return null;
       }
 
-      // Check if Supabase is properly configured
-      const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const envSupabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!envSupabaseUrl || !envSupabaseKey || 
-          envSupabaseUrl === 'your_supabase_url_here' || 
-          envSupabaseKey === 'your_supabase_anon_key_here' ||
-          envSupabaseUrl.includes('placeholder')) {
-        console.warn('Supabase not configured, using fallback image');
-        return null
+      if (!data || !data.product_images) {
+        return null;
       }
 
-      const cleanProductId = productId;
-            
-      try {
-        const { data, error } = await supabase
-          .from('product_image_associations')
-          .select(`
-            image:product_images(public_url)
-          `)
-          .eq('product_id', cleanProductId)
-          .maybeSingle();
-        
-        if (error) {
-          console.warn(`⚠️ Database error loading image for product ${cleanProductId}:`, error.message);
-          return null;
-        }
+      return (data.product_images as any).public_url;
+    } catch (err) {
+      console.error('Erro ao buscar imagem:', err);
+      return null;
+    }
+  };
 
-        if (!data) {
-          return null;
-        }
-        
-        return data.image?.public_url || null;
-      } catch (fetchError) {
-        // Handle network errors gracefully
-        if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
-          console.warn(`🌐 Network error loading image for product ${cleanProductId} - using fallback`);
-        } else {
-          console.warn(`⚠️ Unexpected error loading image for product ${cleanProductId}:`, fetchError);
-        }
-        return null;
+  const associateImageWithProduct = async (productId: string, imageId: string): Promise<void> => {
+    try {
+      // Primeiro, remover associação existente se houver
+      await supabase
+        .from('product_image_associations')
+        .delete()
+        .eq('product_id', productId);
+
+      // Criar nova associação
+      const { error } = await supabase
+        .from('product_image_associations')
+        .insert({
+          product_id: productId,
+          image_id: imageId
+        });
+
+      if (error) {
+        throw error;
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      
-      // Handle different types of network errors gracefully
-      if (err instanceof TypeError && (errorMessage.includes('Failed to fetch') || 
-          errorMessage.includes('fetch') || errorMessage.includes('NetworkError'))) {
-        console.warn(`🌐 Network connectivity issue - using fallback image for product ${productId}`);
-      } else if (errorMessage.includes('timeout') || errorMessage.includes('aborted')) {
-        console.warn(`⏱️ Request timeout - using fallback image for product ${productId}`);
-      } else {
-        console.warn(`⚠️ Unexpected error loading image for product ${productId}:`, errorMessage);
-      }
-      // Handle network errors gracefully
-      if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        console.warn('⚠️ Network error when fetching product image, using fallback');
-        return null;
-      }
-      
-      console.warn('⚠️ Error fetching product image, using fallback:', error);
-      return null;
+      console.error('Erro ao associar imagem:', err);
+      throw err;
     }
   };
 
   return {
     uploadImage,
     deleteImage,
-    getUploadedImages,
-    saveImageToProduct,
     getProductImage,
+    associateImageWithProduct,
     uploading,
-    uploadProgress,
-    error
+    deleting
   };
 };
