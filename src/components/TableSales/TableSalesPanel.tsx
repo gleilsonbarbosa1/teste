@@ -481,6 +481,7 @@ const TableSalesPanel: React.FC<TableSalesPanelProps> = ({ storeId, operatorName
                 </div>
               </div>
             ))}
+            disableConfirm={!isCashRegisterOpen}
           </div>
         )}
       </div>

@@ -6,13 +6,15 @@ interface PaymentModalProps {
   onClose: () => void;
   onConfirm: (method: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto', changeFor?: number) => void;
   totalAmount: number;
+  disableConfirm?: boolean;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  totalAmount
+  totalAmount,
+  disableConfirm = false
 }) => {
   const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto'>('dinheiro');
   const [changeFor, setChangeFor] = useState<number | undefined>(undefined);
@@ -29,13 +31,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   const isFormValid = () => {
-    if (!paymentMethod) return false;
-    
-    if (paymentMethod === 'dinheiro' && changeFor !== undefined) {
-      return changeFor >= totalAmount;
-    }
-    
-    return true;
+    // Always return true if a payment method is selected
+    return !!paymentMethod;
   };
 
   if (!isOpen) return null;
@@ -231,7 +228,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           )}
 
         </div>
-      </div>
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 flex gap-3">
           <button
@@ -242,13 +238,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!paymentMethod || (paymentMethod === 'dinheiro' && changeFor !== undefined && changeFor < totalAmount)}
+            disabled={disableConfirm || !paymentMethod || (paymentMethod === 'dinheiro' && changeFor !== undefined && changeFor < totalAmount)}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <CreditCard size={16} />
             Confirmar Pagamento
           </button>
         </div>
+      </div>
     </div>
   );
 };
