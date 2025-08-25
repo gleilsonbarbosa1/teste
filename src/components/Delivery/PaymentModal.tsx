@@ -4,7 +4,7 @@ import { X, CreditCard, Banknote, QrCode, AlertCircle } from 'lucide-react';
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm,
+  onConfirm: (method: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'voucher' | 'misto', changeFor?: number) => void;
   totalAmount: number;
   disableConfirm?: boolean;
 }
