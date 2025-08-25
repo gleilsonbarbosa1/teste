@@ -11,6 +11,7 @@ interface CartProps {
   onClearCart: () => void;
   totalPrice: number;
   disabled?: boolean;
+  onEditItem?: (item: CartItem) => void;
 }
 
 const Cart: React.FC<CartProps> = ({
@@ -22,6 +23,7 @@ const Cart: React.FC<CartProps> = ({
   onClearCart,
   totalPrice,
   disabled = false,
+  onEditItem
 }) => {
   if (!isOpen) return null;
 
@@ -94,13 +96,24 @@ const Cart: React.FC<CartProps> = ({
                       )}
                     </div>
                     <div className="flex gap-1 ml-2">
-                  <button
-                    onClick={() => onRemoveItem(item.id)}
-                    className="p-1 text-red-600 hover:bg-red-100 rounded ml-2"
-                    disabled={disabled}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                      {onEditItem && (
+                        <button
+                          onClick={() => onEditItem(item)}
+                          className="p-1 text-blue-600 hover:bg-blue-100 rounded"
+                          disabled={disabled}
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onRemoveItem(item.id)}
+                        className="p-1 text-red-600 hover:bg-red-100 rounded"
+                        disabled={disabled}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
