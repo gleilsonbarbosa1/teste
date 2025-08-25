@@ -541,7 +541,6 @@ const DeliveryPage: React.FC = () => {
         onClearCart={clearCart}
         totalPrice={getTotalPrice()}
         disabled={!storeStatus.isOpen}
-        onEditItem={handleEditCartItem}
       />
     </div>
   );
