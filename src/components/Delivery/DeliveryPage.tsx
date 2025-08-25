@@ -241,11 +241,18 @@ const DeliveryPage: React.FC = () => {
   const storeStatus = getStoreStatus();
 
   const handleEditCartItem = (itemId: string, product: any, selectedSize?: any, quantity: number = 1, observations?: string, selectedComplements: any[] = []) => {
+  const handleEditCartItem = (cartItem: CartItem) => {
     // Remove o item antigo
-    removeFromCart(itemId);
+    removeFromCart(cartItem.id);
     
     // Adiciona o item editado
-    addToCart(product, selectedSize, quantity, observations, selectedComplements);
+    addToCart(
+      cartItem.product, 
+      cartItem.selectedSize, 
+      cartItem.quantity, 
+      cartItem.observations, 
+      cartItem.selectedComplements
+    );
   };
   if (productsLoading) {
     return (
