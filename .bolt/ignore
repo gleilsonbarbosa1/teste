@@ -1,3 +1,4 @@
+/home/project/src/components/Store2/*
 /home/project/src/hooks/useCashback.ts
 /home/project/src/hooks/useDeliveryAuth.ts
 /home/project/src/hooks/useDeliveryAuth.ts
@@ -7,5 +8,6 @@
 /home/project/src/components/Customer
 /home/project/GUIA_COMPLETO_ACESSO.md
 /home/project/ONDE_CRIAR_USUARIOS_LOJA2.md
-/home/project/src/components/Store2/*
+/home/project/src/components/CashFlow
+/home/project/src/components/Orders
 
