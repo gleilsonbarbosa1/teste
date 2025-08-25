@@ -218,6 +218,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               </div>
             </div>
           )}
+        </div>
 
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 flex gap-3">
