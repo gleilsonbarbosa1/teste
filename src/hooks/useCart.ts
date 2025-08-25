@@ -14,7 +14,8 @@ export const useCart = () => {
   ) => {
     const basePrice = selectedSize ? selectedSize.price : product.price;
     const complementsPrice = selectedComplements.reduce((total, selected) => total + selected.complement.price, 0);
-    const totalPrice = (basePrice + complementsPrice) * quantity;
+    const unitPrice = basePrice + complementsPrice;
+    const totalPrice = unitPrice * quantity;
     
     const newItem: CartItem = {
       id: `${product.id}-${selectedSize?.id || 'default'}-${Date.now()}`,
@@ -22,15 +23,25 @@ export const useCart = () => {
       selectedSize,
       selectedComplements,
       quantity,
+      unit_price: unitPrice,
       totalPrice,
       observations
     };
+
+    console.log('🛒 Adicionando ao carrinho:', {
+      product: product.name,
+      quantity,
+      unitPrice,
+      totalPrice,
+      complementsCount: selectedComplements.length
+    });
 
     setItems(prev => [...prev, newItem]);
     setIsOpen(true);
   }, []);
 
   const removeFromCart = useCallback((itemId: string) => {
+    console.log('🗑️ Removendo do carrinho:', itemId);
     setItems(prev => prev.filter(item => item.id !== itemId));
   }, []);
 
@@ -40,14 +51,15 @@ export const useCart = () => {
       return;
     }
 
+    console.log('🔄 Atualizando quantidade:', { itemId, quantity });
+
     setItems(prev => prev.map(item => {
       if (item.id === itemId) {
-        const basePrice = item.selectedSize ? item.selectedSize.price : item.product.price;
-        const complementsPrice = item.selectedComplements.reduce((total, selected) => total + selected.complement.price, 0);
+        const newTotalPrice = item.unit_price * quantity;
         return {
           ...item,
           quantity,
-          totalPrice: (basePrice + complementsPrice) * quantity
+          totalPrice: newTotalPrice
         };
       }
       return item;
@@ -55,16 +67,48 @@ export const useCart = () => {
   }, [removeFromCart]);
 
   const clearCart = useCallback(() => {
+    console.log('🧹 Limpando carrinho');
     setItems([]);
     setIsOpen(false);
   }, []);
 
   const getTotalPrice = useCallback(() => {
-    return items.reduce((total, item) => total + item.totalPrice, 0);
+    const total = items.reduce((total, item) => total + item.totalPrice, 0);
+    console.log('💰 Total do carrinho:', total);
+    return total;
   }, [items]);
 
   const getTotalItems = useCallback(() => {
-    return items.reduce((total, item) => total + item.quantity, 0);
+    const total = items.reduce((total, item) => total + item.quantity, 0);
+    return total;
+  }, [items]);
+
+  const getItemsCount = useCallback(() => {
+    return items.length;
+  }, [items]);
+
+  const updateItem = useCallback((itemId: string, updates: Partial<CartItem>) => {
+    setItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const updatedItem = { ...item, ...updates };
+        
+        // Recalculate total price if quantity or unit_price changed
+        if (updates.quantity !== undefined || updates.unit_price !== undefined) {
+          updatedItem.totalPrice = updatedItem.unit_price * updatedItem.quantity;
+        }
+        
+        return updatedItem;
+      }
+      return item;
+    }));
+  }, []);
+
+  const findItemById = useCallback((itemId: string) => {
+    return items.find(item => item.id === itemId);
+  }, [items]);
+
+  const hasItems = useCallback(() => {
+    return items.length > 0;
   }, [items]);
 
   return {
@@ -76,6 +120,10 @@ export const useCart = () => {
     updateQuantity,
     clearCart,
     getTotalPrice,
-    getTotalItems
+    getTotalItems,
+    getItemsCount,
+    updateItem,
+    findItemById,
+    hasItems
   };
 };

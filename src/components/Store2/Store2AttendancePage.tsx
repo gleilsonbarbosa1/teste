@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calculator, ArrowLeft, User, LogOut, AlertCircle } from 'lucide-react';
+import { useStore2Attendance } from '../../hooks/useStore2Attendance';
+import Store2AttendancePanel from './Store2AttendancePanel';
 
 import Store2Login from './Store2Login';
 
